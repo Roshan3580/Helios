@@ -1,0 +1,118 @@
+import { Link, Outlet, useRouterState } from "@tanstack/react-router";
+import {
+  LayoutDashboard, ListTree, FileCode2, ClipboardCheck, Database,
+  Search, FlaskConical, Settings, Bell, Command,
+} from "lucide-react";
+import { HeliosMark, StatusBadge } from "./primitives";
+import { cn } from "@/lib/utils";
+
+const NAV = [
+  { to: "/app/dashboard", label: "Dashboard", icon: LayoutDashboard, group: "Observe" },
+  { to: "/app/traces", label: "Traces", icon: ListTree, group: "Observe" },
+  { to: "/app/rag-analytics", label: "RAG Analytics", icon: Search, group: "Observe" },
+  { to: "/app/prompts", label: "Prompts", icon: FileCode2, group: "Improve" },
+  { to: "/app/evaluations", label: "Evaluations", icon: ClipboardCheck, group: "Improve" },
+  { to: "/app/datasets", label: "Datasets", icon: Database, group: "Improve" },
+  { to: "/app/experiments", label: "Experiments", icon: FlaskConical, group: "Improve" },
+  { to: "/app/settings", label: "Settings", icon: Settings, group: "Workspace" },
+] as const;
+
+export function AppShell() {
+  const pathname = useRouterState({ select: (r) => r.location.pathname });
+  const groups = ["Observe", "Improve", "Workspace"] as const;
+  return (
+    <div className="min-h-screen bg-paper text-foreground">
+      <div className="flex">
+        <aside className="hidden md:flex w-[240px] shrink-0 flex-col border-r border-rule bg-paper sticky top-0 h-screen">
+          <div className="flex items-center justify-between border-b border-rule px-4 h-14">
+            <Link to="/" className="flex items-center gap-2">
+              <HeliosMark />
+              <span className="font-serif text-lg tracking-tight">Helios</span>
+            </Link>
+            <span className="label-eyebrow">v1.0</span>
+          </div>
+          <div className="border-b border-rule px-4 py-3">
+            <div className="label-eyebrow">Project</div>
+            <div className="mt-1 flex items-center justify-between">
+              <span className="font-mono text-[12px]">acme · production</span>
+              <StatusBadge tone="success">live</StatusBadge>
+            </div>
+          </div>
+          <nav className="flex-1 overflow-y-auto py-2">
+            {groups.map((g) => (
+              <div key={g} className="px-2 py-3">
+                <div className="label-eyebrow px-2 mb-2">{g}</div>
+                <ul className="space-y-px">
+                  {NAV.filter((n) => n.group === g).map((n) => {
+                    const active = pathname.startsWith(n.to);
+                    const Icon = n.icon;
+                    return (
+                      <li key={n.to}>
+                        <Link
+                          to={n.to}
+                          className={cn(
+                            "flex items-center gap-2.5 px-2 py-1.5 text-[13px] border border-transparent",
+                            active
+                              ? "bg-paper-2 border-rule text-foreground"
+                              : "text-ink-soft hover:bg-paper-2 hover:text-foreground",
+                          )}
+                        >
+                          <Icon className="size-3.5" strokeWidth={1.5} />
+                          {n.label}
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ))}
+          </nav>
+          <div className="border-t border-rule p-3">
+            <div className="border border-rule p-3 bg-paper-2/60">
+              <div className="label-eyebrow">SDK</div>
+              <pre className="mt-2 font-mono text-[11px] leading-relaxed text-foreground">{`import helios
+helios.init("hel_••••")`}</pre>
+            </div>
+          </div>
+        </aside>
+        <div className="flex-1 min-w-0">
+          <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-rule bg-paper/90 backdrop-blur px-6">
+            <div className="flex items-center gap-3 flex-1 max-w-xl">
+              <Search className="size-4 text-muted-foreground" strokeWidth={1.5} />
+              <input
+                placeholder="Search traces, prompts, evals…"
+                className="flex-1 bg-transparent outline-none font-mono text-[13px] placeholder:text-muted-foreground"
+              />
+              <div className="flex items-center gap-1 label-eyebrow border border-rule px-1.5 py-0.5">
+                <Command className="size-3" /> K
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <StatusBadge tone="success">ingest 1.2k/s</StatusBadge>
+              <Bell className="size-4 text-muted-foreground" strokeWidth={1.5} />
+              <div className="size-7 border border-rule bg-paper-2 font-mono text-[11px] flex items-center justify-center">MM</div>
+            </div>
+          </header>
+          <main className="px-6 py-8">
+            <Outlet />
+          </main>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function PageHeader({
+  eyebrow, title, description, actions,
+}: { eyebrow: string; title: string; description?: string; actions?: React.ReactNode }) {
+  return (
+    <div className="flex items-end justify-between gap-8 border-b border-rule pb-6 mb-8 flex-wrap">
+      <div>
+        <div className="label-eyebrow">{eyebrow}</div>
+        <h1 className="mt-2 font-serif text-4xl tracking-tight">{title}</h1>
+        {description && <p className="mt-2 text-sm text-muted-foreground max-w-2xl">{description}</p>}
+      </div>
+      {actions && <div className="flex items-center gap-2">{actions}</div>}
+    </div>
+  );
+}
