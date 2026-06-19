@@ -1,0 +1,158 @@
+# Helios Backend Implementation Plan
+
+## Recommended stack
+
+| Layer | Technology |
+|-------|------------|
+| API framework | FastAPI |
+| Database | PostgreSQL 16+ |
+| Cache / queues | Redis |
+| Task workers | Celery or RQ |
+| ORM | SQLAlchemy 2.x |
+| Migrations | Alembic |
+| Trace model | OpenTelemetry-compatible spans |
+| Auth (later) | JWT or API keys per project |
+
+## Backend modules
+
+```
+backend/
+├── app/
+│   ├── main.py
+│   ├── config.py
+│   ├── api/
+│   │   ├── v1/
+│   │   │   ├── traces.py
+│   │   │   ├── spans.py
+│   │   │   ├── prompts.py
+│   │   │   ├── evals.py
+│   │   │   ├── datasets.py
+│   │   │   ├── rag_analytics.py
+│   │   │   ├── experiments.py
+│   │   │   └── projects.py
+│   │   └── ingestion/
+│   │       └── sdk.py
+│   ├── models/
+│   ├── schemas/
+│   ├── services/
+│   └── workers/
+├── alembic/
+└── tests/
+```
+
+## API endpoints to build
+
+### Ingestion
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/v1/traces` | Ingest trace with spans (batch) |
+| POST | `/v1/spans` | Append spans to existing trace |
+
+### Traces
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/v1/traces` | List traces (filter, paginate) |
+| GET | `/v1/traces/{trace_id}` | Get trace with span tree |
+| DELETE | `/v1/traces/{trace_id}` | Delete trace |
+
+### Prompts
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/v1/prompts` | List prompts |
+| POST | `/v1/prompts` | Create prompt |
+| GET | `/v1/prompts/{id}/versions` | List versions |
+| POST | `/v1/prompts/{id}/versions` | Create new version |
+
+### Evaluations
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/v1/evals` | List eval suites |
+| POST | `/v1/evals/runs` | Start eval run |
+| GET | `/v1/evals/runs/{run_id}` | Get run results |
+
+### Datasets
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/v1/datasets` | List datasets |
+| POST | `/v1/datasets` | Create dataset |
+| POST | `/v1/datasets/{id}/items` | Add items |
+
+### RAG Analytics
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/v1/rag/metrics` | Aggregated RAG metrics |
+| GET | `/v1/rag/traces` | Traces with RAG spans |
+
+### Projects
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/v1/projects` | List projects |
+| POST | `/v1/projects` | Create project |
+
+## Data model plan
+
+### Core tables
+
+```sql
+projects (id, name, slug, created_at)
+traces (id, project_id, name, status, started_at, duration_ms, metadata JSONB)
+spans (id, trace_id, parent_span_id, name, kind, started_at, ended_at, status, attributes JSONB)
+prompts (id, project_id, name, created_at)
+prompt_versions (id, prompt_id, version, content, model, metadata JSONB, created_at)
+datasets (id, project_id, name, created_at)
+dataset_items (id, dataset_id, input JSONB, expected_output JSONB)
+eval_suites (id, project_id, name, dataset_id, prompt_version_id, config JSONB)
+eval_runs (id, suite_id, status, started_at, completed_at, results JSONB)
+experiments (id, project_id, name, config JSONB, created_at)
+```
+
+### Indexing strategy
+
+- `traces(project_id, started_at DESC)` — list view
+- `traces(project_id, status)` — error filtering
+- `spans(trace_id, parent_span_id)` — tree reconstruction
+- GIN index on `spans.attributes` for model/provider filters
+
+## Implementation phases
+
+### Phase 1 — Foundation (4–6 weeks)
+
+- FastAPI project scaffold
+- PostgreSQL schema + Alembic migrations
+- Trace/span ingestion endpoint
+- Trace list + detail query endpoints
+- Connect frontend trace pages to API
+
+### Phase 2 — Prompts and evals (4–6 weeks)
+
+- Prompt CRUD and versioning
+- Dataset management
+- Eval run worker (Celery/RQ)
+- Eval results API
+- Connect frontend eval pages
+
+### Phase 3 — RAG and experiments (3–4 weeks)
+
+- RAG metrics aggregation from spans
+- Experiment configuration and comparison
+- Dashboard metrics API
+
+### Phase 4 — SDK and auth (4–6 weeks)
+
+- Python SDK with OTel-style span API
+- TypeScript SDK
+- API key auth per project
+- Rate limiting and ingestion quotas
+
+### Phase 5 — Production readiness
+
+- Deployment (Docker, CI/CD)
+- Monitoring and alerting
+- Documentation and onboarding guides
