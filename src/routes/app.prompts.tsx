@@ -1,11 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/helios/app-shell";
+import { DataSourceNotice } from "@/components/helios/data-source-notice";
 import { Eyebrow, StatusBadge, ButtonLink } from "@/components/helios/primitives";
-import { PROMPTS } from "@/components/helios/demo-data";
+import { usePrompts } from "@/hooks/use-prompts";
 
 export const Route = createFileRoute("/app/prompts")({ component: PromptsPage });
 
 function PromptsPage() {
+  const { prompts, source, loading } = usePrompts();
+
   return (
     <div>
       <PageHeader
@@ -14,6 +17,7 @@ function PromptsPage() {
         description="Version your prompts as first-class artifacts. Diff, score, and promote across model providers."
         actions={<ButtonLink to="/app/prompts">New prompt</ButtonLink>}
       />
+      <DataSourceNotice source={source} />
       <div className="border border-rule bg-card">
         <div className="grid grid-cols-12 gap-3 border-b border-rule px-4 py-2.5 label-eyebrow">
           <div className="col-span-3">Prompt</div>
@@ -24,33 +28,41 @@ function PromptsPage() {
           <div className="col-span-1 text-right">Cost</div>
           <div className="col-span-2 text-right">Updated</div>
         </div>
-        {PROMPTS.map((p) => (
-          <div
-            key={p.name}
-            className="grid grid-cols-12 items-center gap-3 border-b border-rule px-4 py-3"
-          >
-            <div className="col-span-3">
-              <div className="font-mono text-[12.5px]">{p.name}</div>
-              <div className="label-eyebrow mt-0.5">{p.versions} versions</div>
-            </div>
-            <div className="col-span-1 font-mono text-[12px]">{p.latest}</div>
-            <div className="col-span-2 font-mono text-[12px] text-muted-foreground">{p.model}</div>
-            <div className="col-span-2">
-              <StatusBadge tone={p.score > 85 ? "success" : p.score > 80 ? "warn" : "danger"}>
-                {p.score}%
-              </StatusBadge>
-            </div>
-            <div className="col-span-1 text-right font-mono text-[11px] text-muted-foreground">
-              {p.lat}
-            </div>
-            <div className="col-span-1 text-right font-mono text-[11px] text-muted-foreground">
-              {p.cost}
-            </div>
-            <div className="col-span-2 text-right">
-              <span className="font-mono text-[11px] text-muted-foreground">{p.updated}</span>
-            </div>
+        {loading ? (
+          <div className="px-4 py-8 text-center">
+            <Eyebrow>Loading prompts…</Eyebrow>
           </div>
-        ))}
+        ) : (
+          prompts.map((p) => (
+            <div
+              key={p.name}
+              className="grid grid-cols-12 items-center gap-3 border-b border-rule px-4 py-3"
+            >
+              <div className="col-span-3">
+                <div className="font-mono text-[12.5px]">{p.name}</div>
+                <div className="label-eyebrow mt-0.5">{p.versions} versions</div>
+              </div>
+              <div className="col-span-1 font-mono text-[12px]">{p.latest}</div>
+              <div className="col-span-2 font-mono text-[12px] text-muted-foreground">
+                {p.model}
+              </div>
+              <div className="col-span-2">
+                <StatusBadge tone={p.score > 85 ? "success" : p.score > 80 ? "warn" : "danger"}>
+                  {p.score}%
+                </StatusBadge>
+              </div>
+              <div className="col-span-1 text-right font-mono text-[11px] text-muted-foreground">
+                {p.lat}
+              </div>
+              <div className="col-span-1 text-right font-mono text-[11px] text-muted-foreground">
+                {p.cost}
+              </div>
+              <div className="col-span-2 text-right">
+                <span className="font-mono text-[11px] text-muted-foreground">{p.updated}</span>
+              </div>
+            </div>
+          ))
+        )}
       </div>
       <div className="mt-10 grid grid-cols-12 gap-6">
         <div className="col-span-12 lg:col-span-7 border border-rule bg-card">
