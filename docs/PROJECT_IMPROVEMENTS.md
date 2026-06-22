@@ -4,15 +4,15 @@ Prioritized backlog for taking Helios from frontend prototype to production-read
 
 ## P0 — Critical path
 
-| Item                     | Description                                              | Status      |
-| ------------------------ | -------------------------------------------------------- | ----------- |
-| Backend API scaffold     | FastAPI project with health check, CORS, project scoping | Not started |
-| Database schema          | PostgreSQL tables for traces, spans, projects            | Not started |
-| Trace ingestion          | POST endpoint accepting OTel-style span batches          | Not started |
-| Trace list API           | Paginated, filterable trace query                        | Not started |
-| Trace detail API         | Span tree reconstruction                                 | Not started |
-| Frontend API integration | Replace demo data in traces pages with live fetch        | Not started |
-| Environment config       | Wire `VITE_API_BASE_URL` in frontend client              | Not started |
+| Item                     | Description                                              | Status |
+| ------------------------ | -------------------------------------------------------- | ------ |
+| Backend API scaffold     | FastAPI project with health check, CORS, project scoping | Done   |
+| Database schema          | PostgreSQL tables for traces, spans, projects            | Done   |
+| Trace ingestion          | POST endpoint accepting OTel-style span batches          | Done   |
+| Trace list API           | Paginated, filterable trace query                        | Done   |
+| Trace detail API         | Span tree reconstruction                                 | Done   |
+| Frontend API integration | Replace demo data in traces pages with live fetch        | Done   |
+| Environment config       | Wire `VITE_API_BASE_URL` in frontend client              | Done   |
 
 ## P1 — Core product features
 

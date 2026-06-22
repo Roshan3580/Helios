@@ -132,10 +132,20 @@ experiments (id, project_id, name, config JSONB, created_at)
 - [x] Health endpoint with DB connectivity check
 - [x] Demo seed endpoint (`POST /v1/demo/seed`)
 - [x] Docker Compose for local Postgres + backend
-- [ ] Connect frontend trace pages to API
+- [x] Connect frontend trace pages to API
 - [ ] Prompt/eval/RAG read APIs for app pages
 
-### Phase 2 — Prompts and evals (4–6 weeks)
+### Phase 2 — Frontend integration and read APIs
+
+- [x] Frontend API client (`src/lib/api/`)
+- [x] Wire `/app/traces` to `GET /v1/traces`
+- [x] Wire `/app/traces/:id` to `GET /v1/traces/{trace_id}`
+- [x] Demo fallback when backend unavailable
+- [x] Status mapper (`warning` → `warn`)
+- [ ] Wire dashboard overview to backend metrics
+- [ ] Prompt/eval/RAG read APIs for remaining app pages
+
+### Phase 3 — Prompts and evals (4–6 weeks)
 
 - Prompt CRUD and versioning
 - Dataset management
@@ -143,20 +153,20 @@ experiments (id, project_id, name, config JSONB, created_at)
 - Eval results API
 - Connect frontend eval pages
 
-### Phase 3 — RAG and experiments (3–4 weeks)
+### Phase 4 — RAG and experiments (3–4 weeks)
 
 - RAG metrics aggregation from spans
 - Experiment configuration and comparison
 - Dashboard metrics API
 
-### Phase 4 — SDK and auth (4–6 weeks)
+### Phase 5 — SDK and auth (4–6 weeks)
 
 - Python SDK with OTel-style span API
 - TypeScript SDK
 - API key auth per project
 - Rate limiting and ingestion quotas
 
-### Phase 5 — Production readiness
+### Phase 6 — Production readiness
 
 - Deployment (Docker, CI/CD)
 - Monitoring and alerting

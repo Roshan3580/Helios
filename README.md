@@ -86,12 +86,12 @@ bun dev       # or: npm run dev
 
 ### Scripts
 
-| Script    | Description              |
-| --------- | ------------------------ |
-| `dev`     | Start Vite dev server    |
-| `build`   | Production build         |
-| `preview` | Preview production build |
-| `lint`    | Run ESLint               |
+| Script      | Description              |
+| ----------- | ------------------------ |
+| `dev`       | Start Vite dev server    |
+| `build`     | Production build         |
+| `preview`   | Preview production build |
+| `lint`      | Run ESLint               |
 | `format`    | Run Prettier             |
 | `typecheck` | TypeScript check (`tsc`) |
 
@@ -103,6 +103,7 @@ curl -X POST http://localhost:8000/v1/demo/seed
 ```
 
 See [backend/README.md](backend/README.md) for API details.
+See [docs/FRONTEND_BACKEND_INTEGRATION.md](docs/FRONTEND_BACKEND_INTEGRATION.md) for trace page wiring.
 
 ## Roadmap
 
