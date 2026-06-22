@@ -103,7 +103,7 @@ curl -X POST http://localhost:8000/v1/demo/seed
 ```
 
 See [backend/README.md](backend/README.md) for API details.
-See [docs/FRONTEND_BACKEND_INTEGRATION.md](docs/FRONTEND_BACKEND_INTEGRATION.md) for trace page wiring.
+See [docs/FRONTEND_BACKEND_INTEGRATION.md](docs/FRONTEND_BACKEND_INTEGRATION.md) for frontend ↔ backend wiring (traces, dashboard, RAG, evals, prompts, datasets).
 
 ## Roadmap
 

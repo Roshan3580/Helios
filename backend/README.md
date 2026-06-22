@@ -38,13 +38,18 @@ curl -X POST http://localhost:8000/v1/demo/seed
 
 ## API overview
 
-| Method | Path | Description |
-| ------ | ---- | ----------- |
-| GET | `/health` | Health and database status |
-| GET | `/v1/projects` | List projects |
-| GET | `/v1/traces` | List traces |
-| GET | `/v1/traces/{trace_id}` | Trace detail with spans |
-| POST | `/v1/traces` | Ingest trace + spans |
-| POST | `/v1/demo/seed` | Seed sample observability data |
+| Method | Path                    | Description                    |
+| ------ | ----------------------- | ------------------------------ |
+| GET    | `/health`               | Health and database status     |
+| GET    | `/v1/projects`          | List projects                  |
+| GET    | `/v1/traces`            | List traces                    |
+| GET    | `/v1/traces/{trace_id}` | Trace detail with spans        |
+| POST   | `/v1/traces`            | Ingest trace + spans           |
+| GET    | `/v1/dashboard/summary` | Dashboard aggregates           |
+| GET    | `/v1/rag/metrics`       | RAG analytics aggregates       |
+| GET    | `/v1/evaluations`       | List evaluation runs           |
+| GET    | `/v1/prompts`           | List prompt versions           |
+| GET    | `/v1/datasets`          | Dataset summaries              |
+| POST   | `/v1/demo/seed`         | Seed sample observability data |
 
 Interactive docs: http://localhost:8000/docs

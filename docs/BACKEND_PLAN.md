@@ -133,7 +133,7 @@ experiments (id, project_id, name, config JSONB, created_at)
 - [x] Demo seed endpoint (`POST /v1/demo/seed`)
 - [x] Docker Compose for local Postgres + backend
 - [x] Connect frontend trace pages to API
-- [ ] Prompt/eval/RAG read APIs for app pages
+- [x] Prompt/eval/RAG read APIs for app pages
 
 ### Phase 2 — Frontend integration and read APIs
 
@@ -142,8 +142,9 @@ experiments (id, project_id, name, config JSONB, created_at)
 - [x] Wire `/app/traces/:id` to `GET /v1/traces/{trace_id}`
 - [x] Demo fallback when backend unavailable
 - [x] Status mapper (`warning` → `warn`)
-- [ ] Wire dashboard overview to backend metrics
-- [ ] Prompt/eval/RAG read APIs for remaining app pages
+- [x] Wire dashboard overview to backend metrics
+- [x] Prompt/eval/RAG read APIs for remaining app pages
+- [x] Wire dashboard, RAG, evals, prompts, and datasets pages
 
 ### Phase 3 — Prompts and evals (4–6 weeks)
 
