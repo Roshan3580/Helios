@@ -1,59 +1,79 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/helios/app-shell";
+import { DataSourceNotice } from "@/components/helios/data-source-notice";
 import { StatusBadge, Eyebrow } from "@/components/helios/primitives";
-import { TRACES } from "@/components/helios/demo-data";
+import { statusTone } from "@/components/helios/demo-data";
+import { timelineTotalMs, useTraceDetail } from "@/hooks/use-trace-detail";
 
 export const Route = createFileRoute("/app/traces/$id")({ component: TraceDetail });
 
-const SPANS = [
-  { name: "user.query", kind: "INPUT", ms: 0, dur: 6, depth: 0 },
-  { name: "retriever.pgvector", kind: "RAG", ms: 12, dur: 184, depth: 1 },
-  { name: "reranker.cohere", kind: "RAG", ms: 198, dur: 142, depth: 1 },
-  { name: "llm.openai.gpt-4o", kind: "LLM", ms: 342, dur: 812, depth: 1 },
-  { name: "tool.lookup_policy", kind: "TOOL", ms: 1160, dur: 198, depth: 2 },
-  { name: "llm.openai.finalize", kind: "LLM", ms: 1370, dur: 52, depth: 1 },
-];
-const TOTAL = 1422;
-
 function TraceDetail() {
   const { id } = Route.useParams();
-  const t = TRACES.find((x) => x.id === id) ?? TRACES[0];
+  const { trace, source, loading } = useTraceDetail(id);
+
+  if (loading) {
+    return (
+      <div>
+        <Link to="/app/traces" className="label-eyebrow hover:text-foreground">
+          ← All traces
+        </Link>
+        <div className="mt-8 px-4 py-8 text-center">
+          <Eyebrow>Loading trace…</Eyebrow>
+        </div>
+      </div>
+    );
+  }
+
+  if (!trace) {
+    return (
+      <div>
+        <Link to="/app/traces" className="label-eyebrow hover:text-foreground">
+          ← All traces
+        </Link>
+        <div className="mt-8 border border-rule bg-card px-6 py-10 text-center">
+          <Eyebrow>Trace not found</Eyebrow>
+          <p className="mt-3 text-sm text-muted-foreground">
+            No trace matching <span className="font-mono">{id}</span> was found.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const spans = trace.spans;
+  const total = timelineTotalMs(spans);
+
   return (
     <div>
       <Link to="/app/traces" className="label-eyebrow hover:text-foreground">
         ← All traces
       </Link>
+      <DataSourceNotice source={source} />
       <PageHeader
-        eyebrow={`Trace · ${t.app}`}
-        title={t.id}
-        description={t.query}
-        actions={
-          <StatusBadge
-            tone={t.status === "success" ? "success" : t.status === "warn" ? "warn" : "danger"}
-          >
-            {t.status}
-          </StatusBadge>
-        }
+        eyebrow={`Trace · ${trace.app}`}
+        title={trace.id}
+        description={trace.query}
+        actions={<StatusBadge tone={statusTone(trace.status)}>{trace.status}</StatusBadge>}
       />
 
       <div className="grid grid-cols-4 gap-px bg-rule mb-8">
-        <Cell l="Latency" v={`${t.lat} ms`} />
-        <Cell l="Tokens" v={t.tok.toLocaleString()} />
-        <Cell l="Cost" v={`$${t.cost.toFixed(3)}`} />
-        <Cell l="Model" v={t.model} />
+        <Cell l="Latency" v={`${trace.lat} ms`} />
+        <Cell l="Tokens" v={trace.tok.toLocaleString()} />
+        <Cell l="Cost" v={`$${trace.cost.toFixed(3)}`} />
+        <Cell l="Model" v={trace.model} />
       </div>
 
       <div className="grid grid-cols-12 gap-6">
         <div className="col-span-12 lg:col-span-7 border border-rule bg-card">
           <div className="border-b border-rule px-4 py-2.5">
-            <Eyebrow>Timeline · {SPANS.length} spans</Eyebrow>
+            <Eyebrow>Timeline · {spans.length} spans</Eyebrow>
           </div>
           <div className="divide-y divide-rule">
-            {SPANS.map((s) => {
-              const left = (s.ms / TOTAL) * 100;
-              const width = Math.max((s.dur / TOTAL) * 100, 1);
+            {spans.map((s) => {
+              const left = (s.ms / total) * 100;
+              const width = Math.max((s.dur / total) * 100, 1);
               return (
-                <div key={s.name} className="grid grid-cols-12 items-center gap-3 px-4 py-3">
+                <div key={s.id} className="grid grid-cols-12 items-center gap-3 px-4 py-3">
                   <div
                     className="col-span-4 flex items-center gap-3"
                     style={{ paddingLeft: s.depth * 14 }}
@@ -81,7 +101,7 @@ function TraceDetail() {
         <div className="col-span-12 lg:col-span-5 space-y-6">
           <SpanCard title="Inputs">
             <pre className="font-mono text-[12px] whitespace-pre-wrap">{`{
-  "query": "${t.query}",
+  "query": "${trace.query}",
   "user": "u_8821",
   "session": "sess_1140a"
 }`}</pre>
@@ -105,21 +125,25 @@ function TraceDetail() {
           </SpanCard>
           <SpanCard title="Final answer">
             <p className="text-[13px] leading-relaxed">
-              The Q3 revenue policy updates the recognition threshold for annual contracts from
-              net-45 to net-30, and clarifies treatment of usage-based add-ons. See §4.2 for the
-              recognition table and §5.1 for the transition rules.
+              {spans.find((span) => span.outputPreview)?.outputPreview ??
+                "The Q3 revenue policy updates the recognition threshold for annual contracts from net-45 to net-30, and clarifies treatment of usage-based add-ons. See §4.2 for the recognition table and §5.1 for the transition rules."}
             </p>
           </SpanCard>
           <SpanCard title="Cost breakdown">
             <div className="grid grid-cols-2 gap-2 font-mono text-[12px]">
               <div>prompt</div>
-              <div className="text-right">1,820 tok · $0.011</div>
+              <div className="text-right">
+                {(trace.promptTokens ?? 0).toLocaleString()} tok · ${(trace.cost * 0.6).toFixed(3)}
+              </div>
               <div>completion</div>
-              <div className="text-right">521 tok · $0.006</div>
+              <div className="text-right">
+                {(trace.completionTokens ?? 0).toLocaleString()} tok · $
+                {(trace.cost * 0.35).toFixed(3)}
+              </div>
               <div>reranker</div>
-              <div className="text-right">$0.001</div>
+              <div className="text-right">${(trace.cost * 0.05).toFixed(3)}</div>
               <div className="border-t border-rule pt-2">total</div>
-              <div className="text-right border-t border-rule pt-2">${t.cost.toFixed(3)}</div>
+              <div className="text-right border-t border-rule pt-2">${trace.cost.toFixed(3)}</div>
             </div>
           </SpanCard>
         </div>
