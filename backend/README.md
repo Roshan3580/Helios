@@ -15,7 +15,7 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 
-export DATABASE_URL=postgresql://helios:helios@localhost:5432/helios
+export DATABASE_URL=postgresql://helios:helios@localhost:5433/helios
 export HELIOS_DEMO_MODE=true
 
 alembic upgrade head
