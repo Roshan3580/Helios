@@ -323,6 +323,17 @@ def seed_demo_data(db: Session) -> SeedResponse:
             cost_usd=0.012,
             status="completed",
         ),
+        EvaluationRun(
+            project_id=project.id,
+            dataset_name="research_summaries.v2",
+            prompt_name="research.summarizer",
+            model="claude-3.5",
+            accuracy=0.914,
+            citation_coverage=0.72,
+            latency_ms=1780,
+            cost_usd=0.015,
+            status="completed",
+        ),
     ]
     db.add_all(eval_rows)
 
