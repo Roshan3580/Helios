@@ -2,16 +2,16 @@
 
 ## Recommended stack
 
-| Layer | Technology |
-|-------|------------|
-| API framework | FastAPI |
-| Database | PostgreSQL 16+ |
-| Cache / queues | Redis |
-| Task workers | Celery or RQ |
-| ORM | SQLAlchemy 2.x |
-| Migrations | Alembic |
-| Trace model | OpenTelemetry-compatible spans |
-| Auth (later) | JWT or API keys per project |
+| Layer          | Technology                     |
+| -------------- | ------------------------------ |
+| API framework  | FastAPI                        |
+| Database       | PostgreSQL 16+                 |
+| Cache / queues | Redis                          |
+| Task workers   | Celery or RQ                   |
+| ORM            | SQLAlchemy 2.x                 |
+| Migrations     | Alembic                        |
+| Trace model    | OpenTelemetry-compatible spans |
+| Auth (later)   | JWT or API keys per project    |
 
 ## Backend modules
 
@@ -44,57 +44,57 @@ backend/
 
 ### Ingestion
 
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/v1/traces` | Ingest trace with spans (batch) |
-| POST | `/v1/spans` | Append spans to existing trace |
+| Method | Path         | Description                     |
+| ------ | ------------ | ------------------------------- |
+| POST   | `/v1/traces` | Ingest trace with spans (batch) |
+| POST   | `/v1/spans`  | Append spans to existing trace  |
 
 ### Traces
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/v1/traces` | List traces (filter, paginate) |
-| GET | `/v1/traces/{trace_id}` | Get trace with span tree |
-| DELETE | `/v1/traces/{trace_id}` | Delete trace |
+| Method | Path                    | Description                    |
+| ------ | ----------------------- | ------------------------------ |
+| GET    | `/v1/traces`            | List traces (filter, paginate) |
+| GET    | `/v1/traces/{trace_id}` | Get trace with span tree       |
+| DELETE | `/v1/traces/{trace_id}` | Delete trace                   |
 
 ### Prompts
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/v1/prompts` | List prompts |
-| POST | `/v1/prompts` | Create prompt |
-| GET | `/v1/prompts/{id}/versions` | List versions |
-| POST | `/v1/prompts/{id}/versions` | Create new version |
+| Method | Path                        | Description        |
+| ------ | --------------------------- | ------------------ |
+| GET    | `/v1/prompts`               | List prompts       |
+| POST   | `/v1/prompts`               | Create prompt      |
+| GET    | `/v1/prompts/{id}/versions` | List versions      |
+| POST   | `/v1/prompts/{id}/versions` | Create new version |
 
 ### Evaluations
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/v1/evals` | List eval suites |
-| POST | `/v1/evals/runs` | Start eval run |
-| GET | `/v1/evals/runs/{run_id}` | Get run results |
+| Method | Path                      | Description      |
+| ------ | ------------------------- | ---------------- |
+| GET    | `/v1/evals`               | List eval suites |
+| POST   | `/v1/evals/runs`          | Start eval run   |
+| GET    | `/v1/evals/runs/{run_id}` | Get run results  |
 
 ### Datasets
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/v1/datasets` | List datasets |
-| POST | `/v1/datasets` | Create dataset |
-| POST | `/v1/datasets/{id}/items` | Add items |
+| Method | Path                      | Description    |
+| ------ | ------------------------- | -------------- |
+| GET    | `/v1/datasets`            | List datasets  |
+| POST   | `/v1/datasets`            | Create dataset |
+| POST   | `/v1/datasets/{id}/items` | Add items      |
 
 ### RAG Analytics
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/v1/rag/metrics` | Aggregated RAG metrics |
-| GET | `/v1/rag/traces` | Traces with RAG spans |
+| Method | Path              | Description            |
+| ------ | ----------------- | ---------------------- |
+| GET    | `/v1/rag/metrics` | Aggregated RAG metrics |
+| GET    | `/v1/rag/traces`  | Traces with RAG spans  |
 
 ### Projects
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/v1/projects` | List projects |
-| POST | `/v1/projects` | Create project |
+| Method | Path           | Description    |
+| ------ | -------------- | -------------- |
+| GET    | `/v1/projects` | List projects  |
+| POST   | `/v1/projects` | Create project |
 
 ## Data model plan
 

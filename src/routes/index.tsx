@@ -15,9 +15,17 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Helios — Observability for production AI systems" },
-      { name: "description", content: "Trace, evaluate, and optimize LLM applications. Helios captures agent traces, prompt versions, RAG retrieval, evaluations, latency, and cost in one observability console." },
+      {
+        name: "description",
+        content:
+          "Trace, evaluate, and optimize LLM applications. Helios captures agent traces, prompt versions, RAG retrieval, evaluations, latency, and cost in one observability console.",
+      },
       { property: "og:title", content: "Helios — Observability for production AI systems" },
-      { property: "og:description", content: "Observe every trace. Improve every answer. The observability layer for production AI." },
+      {
+        property: "og:description",
+        content:
+          "Observe every trace. Improve every answer. The observability layer for production AI.",
+      },
     ],
   }),
   component: Index,

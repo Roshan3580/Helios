@@ -19,7 +19,12 @@ function TracesLayout() {
       />
       <div className="flex flex-wrap items-center gap-2 mb-4">
         {["All", "Errors", "Slow (>2s)", "Costly (>$0.02)", "RAG", "Agents"].map((f, i) => (
-          <button key={f} className={`label-eyebrow border border-rule px-2.5 py-1 ${i === 0 ? "bg-ink text-paper border-ink" : "hover:bg-paper-2"}`}>{f}</button>
+          <button
+            key={f}
+            className={`label-eyebrow border border-rule px-2.5 py-1 ${i === 0 ? "bg-ink text-paper border-ink" : "hover:bg-paper-2"}`}
+          >
+            {f}
+          </button>
         ))}
         <div className="ml-auto label-eyebrow">{TRACES.length} of 12,481</div>
       </div>
@@ -44,14 +49,22 @@ function TracesLayout() {
             <div className="col-span-2 font-mono text-[12px] text-muted-foreground">{t.app}</div>
             <div className="col-span-4 truncate text-[13px]">{t.query}</div>
             <div className="col-span-1 font-mono text-[11px] text-muted-foreground">{t.model}</div>
-            <div className="col-span-1 text-right font-mono text-[11px] text-muted-foreground">{t.lat}ms</div>
-            <div className="col-span-1 text-right font-mono text-[11px] text-muted-foreground">${t.cost.toFixed(3)}</div>
-            <div className="col-span-1 flex justify-end"><StatusBadge tone={statusTone(t.status)}>{t.status}</StatusBadge></div>
+            <div className="col-span-1 text-right font-mono text-[11px] text-muted-foreground">
+              {t.lat}ms
+            </div>
+            <div className="col-span-1 text-right font-mono text-[11px] text-muted-foreground">
+              ${t.cost.toFixed(3)}
+            </div>
+            <div className="col-span-1 flex justify-end">
+              <StatusBadge tone={statusTone(t.status)}>{t.status}</StatusBadge>
+            </div>
           </Link>
         ))}
         <div className="flex items-center justify-between px-4 py-3">
           <Eyebrow>Stream · live</Eyebrow>
-          <div className="font-mono text-[11px] text-muted-foreground">ingest rate · 1.2k spans/s</div>
+          <div className="font-mono text-[11px] text-muted-foreground">
+            ingest rate · 1.2k spans/s
+          </div>
         </div>
       </div>
     </div>

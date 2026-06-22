@@ -1,11 +1,39 @@
 import { StatusBadge } from "./primitives";
 
 const SPANS = [
-  { name: "user.query", kind: "INPUT", ms: 0, dur: 6, depth: 0, meta: "“What changed in the Q3 revenue policy?”" },
-  { name: "retriever.search", kind: "RAG", ms: 12, dur: 184, depth: 1, meta: "pgvector · top_k=8 · 12 chunks" },
+  {
+    name: "user.query",
+    kind: "INPUT",
+    ms: 0,
+    dur: 6,
+    depth: 0,
+    meta: "“What changed in the Q3 revenue policy?”",
+  },
+  {
+    name: "retriever.search",
+    kind: "RAG",
+    ms: 12,
+    dur: 184,
+    depth: 1,
+    meta: "pgvector · top_k=8 · 12 chunks",
+  },
   { name: "reranker.cohere", kind: "RAG", ms: 198, dur: 142, depth: 1, meta: "rerank-3 · 8 → 4" },
-  { name: "llm.openai", kind: "LLM", ms: 342, dur: 812, depth: 1, meta: "gpt-4o · t=0.2 · 2,341 tok" },
-  { name: "tool.lookup_policy", kind: "TOOL", ms: 1160, dur: 198, depth: 2, meta: "policy.search(scope=q3)" },
+  {
+    name: "llm.openai",
+    kind: "LLM",
+    ms: 342,
+    dur: 812,
+    depth: 1,
+    meta: "gpt-4o · t=0.2 · 2,341 tok",
+  },
+  {
+    name: "tool.lookup_policy",
+    kind: "TOOL",
+    ms: 1160,
+    dur: 198,
+    depth: 2,
+    meta: "policy.search(scope=q3)",
+  },
   { name: "llm.finalize", kind: "LLM", ms: 1370, dur: 52, depth: 1, meta: "gpt-4o · 318 tok" },
 ];
 
@@ -28,7 +56,9 @@ export function HeroTracePreview() {
       <div className="grid grid-cols-12 gap-4 border-b border-rule px-5 py-4">
         <div className="col-span-7">
           <div className="label-eyebrow">Trace</div>
-          <div className="mt-1 font-mono text-sm text-foreground">trc_8f2a31e · agent.research_assistant</div>
+          <div className="mt-1 font-mono text-sm text-foreground">
+            trc_8f2a31e · agent.research_assistant
+          </div>
         </div>
         <div className="col-span-5 grid grid-cols-4 gap-3 text-right">
           <Stat label="LATENCY" value="1.42 s" />
@@ -43,7 +73,10 @@ export function HeroTracePreview() {
           const width = Math.max((s.dur / TOTAL) * 100, 1.2);
           return (
             <div key={s.name} className="grid grid-cols-12 items-center gap-3 px-5 py-3">
-              <div className="col-span-5 flex items-center gap-3" style={{ paddingLeft: s.depth * 16 }}>
+              <div
+                className="col-span-5 flex items-center gap-3"
+                style={{ paddingLeft: s.depth * 16 }}
+              >
                 <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground w-12">
                   {s.kind}
                 </span>

@@ -64,17 +64,17 @@ No API client or state management for backend data exists yet. TanStack Query is
 
 ### Backend modules (planned)
 
-| Module | Responsibility |
-|--------|----------------|
-| `traces` | Trace CRUD, search, filtering |
-| `spans` | Span storage, tree reconstruction |
-| `prompts` | Prompt versioning, diff |
-| `evals` | Eval suite execution and scoring |
-| `datasets` | Eval dataset management |
-| `rag_analytics` | Retrieval metrics aggregation |
-| `experiments` | A/B comparisons |
-| `projects` | Multi-tenant project scoping |
-| `sdk_ingestion` | SDK and OTel ingestion endpoints |
+| Module          | Responsibility                    |
+| --------------- | --------------------------------- |
+| `traces`        | Trace CRUD, search, filtering     |
+| `spans`         | Span storage, tree reconstruction |
+| `prompts`       | Prompt versioning, diff           |
+| `evals`         | Eval suite execution and scoring  |
+| `datasets`      | Eval dataset management           |
+| `rag_analytics` | Retrieval metrics aggregation     |
+| `experiments`   | A/B comparisons                   |
+| `projects`      | Multi-tenant project scoping      |
+| `sdk_ingestion` | SDK and OTel ingestion endpoints  |
 
 ---
 

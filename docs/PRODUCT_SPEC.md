@@ -44,17 +44,17 @@ Helios aims to provide a single console for tracing, evaluating, and optimizing 
 
 ## Main entities
 
-| Entity | Description |
-|--------|-------------|
-| **Project** | Top-level container for traces, prompts, evals |
-| **Trace** | Single end-to-end request/run |
-| **Span** | Individual step within a trace |
-| **Prompt** | Named prompt template with version history |
-| **Prompt Version** | Immutable snapshot of prompt content + metadata |
-| **Dataset** | Collection of input/expected-output pairs for evals |
-| **Eval Suite** | Dataset + prompt + evaluators configuration |
-| **Eval Run** | Single execution of an eval suite |
-| **Experiment** | Side-by-side comparison of configurations |
+| Entity             | Description                                         |
+| ------------------ | --------------------------------------------------- |
+| **Project**        | Top-level container for traces, prompts, evals      |
+| **Trace**          | Single end-to-end request/run                       |
+| **Span**           | Individual step within a trace                      |
+| **Prompt**         | Named prompt template with version history          |
+| **Prompt Version** | Immutable snapshot of prompt content + metadata     |
+| **Dataset**        | Collection of input/expected-output pairs for evals |
+| **Eval Suite**     | Dataset + prompt + evaluators configuration         |
+| **Eval Run**       | Single execution of an eval suite                   |
+| **Experiment**     | Side-by-side comparison of configurations           |
 
 ## Screens / pages
 
@@ -64,17 +64,17 @@ Helios aims to provide a single console for tracing, evaluating, and optimizing 
 
 ### App console (implemented with demo data)
 
-| Route | Page |
-|-------|------|
-| `/app/dashboard` | Overview metrics and recent traces |
-| `/app/traces` | Trace list with filters |
-| `/app/traces/:id` | Trace detail with span tree |
-| `/app/prompts` | Prompt list and version info |
-| `/app/evaluations` | Eval suite results |
-| `/app/rag-analytics` | RAG quality metrics |
-| `/app/experiments` | Experiment comparisons |
-| `/app/datasets` | Dataset management |
-| `/app/settings` | Project settings |
+| Route                | Page                               |
+| -------------------- | ---------------------------------- |
+| `/app/dashboard`     | Overview metrics and recent traces |
+| `/app/traces`        | Trace list with filters            |
+| `/app/traces/:id`    | Trace detail with span tree        |
+| `/app/prompts`       | Prompt list and version info       |
+| `/app/evaluations`   | Eval suite results                 |
+| `/app/rag-analytics` | RAG quality metrics                |
+| `/app/experiments`   | Experiment comparisons             |
+| `/app/datasets`      | Dataset management                 |
+| `/app/settings`      | Project settings                   |
 
 ## Non-goals (current phase)
 

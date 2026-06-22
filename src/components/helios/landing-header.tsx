@@ -26,7 +26,10 @@ export function LandingHeader() {
           ))}
         </nav>
         <div className="flex items-center gap-2">
-          <Link to="/app/dashboard" className="label-eyebrow hidden sm:inline hover:text-foreground">
+          <Link
+            to="/app/dashboard"
+            className="label-eyebrow hidden sm:inline hover:text-foreground"
+          >
             Sign in
           </Link>
           <ButtonLink to="/app/dashboard">Open App →</ButtonLink>

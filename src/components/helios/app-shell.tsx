@@ -1,7 +1,15 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import {
-  LayoutDashboard, ListTree, FileCode2, ClipboardCheck, Database,
-  Search, FlaskConical, Settings, Bell, Command,
+  LayoutDashboard,
+  ListTree,
+  FileCode2,
+  ClipboardCheck,
+  Database,
+  Search,
+  FlaskConical,
+  Settings,
+  Bell,
+  Command,
 } from "lucide-react";
 import { HeliosMark, StatusBadge } from "./primitives";
 import { cn } from "@/lib/utils";
@@ -90,7 +98,9 @@ helios.init("hel_••••")`}</pre>
             <div className="flex items-center gap-4">
               <StatusBadge tone="success">ingest 1.2k/s</StatusBadge>
               <Bell className="size-4 text-muted-foreground" strokeWidth={1.5} />
-              <div className="size-7 border border-rule bg-paper-2 font-mono text-[11px] flex items-center justify-center">MM</div>
+              <div className="size-7 border border-rule bg-paper-2 font-mono text-[11px] flex items-center justify-center">
+                MM
+              </div>
             </div>
           </header>
           <main className="px-6 py-8">
@@ -103,14 +113,24 @@ helios.init("hel_••••")`}</pre>
 }
 
 export function PageHeader({
-  eyebrow, title, description, actions,
-}: { eyebrow: string; title: string; description?: string; actions?: React.ReactNode }) {
+  eyebrow,
+  title,
+  description,
+  actions,
+}: {
+  eyebrow: string;
+  title: string;
+  description?: string;
+  actions?: React.ReactNode;
+}) {
   return (
     <div className="flex items-end justify-between gap-8 border-b border-rule pb-6 mb-8 flex-wrap">
       <div>
         <div className="label-eyebrow">{eyebrow}</div>
         <h1 className="mt-2 font-serif text-4xl tracking-tight">{title}</h1>
-        {description && <p className="mt-2 text-sm text-muted-foreground max-w-2xl">{description}</p>}
+        {description && (
+          <p className="mt-2 text-sm text-muted-foreground max-w-2xl">{description}</p>
+        )}
       </div>
       {actions && <div className="flex items-center gap-2">{actions}</div>}
     </div>

@@ -5,16 +5,69 @@ import { Eyebrow, StatusBadge, ButtonLink } from "@/components/helios/primitives
 export const Route = createFileRoute("/app/evaluations")({ component: EvalsPage });
 
 const SUITES = [
-  { name: "support_qa.regression", dataset: "support_qa.v4", runs: 38, pass: 88.1, lat: "1.51s", cost: "$0.020" },
-  { name: "research.summary.quality", dataset: "research_summaries.v2", runs: 14, pass: 91.4, lat: "1.78s", cost: "$0.015" },
-  { name: "rag.citation.coverage", dataset: "policy_retrieval.v1", runs: 22, pass: 84.7, lat: "1.32s", cost: "$0.012" },
+  {
+    name: "support_qa.regression",
+    dataset: "support_qa.v4",
+    runs: 38,
+    pass: 88.1,
+    lat: "1.51s",
+    cost: "$0.020",
+  },
+  {
+    name: "research.summary.quality",
+    dataset: "research_summaries.v2",
+    runs: 14,
+    pass: 91.4,
+    lat: "1.78s",
+    cost: "$0.015",
+  },
+  {
+    name: "rag.citation.coverage",
+    dataset: "policy_retrieval.v1",
+    runs: 22,
+    pass: 84.7,
+    lat: "1.32s",
+    cost: "$0.012",
+  },
 ];
 
 const COMPARE = [
-  { p: "prompt.v1", m: "gpt-4o",      acc: 82.4, cost: 0.018, lat: 1.42, cite: 71, tone: "neutral" as const },
-  { p: "prompt.v2", m: "gpt-4o",      acc: 88.1, cost: 0.020, lat: 1.51, cite: 84, tone: "success" as const },
-  { p: "prompt.v2", m: "claude-3.5",  acc: 86.7, cost: 0.015, lat: 1.78, cite: 80, tone: "neutral" as const },
-  { p: "prompt.v3", m: "gemini-1.5",  acc: 79.3, cost: 0.009, lat: 0.94, cite: 62, tone: "warn"    as const },
+  {
+    p: "prompt.v1",
+    m: "gpt-4o",
+    acc: 82.4,
+    cost: 0.018,
+    lat: 1.42,
+    cite: 71,
+    tone: "neutral" as const,
+  },
+  {
+    p: "prompt.v2",
+    m: "gpt-4o",
+    acc: 88.1,
+    cost: 0.02,
+    lat: 1.51,
+    cite: 84,
+    tone: "success" as const,
+  },
+  {
+    p: "prompt.v2",
+    m: "claude-3.5",
+    acc: 86.7,
+    cost: 0.015,
+    lat: 1.78,
+    cite: 80,
+    tone: "neutral" as const,
+  },
+  {
+    p: "prompt.v3",
+    m: "gemini-1.5",
+    acc: 79.3,
+    cost: 0.009,
+    lat: 0.94,
+    cite: 62,
+    tone: "warn" as const,
+  },
 ];
 
 function EvalsPage() {
@@ -32,13 +85,24 @@ function EvalsPage() {
             <Eyebrow>{s.dataset}</Eyebrow>
             <div className="mt-3 font-serif text-2xl tracking-tight">{s.name}</div>
             <div className="mt-4 grid grid-cols-3 gap-3 font-mono text-[12px]">
-              <div><div className="label-eyebrow">Pass</div><div>{s.pass}%</div></div>
-              <div><div className="label-eyebrow">Lat p50</div><div>{s.lat}</div></div>
-              <div><div className="label-eyebrow">Cost</div><div>{s.cost}</div></div>
+              <div>
+                <div className="label-eyebrow">Pass</div>
+                <div>{s.pass}%</div>
+              </div>
+              <div>
+                <div className="label-eyebrow">Lat p50</div>
+                <div>{s.lat}</div>
+              </div>
+              <div>
+                <div className="label-eyebrow">Cost</div>
+                <div>{s.cost}</div>
+              </div>
             </div>
             <div className="mt-4 flex items-center justify-between">
               <span className="label-eyebrow">{s.runs} runs</span>
-              <StatusBadge tone={s.pass > 88 ? "success" : "warn"}>{s.pass > 88 ? "passing" : "watch"}</StatusBadge>
+              <StatusBadge tone={s.pass > 88 ? "success" : "warn"}>
+                {s.pass > 88 ? "passing" : "watch"}
+              </StatusBadge>
             </div>
           </div>
         ))}
@@ -58,10 +122,15 @@ function EvalsPage() {
           <div className="col-span-1">Cite</div>
         </div>
         {COMPARE.map((r, i) => (
-          <div key={i} className="grid grid-cols-12 items-center border-b border-rule px-4 py-3 font-mono text-[12.5px]">
+          <div
+            key={i}
+            className="grid grid-cols-12 items-center border-b border-rule px-4 py-3 font-mono text-[12.5px]"
+          >
             <div className="col-span-3">{r.p}</div>
             <div className="col-span-2 text-muted-foreground">{r.m}</div>
-            <div className="col-span-2"><StatusBadge tone={r.tone}>{r.acc}%</StatusBadge></div>
+            <div className="col-span-2">
+              <StatusBadge tone={r.tone}>{r.acc}%</StatusBadge>
+            </div>
             <div className="col-span-2 text-muted-foreground">${r.cost.toFixed(3)}</div>
             <div className="col-span-2 text-muted-foreground">{r.lat}s</div>
             <div className="col-span-1 text-muted-foreground">{r.cite}%</div>

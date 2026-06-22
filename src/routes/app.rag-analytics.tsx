@@ -44,7 +44,9 @@ function RagPage() {
       </div>
       <div className="grid grid-cols-12 gap-6">
         <div className="col-span-12 lg:col-span-7 border border-rule bg-card">
-          <div className="border-b border-rule px-4 py-2.5"><Eyebrow>Chunk quality · last 7d</Eyebrow></div>
+          <div className="border-b border-rule px-4 py-2.5">
+            <Eyebrow>Chunk quality · last 7d</Eyebrow>
+          </div>
           <div className="grid grid-cols-12 border-b border-rule px-4 py-2.5 label-eyebrow">
             <div className="col-span-6">Chunk</div>
             <div className="col-span-2">Hits</div>
@@ -52,16 +54,25 @@ function RagPage() {
             <div className="col-span-2 text-right">Status</div>
           </div>
           {chunks.map((c) => (
-            <div key={c.c} className="grid grid-cols-12 items-center border-b border-rule px-4 py-3 font-mono text-[12.5px]">
+            <div
+              key={c.c}
+              className="grid grid-cols-12 items-center border-b border-rule px-4 py-3 font-mono text-[12.5px]"
+            >
               <div className="col-span-6">{c.c}</div>
               <div className="col-span-2 text-muted-foreground">{c.hit}</div>
               <div className="col-span-2 text-muted-foreground">{c.score}</div>
-              <div className="col-span-2 flex justify-end"><StatusBadge tone={c.tone}>{c.tone === "success" ? "ok" : c.tone === "warn" ? "drift" : "low"}</StatusBadge></div>
+              <div className="col-span-2 flex justify-end">
+                <StatusBadge tone={c.tone}>
+                  {c.tone === "success" ? "ok" : c.tone === "warn" ? "drift" : "low"}
+                </StatusBadge>
+              </div>
             </div>
           ))}
         </div>
         <div className="col-span-12 lg:col-span-5 border border-rule bg-card">
-          <div className="border-b border-rule px-4 py-2.5"><Eyebrow>Top missed queries</Eyebrow></div>
+          <div className="border-b border-rule px-4 py-2.5">
+            <Eyebrow>Top missed queries</Eyebrow>
+          </div>
           <ul className="divide-y divide-rule">
             {failing.map((q, i) => (
               <li key={q} className="flex items-center justify-between px-4 py-3">

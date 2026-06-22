@@ -22,7 +22,10 @@ function DatasetsPage() {
           <div className="col-span-3 text-right">Updated</div>
         </div>
         {DATASETS.map((d) => (
-          <div key={d.name} className="grid grid-cols-12 items-center border-b border-rule px-4 py-3 font-mono text-[12.5px]">
+          <div
+            key={d.name}
+            className="grid grid-cols-12 items-center border-b border-rule px-4 py-3 font-mono text-[12.5px]"
+          >
             <div className="col-span-4">{d.name}</div>
             <div className="col-span-2 text-muted-foreground">{d.examples}</div>
             <div className="col-span-3 text-muted-foreground">{d.owner}</div>

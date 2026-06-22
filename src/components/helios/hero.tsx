@@ -25,7 +25,9 @@ export function Hero() {
             </p>
             <div className="mt-9 flex flex-wrap items-center gap-3">
               <ButtonLink to="/app/dashboard">Open observatory →</ButtonLink>
-              <ButtonLink to="/app/traces" variant="outline">View demo traces</ButtonLink>
+              <ButtonLink to="/app/traces" variant="outline">
+                View demo traces
+              </ButtonLink>
             </div>
             <div className="mt-12 grid grid-cols-2 gap-px bg-rule sm:grid-cols-4 max-w-2xl">
               {[

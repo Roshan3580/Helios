@@ -20,14 +20,14 @@ Screenshots will be added to `screenshots/` as the product matures.
 
 ## Core product modules
 
-| Module | Description |
-|--------|-------------|
-| **Traces** | Capture LLM calls, tool invocations, retrievers, and agent steps as nested span trees |
-| **Prompt Versions** | Version prompts as first-class artifacts; diff outputs, scores, latency, and cost |
-| **Evaluations** | Run eval suites against fixed datasets with deterministic, LLM-as-judge, and code evaluators |
-| **RAG Analytics** | Monitor retrieval hit rate, citation coverage, and missing-source analysis |
-| **Experiments** | Compare models, prompts, and configurations side by side |
-| **Cost and Latency Monitoring** | Aggregate token usage and spend by model, prompt, environment, and project |
+| Module                          | Description                                                                                  |
+| ------------------------------- | -------------------------------------------------------------------------------------------- |
+| **Traces**                      | Capture LLM calls, tool invocations, retrievers, and agent steps as nested span trees        |
+| **Prompt Versions**             | Version prompts as first-class artifacts; diff outputs, scores, latency, and cost            |
+| **Evaluations**                 | Run eval suites against fixed datasets with deterministic, LLM-as-judge, and code evaluators |
+| **RAG Analytics**               | Monitor retrieval hit rate, citation coverage, and missing-source analysis                   |
+| **Experiments**                 | Compare models, prompts, and configurations side by side                                     |
+| **Cost and Latency Monitoring** | Aggregate token usage and spend by model, prompt, environment, and project                   |
 
 ## Planned backend architecture
 
@@ -87,13 +87,13 @@ bun dev       # or: npm run dev
 
 ### Scripts
 
-| Script | Description |
-|--------|-------------|
-| `dev` | Start Vite dev server |
-| `build` | Production build |
+| Script    | Description              |
+| --------- | ------------------------ |
+| `dev`     | Start Vite dev server    |
+| `build`   | Production build         |
 | `preview` | Preview production build |
-| `lint` | Run ESLint |
-| `format` | Run Prettier |
+| `lint`    | Run ESLint               |
+| `format`  | Run Prettier             |
 
 There is no `typecheck` script yet. TypeScript is checked at build time via Vite.
 

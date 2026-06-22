@@ -175,8 +175,12 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  .font-serif { font-family: var(--font-serif); }
-  .font-mono { font-family: var(--font-mono); }
+  .font-serif {
+    font-family: var(--font-serif);
+  }
+  .font-mono {
+    font-family: var(--font-mono);
+  }
 
   .label-eyebrow {
     font-family: var(--font-sans);
@@ -189,15 +193,33 @@
 
   .grid-bg {
     background-image:
-      linear-gradient(to right, color-mix(in oklab, var(--color-rule) 55%, transparent) 1px, transparent 1px),
-      linear-gradient(to bottom, color-mix(in oklab, var(--color-rule) 55%, transparent) 1px, transparent 1px);
+      linear-gradient(
+        to right,
+        color-mix(in oklab, var(--color-rule) 55%, transparent) 1px,
+        transparent 1px
+      ),
+      linear-gradient(
+        to bottom,
+        color-mix(in oklab, var(--color-rule) 55%, transparent) 1px,
+        transparent 1px
+      );
     background-size: 56px 56px;
   }
   .grid-bg-fine {
     background-image:
-      linear-gradient(to right, color-mix(in oklab, var(--color-rule) 40%, transparent) 1px, transparent 1px),
-      linear-gradient(to bottom, color-mix(in oklab, var(--color-rule) 40%, transparent) 1px, transparent 1px);
+      linear-gradient(
+        to right,
+        color-mix(in oklab, var(--color-rule) 40%, transparent) 1px,
+        transparent 1px
+      ),
+      linear-gradient(
+        to bottom,
+        color-mix(in oklab, var(--color-rule) 40%, transparent) 1px,
+        transparent 1px
+      );
     background-size: 24px 24px;
   }
-  .hairline { border-color: var(--color-rule); }
+  .hairline {
+    border-color: var(--color-rule);
+  }
 }

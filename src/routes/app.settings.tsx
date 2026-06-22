@@ -49,7 +49,10 @@ const openai = trace(new OpenAI())`}</pre>
                 ["trace.failed", "https://hooks.acme.dev/helios"],
                 ["eval.regressed", "https://hooks.acme.dev/evals"],
               ].map(([ev, url]) => (
-                <li key={ev} className="flex items-center justify-between px-1 py-3 font-mono text-[12.5px]">
+                <li
+                  key={ev}
+                  className="flex items-center justify-between px-1 py-3 font-mono text-[12.5px]"
+                >
                   <span>{ev}</span>
                   <span className="text-muted-foreground">{url}</span>
                 </li>
@@ -60,10 +63,14 @@ const openai = trace(new OpenAI())`}</pre>
         <div className="col-span-12 lg:col-span-5 space-y-6">
           <Card title="Project">
             <div className="grid grid-cols-2 gap-3 font-mono text-[12.5px]">
-              <div className="label-eyebrow">Slug</div><div>acme/production</div>
-              <div className="label-eyebrow">Region</div><div>us-east-1</div>
-              <div className="label-eyebrow">Retention</div><div>90 days</div>
-              <div className="label-eyebrow">PII redaction</div><div>on</div>
+              <div className="label-eyebrow">Slug</div>
+              <div>acme/production</div>
+              <div className="label-eyebrow">Region</div>
+              <div>us-east-1</div>
+              <div className="label-eyebrow">Retention</div>
+              <div>90 days</div>
+              <div className="label-eyebrow">PII redaction</div>
+              <div>on</div>
             </div>
           </Card>
           <Card title="Team">
@@ -92,7 +99,9 @@ const openai = trace(new OpenAI())`}</pre>
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="border border-rule bg-card">
-      <div className="border-b border-rule px-4 py-2.5"><Eyebrow>{title}</Eyebrow></div>
+      <div className="border-b border-rule px-4 py-2.5">
+        <Eyebrow>{title}</Eyebrow>
+      </div>
       <div className="p-4">{children}</div>
     </div>
   );

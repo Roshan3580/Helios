@@ -41,9 +41,11 @@ export function StatusBadge({
 }) {
   const toneMap: Record<string, string> = {
     neutral: "text-ink-soft bg-paper-2 border-rule",
-    success: "text-[color:var(--accent-success)] bg-[color-mix(in_oklab,var(--accent-success)_10%,var(--paper))] border-[color-mix(in_oklab,var(--accent-success)_30%,var(--rule))]",
+    success:
+      "text-[color:var(--accent-success)] bg-[color-mix(in_oklab,var(--accent-success)_10%,var(--paper))] border-[color-mix(in_oklab,var(--accent-success)_30%,var(--rule))]",
     warn: "text-[color:var(--accent-amber)] bg-[color-mix(in_oklab,var(--accent-amber)_10%,var(--paper))] border-[color-mix(in_oklab,var(--accent-amber)_30%,var(--rule))]",
-    danger: "text-[color:var(--accent-danger)] bg-[color-mix(in_oklab,var(--accent-danger)_8%,var(--paper))] border-[color-mix(in_oklab,var(--accent-danger)_30%,var(--rule))]",
+    danger:
+      "text-[color:var(--accent-danger)] bg-[color-mix(in_oklab,var(--accent-danger)_8%,var(--paper))] border-[color-mix(in_oklab,var(--accent-danger)_30%,var(--rule))]",
     info: "text-[color:var(--accent-indigo)] bg-[color-mix(in_oklab,var(--accent-indigo)_8%,var(--paper))] border-[color-mix(in_oklab,var(--accent-indigo)_30%,var(--rule))]",
   };
   return (
@@ -90,19 +92,12 @@ export function MetricCard({
 
 export function HeliosMark({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={cn("size-5", className)} fill="none" stroke="currentColor" strokeWidth="1.5">
-      <circle cx="12" cy="12" r="3.25" />
-      <g opacity="0.9">
-        <line x1="12" y1="2" x2="12" y2="5.5" />
-        <line x1="12" y1="18.5" x2="12" y2="22" />
-        <line x1="2" y1="12" x2="5.5" y2="12" />
-        <line x1="18.5" y1="12" x2="22" y2="12" />
-        <line x1="4.9" y1="4.9" x2="7.4" y2="7.4" />
-        <line x1="16.6" y1="16.6" x2="19.1" y2="19.1" />
-        <line x1="4.9" y1="19.1" x2="7.4" y2="16.6" />
-        <line x1="16.6" y1="7.4" x2="19.1" y2="4.9" />
-      </g>
-    </svg>
+    <img
+      src="/helios-logo.png"
+      alt=""
+      aria-hidden
+      className={cn("size-5 object-contain", className)}
+    />
   );
 }
 

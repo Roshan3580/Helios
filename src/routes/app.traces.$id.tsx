@@ -20,12 +20,20 @@ function TraceDetail() {
   const t = TRACES.find((x) => x.id === id) ?? TRACES[0];
   return (
     <div>
-      <Link to="/app/traces" className="label-eyebrow hover:text-foreground">← All traces</Link>
+      <Link to="/app/traces" className="label-eyebrow hover:text-foreground">
+        ← All traces
+      </Link>
       <PageHeader
         eyebrow={`Trace · ${t.app}`}
         title={t.id}
         description={t.query}
-        actions={<StatusBadge tone={t.status === "success" ? "success" : t.status === "warn" ? "warn" : "danger"}>{t.status}</StatusBadge>}
+        actions={
+          <StatusBadge
+            tone={t.status === "success" ? "success" : t.status === "warn" ? "warn" : "danger"}
+          >
+            {t.status}
+          </StatusBadge>
+        }
       />
 
       <div className="grid grid-cols-4 gap-px bg-rule mb-8">
@@ -37,22 +45,34 @@ function TraceDetail() {
 
       <div className="grid grid-cols-12 gap-6">
         <div className="col-span-12 lg:col-span-7 border border-rule bg-card">
-          <div className="border-b border-rule px-4 py-2.5"><Eyebrow>Timeline · {SPANS.length} spans</Eyebrow></div>
+          <div className="border-b border-rule px-4 py-2.5">
+            <Eyebrow>Timeline · {SPANS.length} spans</Eyebrow>
+          </div>
           <div className="divide-y divide-rule">
             {SPANS.map((s) => {
               const left = (s.ms / TOTAL) * 100;
               const width = Math.max((s.dur / TOTAL) * 100, 1);
               return (
                 <div key={s.name} className="grid grid-cols-12 items-center gap-3 px-4 py-3">
-                  <div className="col-span-4 flex items-center gap-3" style={{ paddingLeft: s.depth * 14 }}>
-                    <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground w-10">{s.kind}</span>
+                  <div
+                    className="col-span-4 flex items-center gap-3"
+                    style={{ paddingLeft: s.depth * 14 }}
+                  >
+                    <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground w-10">
+                      {s.kind}
+                    </span>
                     <span className="font-mono text-[12.5px]">{s.name}</span>
                   </div>
                   <div className="col-span-7 relative h-4">
                     <div className="absolute inset-x-0 top-1/2 border-b border-dashed border-rule" />
-                    <div className="absolute top-0.5 h-3 bg-ink/85 border border-ink/70" style={{ left: `${left}%`, width: `${width}%` }} />
+                    <div
+                      className="absolute top-0.5 h-3 bg-ink/85 border border-ink/70"
+                      style={{ left: `${left}%`, width: `${width}%` }}
+                    />
                   </div>
-                  <div className="col-span-1 text-right font-mono text-[11px] text-muted-foreground">{s.dur}ms</div>
+                  <div className="col-span-1 text-right font-mono text-[11px] text-muted-foreground">
+                    {s.dur}ms
+                  </div>
                 </div>
               );
             })}
@@ -68,10 +88,17 @@ function TraceDetail() {
           </SpanCard>
           <SpanCard title="Retrieved chunks">
             <ul className="divide-y divide-rule">
-              {["policy-q3.md#§4.2", "policy-q3.md#§5.1", "finance-handbook.md#§3", "changelog/2025-q3.md"].map((c, i) => (
+              {[
+                "policy-q3.md#§4.2",
+                "policy-q3.md#§5.1",
+                "finance-handbook.md#§3",
+                "changelog/2025-q3.md",
+              ].map((c, i) => (
                 <li key={c} className="flex items-center justify-between px-1 py-2">
                   <span className="font-mono text-[12px]">{c}</span>
-                  <span className="font-mono text-[11px] text-muted-foreground">score {0.92 - i * 0.04}</span>
+                  <span className="font-mono text-[11px] text-muted-foreground">
+                    score {0.92 - i * 0.04}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -85,10 +112,14 @@ function TraceDetail() {
           </SpanCard>
           <SpanCard title="Cost breakdown">
             <div className="grid grid-cols-2 gap-2 font-mono text-[12px]">
-              <div>prompt</div><div className="text-right">1,820 tok · $0.011</div>
-              <div>completion</div><div className="text-right">521 tok · $0.006</div>
-              <div>reranker</div><div className="text-right">$0.001</div>
-              <div className="border-t border-rule pt-2">total</div><div className="text-right border-t border-rule pt-2">${t.cost.toFixed(3)}</div>
+              <div>prompt</div>
+              <div className="text-right">1,820 tok · $0.011</div>
+              <div>completion</div>
+              <div className="text-right">521 tok · $0.006</div>
+              <div>reranker</div>
+              <div className="text-right">$0.001</div>
+              <div className="border-t border-rule pt-2">total</div>
+              <div className="text-right border-t border-rule pt-2">${t.cost.toFixed(3)}</div>
             </div>
           </SpanCard>
         </div>
@@ -108,7 +139,9 @@ function Cell({ l, v }: { l: string; v: string }) {
 function SpanCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="border border-rule bg-card">
-      <div className="border-b border-rule px-4 py-2.5"><Eyebrow>{title}</Eyebrow></div>
+      <div className="border-b border-rule px-4 py-2.5">
+        <Eyebrow>{title}</Eyebrow>
+      </div>
       <div className="p-4">{children}</div>
     </div>
   );
