@@ -122,13 +122,18 @@ experiments (id, project_id, name, config JSONB, created_at)
 
 ## Implementation phases
 
-### Phase 1 — Foundation (4–6 weeks)
+### Phase 1 — Foundation
 
-- FastAPI project scaffold
-- PostgreSQL schema + Alembic migrations
-- Trace/span ingestion endpoint
-- Trace list + detail query endpoints
-- Connect frontend trace pages to API
+- [x] FastAPI project scaffold (`backend/app/`)
+- [x] PostgreSQL schema + Alembic migrations
+- [x] Trace/span ingestion endpoint (`POST /v1/traces`)
+- [x] Trace list + detail query endpoints
+- [x] Project list endpoint (`GET /v1/projects`)
+- [x] Health endpoint with DB connectivity check
+- [x] Demo seed endpoint (`POST /v1/demo/seed`)
+- [x] Docker Compose for local Postgres + backend
+- [ ] Connect frontend trace pages to API
+- [ ] Prompt/eval/RAG read APIs for app pages
 
 ### Phase 2 — Prompts and evals (4–6 weeks)
 

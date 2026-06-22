@@ -4,9 +4,9 @@ AI systems observability platform for tracing, evaluating, and debugging product
 
 ## Current status
 
-**Frontend prototype complete; backend implementation planned.**
+**Frontend prototype complete; Phase 1 backend foundation in progress.**
 
-Helios currently ships as a frontend-first prototype with demo data. The marketing landing page and observability app shell are implemented. Backend APIs, trace ingestion, and live data integration are planned but not yet built.
+Helios ships a visually complete frontend with demo data. A FastAPI backend with PostgreSQL models, migrations, trace APIs, and demo seeding is available for local development. Frontend-to-API integration is planned next.
 
 ## Why this project exists
 
@@ -58,12 +58,11 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/BACKEND_PLAN.md](docs
 - Radix UI + shadcn/ui components
 - Recharts
 
-**Backend (planned)**
+**Backend (Phase 1 foundation)**
 
-- FastAPI, PostgreSQL, Redis
-- Celery or RQ for async jobs
-- SQLAlchemy + Alembic
-- OpenTelemetry-compatible trace model
+- FastAPI, PostgreSQL, SQLAlchemy 2.x, Alembic, Pydantic
+- Trace/project APIs and demo seed endpoint
+- Redis, Celery/RQ — planned for later phases
 
 ## Local development
 
@@ -93,9 +92,17 @@ bun dev       # or: npm run dev
 | `build`   | Production build         |
 | `preview` | Preview production build |
 | `lint`    | Run ESLint               |
-| `format`  | Run Prettier             |
+| `format`    | Run Prettier             |
+| `typecheck` | TypeScript check (`tsc`) |
 
-There is no `typecheck` script yet. TypeScript is checked at build time via Vite.
+### Backend (local)
+
+```bash
+docker compose -f docker-compose.dev.yml up --build
+curl -X POST http://localhost:8000/v1/demo/seed
+```
+
+See [backend/README.md](backend/README.md) for API details.
 
 ## Roadmap
 

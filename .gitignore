@@ -46,3 +46,10 @@ coverage
 *.njsproj
 *.sln
 *.sw?
+
+# Python / backend
+__pycache__/
+*.py[cod]
+backend/.venv/
+.pytest_cache/
+.mypy_cache/
