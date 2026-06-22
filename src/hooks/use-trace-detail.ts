@@ -5,7 +5,7 @@ import { mapBackendTraceDetail, type TraceDetailItem } from "@/lib/api/mappers";
 import { fetchTraceDetail } from "@/lib/api/traces";
 import { TRACES } from "@/components/helios/demo-data";
 
-import type { DataSource } from "./use-traces";
+import type { DataSource } from "@/hooks/data-source";
 
 const DEMO_SPANS = [
   {

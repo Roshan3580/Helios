@@ -1,5 +1,5 @@
 import { Eyebrow } from "@/components/helios/primitives";
-import type { DataSource } from "@/hooks/use-traces";
+import type { DataSource } from "@/hooks/data-source";
 
 export function DataSourceNotice({ source }: { source: DataSource }) {
   if (source !== "fallback") return null;

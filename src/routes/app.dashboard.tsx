@@ -1,11 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/helios/app-shell";
+import { DataSourceNotice } from "@/components/helios/data-source-notice";
 import { MetricCard, StatusBadge, Eyebrow, ButtonLink } from "@/components/helios/primitives";
-import { TRACES, statusTone } from "@/components/helios/demo-data";
+import { statusTone } from "@/components/helios/demo-data";
+import { useDashboardSummary } from "@/hooks/use-dashboard-summary";
 
 export const Route = createFileRoute("/app/dashboard")({ component: DashboardPage });
 
 function DashboardPage() {
+  const { data, source, loading } = useDashboardSummary();
+
   return (
     <div>
       <PageHeader
@@ -21,51 +25,18 @@ function DashboardPage() {
           </>
         }
       />
+      <DataSourceNotice source={source} />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-rule">
-        <MetricCard
-          label="Total requests"
-          value="124,891"
-          delta={{ value: "+8.2%", tone: "up" }}
-          hint="vs. previous 24h"
-        />
-        <MetricCard
-          label="Avg latency"
-          value="1.34s"
-          delta={{ value: "−110ms", tone: "up" }}
-          hint="p50 across models"
-        />
-        <MetricCard
-          label="Token usage"
-          value="48.2M"
-          delta={{ value: "+3.1%", tone: "neutral" }}
-          hint="prompt + completion"
-        />
-        <MetricCard
-          label="Estimated cost"
-          value="$ 612.40"
-          delta={{ value: "+4.4%", tone: "down" }}
-          hint="USD · all envs"
-        />
-        <MetricCard
-          label="Error rate"
-          value="1.8%"
-          delta={{ value: "−0.4 pts", tone: "up" }}
-          hint="5xx + tool failures"
-        />
-        <MetricCard
-          label="Eval pass rate"
-          value="88.1%"
-          delta={{ value: "+3.4 pts", tone: "up" }}
-          hint="support_qa.v4"
-        />
-        <MetricCard
-          label="Citation coverage"
-          value="84.1%"
-          delta={{ value: "+1.2 pts", tone: "up" }}
-          hint="rag.knowledge_base"
-        />
-        <MetricCard label="Active models" value="3" hint="gpt-4o · claude-3.5 · gemini-1.5" />
+        {data.metrics.map((metric) => (
+          <MetricCard
+            key={metric.label}
+            label={metric.label}
+            value={loading ? "…" : metric.value}
+            delta={metric.delta}
+            hint={metric.hint}
+          />
+        ))}
       </div>
 
       <div className="mt-10 grid grid-cols-12 gap-6">
@@ -77,23 +48,29 @@ function DashboardPage() {
             </Link>
           </div>
           <div className="divide-y divide-rule">
-            {TRACES.slice(0, 6).map((t) => (
-              <Link
-                to="/app/traces/$id"
-                params={{ id: t.id }}
-                key={t.id}
-                className="grid grid-cols-12 items-center gap-3 px-4 py-3 hover:bg-paper-2"
-              >
-                <div className="col-span-3 font-mono text-[12px]">{t.id}</div>
-                <div className="col-span-5 truncate text-[13px]">{t.query}</div>
-                <div className="col-span-2 font-mono text-[11px] text-muted-foreground">
-                  {t.model} · {t.lat}ms
-                </div>
-                <div className="col-span-2 flex justify-end">
-                  <StatusBadge tone={statusTone(t.status)}>{t.status}</StatusBadge>
-                </div>
-              </Link>
-            ))}
+            {loading ? (
+              <div className="px-4 py-8 text-center">
+                <Eyebrow>Loading traces…</Eyebrow>
+              </div>
+            ) : (
+              data.recentTraces.map((t) => (
+                <Link
+                  to="/app/traces/$id"
+                  params={{ id: t.id }}
+                  key={t.id}
+                  className="grid grid-cols-12 items-center gap-3 px-4 py-3 hover:bg-paper-2"
+                >
+                  <div className="col-span-3 font-mono text-[12px]">{t.id}</div>
+                  <div className="col-span-5 truncate text-[13px]">{t.query}</div>
+                  <div className="col-span-2 font-mono text-[11px] text-muted-foreground">
+                    {t.model} · {t.lat}ms
+                  </div>
+                  <div className="col-span-2 flex justify-end">
+                    <StatusBadge tone={statusTone(t.status)}>{t.status}</StatusBadge>
+                  </div>
+                </Link>
+              ))
+            )}
           </div>
         </div>
 
@@ -103,16 +80,22 @@ function DashboardPage() {
               <Eyebrow>Failing prompts</Eyebrow>
             </div>
             <ul className="divide-y divide-rule">
-              {[
-                ["support.router.system / v5", "12 errs"],
-                ["rag.answer.synth / v7", "8 errs"],
-                ["router.classify.intent / v3", "3 errs"],
-              ].map(([p, e]) => (
-                <li key={p} className="flex items-center justify-between px-4 py-3">
-                  <span className="font-mono text-[12px]">{p}</span>
-                  <StatusBadge tone="danger">{e}</StatusBadge>
+              {loading ? (
+                <li className="px-4 py-3">
+                  <span className="label-eyebrow">Loading…</span>
                 </li>
-              ))}
+              ) : data.failingPrompts.length === 0 ? (
+                <li className="px-4 py-3">
+                  <span className="font-mono text-[12px] text-muted-foreground">None</span>
+                </li>
+              ) : (
+                data.failingPrompts.map(([p, e]) => (
+                  <li key={p} className="flex items-center justify-between px-4 py-3">
+                    <span className="font-mono text-[12px]">{p}</span>
+                    <StatusBadge tone="danger">{e}</StatusBadge>
+                  </li>
+                ))
+              )}
             </ul>
           </div>
           <div className="border border-rule bg-card">
@@ -120,22 +103,23 @@ function DashboardPage() {
               <Eyebrow>Model usage</Eyebrow>
             </div>
             <ul className="divide-y divide-rule">
-              {[
-                ["gpt-4o", 62],
-                ["claude-3.5-sonnet", 26],
-                ["gemini-1.5-pro", 9],
-                ["gpt-4o-mini", 3],
-              ].map(([m, pct]) => (
-                <li key={m as string} className="px-4 py-3">
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-[12px]">{m}</span>
-                    <span className="font-mono text-[11px] text-muted-foreground">{pct}%</span>
-                  </div>
-                  <div className="mt-2 h-1.5 bg-paper-2">
-                    <div className="h-full bg-ink/85" style={{ width: `${pct}%` }} />
-                  </div>
+              {loading ? (
+                <li className="px-4 py-3">
+                  <span className="label-eyebrow">Loading…</span>
                 </li>
-              ))}
+              ) : (
+                data.modelUsage.map(([m, pct]) => (
+                  <li key={m as string} className="px-4 py-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-[12px]">{m}</span>
+                      <span className="font-mono text-[11px] text-muted-foreground">{pct}%</span>
+                    </div>
+                    <div className="mt-2 h-1.5 bg-paper-2">
+                      <div className="h-full bg-ink/85" style={{ width: `${pct}%` }} />
+                    </div>
+                  </li>
+                ))
+              )}
             </ul>
           </div>
         </div>

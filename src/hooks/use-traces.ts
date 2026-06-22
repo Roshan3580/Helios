@@ -5,7 +5,7 @@ import { mapBackendTrace, type TraceListItem } from "@/lib/api/mappers";
 import { fetchTraces } from "@/lib/api/traces";
 import { TRACES } from "@/components/helios/demo-data";
 
-export type DataSource = "demo" | "api" | "fallback";
+import type { DataSource } from "@/hooks/data-source";
 
 export interface TracesLoadState {
   traces: TraceListItem[];
