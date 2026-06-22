@@ -148,3 +148,50 @@ class SeedResponse(BaseModel):
     evaluation_runs_seeded: int
     rag_chunk_metrics_seeded: int
     demo: bool = True
+
+
+class ModelBreakdownItem(BaseModel):
+    model: str
+    count: int
+    share_pct: float
+
+
+class StatusBreakdownItem(BaseModel):
+    status: TraceStatus
+    count: int
+    share_pct: float
+
+
+class DashboardSummaryRead(BaseModel):
+    total_requests: int
+    avg_latency_ms: float
+    total_tokens: int
+    estimated_cost_usd: float
+    error_rate: float
+    eval_pass_rate: float | None
+    citation_coverage: float | None
+    active_projects: int
+    recent_trace_count: int
+    model_breakdown: list[ModelBreakdownItem]
+    status_breakdown: list[StatusBreakdownItem]
+    recent_traces: list[TraceRead]
+    demo: bool = True
+
+
+class RagMetricsRead(BaseModel):
+    retrieval_hit_rate: float
+    citation_coverage: float
+    missing_source_rate: float
+    avg_chunk_quality: float
+    low_confidence_queries: list[str]
+    top_failing_queries: list[str]
+    chunk_metrics: list[RagChunkMetricRead]
+    demo: bool = True
+
+
+class DatasetSummaryRead(BaseModel):
+    name: str
+    total_cases: int
+    passing_rate: float
+    last_run_at: datetime | None
+    linked_evaluation_count: int
