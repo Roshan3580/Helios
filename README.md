@@ -20,29 +20,6 @@ Observability platform for tracing, evaluating, and debugging LLM applications, 
   </a>
 </p>
 
-```mermaid
-flowchart TB
-    subgraph External["External App"]
-        App["RAG Support Bot"]
-    end
-    subgraph SDK["Python SDK"]
-        Client["helios_sdk"]
-    end
-    subgraph Backend["FastAPI"]
-        Ingest["POST /v1/traces"]
-        Read["Dashboard & Analytics APIs"]
-    end
-    subgraph Data["PostgreSQL"]
-        DB["Traces · Spans · Projects"]
-    end
-    subgraph UI["Frontend"]
-        Console["React Console"]
-    end
-    App --> Client --> Ingest --> DB
-    Read --> DB
-    Console --> Read
-```
-
 ### What's real in this MVP
 
 | Layer        | Implemented                                                           |
