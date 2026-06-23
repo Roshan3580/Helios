@@ -163,8 +163,13 @@ experiments (id, project_id, name, config JSONB, created_at)
 - [ ] TypeScript SDK
 - [ ] API key auth per project
 
-### Phase 5 — Prompts, evals, and workers (4–6 weeks)
+### Phase 5 — Public demo polish
 
-- Deployment (Docker, CI/CD)
-- Monitoring and alerting
-- Documentation and onboarding guides
+- [x] Architecture Mermaid diagrams (`diagrams/`)
+- [x] Portfolio README with screenshots and demo flow
+- [x] Loom demo script (`docs/DEMO_SCRIPT.md`)
+- [x] Updated architecture and project docs
+- [ ] Replace screenshot placeholders with real captures
+- [ ] Record Loom walkthrough
+
+### Phase 6 — Production readiness

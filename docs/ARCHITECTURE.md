@@ -1,159 +1,233 @@
 # Helios Architecture
 
-## Current frontend architecture
+Helios is a full-stack observability platform: a React console, FastAPI backend, PostgreSQL storage, and a lightweight Python SDK for trace ingestion.
 
-Helios is a **frontend-first prototype** built with TanStack Start (SSR-capable React framework on Vite).
+---
+
+## Component diagram
+
+```mermaid
+flowchart TB
+    subgraph External["External App"]
+        App["RAG Support Bot / LLM App"]
+    end
+
+    subgraph SDK["Python SDK"]
+        Client["helios_sdk.HeliosClient"]
+    end
+
+    subgraph Backend["FastAPI"]
+        Ingest["POST /v1/traces"]
+        Read["Dashboard & Analytics APIs"]
+    end
+
+    subgraph Data["PostgreSQL"]
+        DB["Traces · Spans · Projects"]
+    end
+
+    subgraph UI["Frontend"]
+        Console["React + TanStack Console"]
+    end
+
+    App --> Client
+    Client --> Ingest
+    Ingest --> DB
+    Read --> DB
+    Console --> Read
+```
+
+Source: [diagrams/component.md](../diagrams/component.md)
+
+---
+
+## Frontend architecture
 
 ```
 src/
-├── start.ts              # TanStack Start instance + error middleware
-├── server.ts             # SSR server entry
-├── router.tsx            # Router configuration
-├── routeTree.gen.ts      # Generated route tree
-├── styles.css            # Global styles + Tailwind
-├── routes/
-│   ├── index.tsx         # Marketing landing page
-│   ├── app.tsx           # App layout route
-│   └── app.*.tsx         # Dashboard pages (demo data)
-├── components/
-│   ├── helios/           # Product-specific components
-│   └── ui/               # Shared shadcn/ui primitives
-├── lib/                  # Utilities, error handling
-└── hooks/                # React hooks
+├── routes/           # TanStack file routes (/app/*)
+├── components/helios/  # Product UI (app shell, primitives, demo data)
+├── lib/api/          # Backend client, types, mappers
+├── hooks/            # use-traces, use-dashboard-summary, etc.
+└── styles.css
 ```
 
 ### Routing
 
-- `/` — Editorial marketing landing page
-- `/app/*` — Observability console (dashboard, traces, prompts, evaluations, RAG analytics, experiments, datasets, settings)
+| Route                | Purpose                          |
+| -------------------- | -------------------------------- |
+| `/`                  | Marketing landing page           |
+| `/app/dashboard`     | Overview metrics + recent traces |
+| `/app/traces`        | Trace list                       |
+| `/app/traces/:id`    | Trace detail + span timeline     |
+| `/app/rag-analytics` | RAG quality metrics              |
+| `/app/evaluations`   | Eval suites + comparison         |
+| `/app/prompts`       | Prompt versions                  |
+| `/app/datasets`      | Dataset summaries                |
 
-All app pages currently render **static demo data** from `src/components/helios/demo-data.ts`.
+### Data layer
 
-### Data layer (current)
+- `VITE_HELIOS_DEMO_MODE=true` → static demo data
+- `VITE_HELIOS_DEMO_MODE=false` → fetch from `VITE_API_BASE_URL`
+- On API failure → demo fallback + subtle banner
 
-No API client or state management for backend data exists yet. TanStack Query is installed but not wired to live endpoints.
-
----
-
-## Planned backend architecture
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                     Client Applications                  │
-│  (Python/TS SDK, OpenTelemetry exporters, HTTP API)     │
-└──────────────────────────┬──────────────────────────────┘
-                           │ POST /v1/traces, /v1/spans
-                           ▼
-┌─────────────────────────────────────────────────────────┐
-│                   Ingestion API (FastAPI)                │
-│  Auth · Validation · Rate limiting · Project scoping    │
-└──────────────┬──────────────────────────┬───────────────┘
-               │                          │
-               ▼                          ▼
-        ┌─────────────┐           ┌─────────────┐
-        │ PostgreSQL  │           │    Redis    │
-        │  (primary)  │           │  (queues)   │
-        └──────┬──────┘           └──────┬──────┘
-               │                          │
-               ▼                          ▼
-        ┌─────────────┐           ┌─────────────┐
-        │  Query API  │           │   Workers   │
-        │  (FastAPI)  │           │ Celery/RQ   │
-        └─────────────┘           └─────────────┘
-```
-
-### Backend modules (planned)
-
-| Module          | Responsibility                    |
-| --------------- | --------------------------------- |
-| `traces`        | Trace CRUD, search, filtering     |
-| `spans`         | Span storage, tree reconstruction |
-| `prompts`       | Prompt versioning, diff           |
-| `evals`         | Eval suite execution and scoring  |
-| `datasets`      | Eval dataset management           |
-| `rag_analytics` | Retrieval metrics aggregation     |
-| `experiments`   | A/B comparisons                   |
-| `projects`      | Multi-tenant project scoping      |
-| `sdk_ingestion` | SDK and OTel ingestion endpoints  |
+See [FRONTEND_BACKEND_INTEGRATION.md](FRONTEND_BACKEND_INTEGRATION.md).
 
 ---
 
-## Planned data flow
+## Backend architecture
+
+```
+backend/app/
+├── main.py           # FastAPI app, CORS, router registration
+├── models.py         # SQLAlchemy models
+├── schemas.py        # Pydantic request/response schemas
+├── routers/          # health, projects, traces, dashboard, rag, ...
+├── services/         # Business logic and aggregates
+└── seed.py           # Demo seed data
+```
+
+### API surface (read + write)
+
+| Method | Path                    | Purpose                    |
+| ------ | ----------------------- | -------------------------- |
+| POST   | `/v1/traces`            | Ingest trace + spans (SDK) |
+| GET    | `/v1/traces`            | List traces                |
+| GET    | `/v1/traces/{id}`       | Trace detail               |
+| GET    | `/v1/dashboard/summary` | Dashboard aggregates       |
+| GET    | `/v1/rag/metrics`       | RAG analytics              |
+| GET    | `/v1/evaluations`       | Eval runs                  |
+| GET    | `/v1/prompts`           | Prompt versions            |
+| GET    | `/v1/datasets`          | Dataset summaries          |
+| POST   | `/v1/demo/seed`         | Seed sample data           |
+
+---
+
+## Request flow (UI read path)
 
 ```mermaid
 sequenceDiagram
-    participant App as LLM Application
-    participant SDK as Helios SDK
-    participant API as Ingestion API
+    participant Browser as React Console
+    participant API as FastAPI
     participant DB as PostgreSQL
-    participant Worker as Eval Worker
-    participant UI as Helios Frontend
 
-    App->>SDK: LLM call / tool call / retrieval
-    SDK->>API: POST /v1/traces (spans batch)
-    API->>DB: Persist trace + spans
-    UI->>API: GET /v1/traces/{id}
-    API->>DB: Query trace tree
-    DB-->>API: Span tree
-    API-->>UI: Trace detail JSON
+    Browser->>API: GET /v1/traces
+    API->>DB: SELECT traces + project
+    DB-->>API: rows
+    API-->>Browser: JSON trace list
 
-    Note over Worker,DB: Async eval pipeline
-    Worker->>DB: Fetch dataset + prompt version
-    Worker->>App: Run eval cases
-    Worker->>DB: Store eval results
-    UI->>API: GET /v1/evals/{run_id}
-    API-->>UI: Eval results
+    Browser->>API: GET /v1/traces/{trace_id}
+    API->>DB: SELECT trace + spans
+    DB-->>API: span tree
+    API-->>Browser: trace detail JSON
 ```
 
 ---
 
-## Planned tracing model
+## Ingestion flow (SDK write path)
 
-OpenTelemetry-inspired hierarchy:
+```mermaid
+flowchart TB
+    Query["User Query"]
+    Retriever["Retriever"]
+    Reranker["Reranker"]
+    LLM["LLM"]
+    Tool["Tool"]
+    Response["Response"]
+    SDK["Python SDK"]
+    API["POST /v1/traces"]
+    Database["PostgreSQL"]
+    Frontend["Frontend /app/traces"]
+
+    Query --> Retriever --> Reranker --> LLM --> Tool --> Response
+    Response --> SDK --> API --> Database --> Frontend
+```
+
+Source: [diagrams/trace-lifecycle.md](../diagrams/trace-lifecycle.md)
+
+```mermaid
+sequenceDiagram
+    participant App as External App
+    participant SDK as helios_sdk
+    participant API as FastAPI
+    participant DB as PostgreSQL
+
+    App->>SDK: build trace + spans
+    SDK->>API: POST /v1/traces
+    API->>DB: INSERT project, trace, spans
+    DB-->>API: committed
+    API-->>SDK: 201 trace detail
+```
+
+See [SDK_INGESTION.md](SDK_INGESTION.md) for install and demo steps.
+
+---
+
+## Local deployment
+
+```mermaid
+flowchart LR
+    subgraph Dev["Developer Machine"]
+        FE["Frontend<br/>Vite :5173"]
+        BE["Backend<br/>FastAPI :8000"]
+        Demo["RAG Demo App"]
+    end
+
+    subgraph Infra["Docker"]
+        PG["PostgreSQL<br/>:5433"]
+    end
+
+    Demo --> BE
+    FE --> BE
+    BE --> PG
+```
+
+Source: [diagrams/deployment.md](../diagrams/deployment.md)
+
+---
+
+## Tracing model
+
+OpenTelemetry-inspired hierarchy stored in Postgres:
 
 ```
 Trace
-├── Span (root: agent.run)
-│   ├── Span (llm.chat)
-│   ├── Span (tool.search)
-│   │   └── Span (retriever.query)
-│   └── Span (llm.chat)
+├── Span (user.query)          input
+│   ├── Span (retriever.*)     rag
+│   ├── Span (llm.*)           llm
+│   ├── Span (tool.*)          tool
+│   └── Span (response.*)      output
 ```
 
-Each span carries:
-
-- `trace_id`, `span_id`, `parent_span_id`
-- `name`, `kind` (llm | tool | retriever | agent | custom)
-- `start_time`, `end_time`, `duration_ms`
-- `status` (ok | error)
-- `attributes` (model, tokens, cost, etc.)
-- `events` (optional)
+Each span stores: `span_id`, `parent_span_id`, `name`, `span_type`, timing, tokens, cost, status, previews, `metadata_json`.
 
 ---
 
-## Planned evaluation pipeline
+## Design tradeoffs
 
-1. User defines eval suite with dataset + prompt version + evaluators
-2. API enqueues eval run to Redis
-3. Worker executes each case: call model → score output
-4. Results stored with per-case scores and aggregate metrics
-5. Frontend displays comparison tables and trends
+| Decision                             | Why                                                                             |
+| ------------------------------------ | ------------------------------------------------------------------------------- |
+| **FastAPI**                          | Typed Pydantic schemas, auto OpenAPI docs, fast local dev for portfolio backend |
+| **PostgreSQL**                       | Relational trace/span trees, Alembic migrations, familiar ops story             |
+| **SDK instead of UI-only ingestion** | Proves external apps can emit observability data — core recruiting signal       |
+| **Demo fallback in frontend**        | UI stays usable without backend; live mode proves integration                   |
+| **Read APIs + seed data**            | Dashboard/RAG/evals work before workers exist                                   |
+| **No auth (yet)**                    | Keeps scope focused on ingestion + visualization                                |
 
-Evaluator types:
+### Why not OpenTelemetry yet?
 
-- **Deterministic** — exact match, regex, JSON schema
-- **LLM-as-judge** — rubric-based scoring
-- **Code-based** — custom Python/JS evaluator functions
+OTel compatibility is planned. The current SDK is intentionally minimal to demonstrate `POST /v1/traces` end-to-end without exporter complexity.
+
+### Why not direct UI ingestion?
+
+Production LLM apps run outside the browser. The SDK + RAG demo shows Helios as a platform boundary, not just a static dashboard.
 
 ---
 
-## Planned RAG analytics pipeline
+## Future architecture (not implemented)
 
-Metrics computed from retrieval spans in production traces:
+- Redis + Celery/RQ for eval workers
+- API key auth and rate limiting
+- OpenTelemetry exporter → ingestion adapter
+- TypeScript SDK for Node/browser apps
 
-- **Hit rate** — queries with ≥1 relevant chunk retrieved
-- **Citation coverage** — answers with source attribution
-- **Missing source rate** — answers without supporting retrieval
-- **Latency breakdown** — embed → retrieve → rerank → generate
-
-Aggregated by time window, project, and knowledge base.
+See [BACKEND_PLAN.md](BACKEND_PLAN.md).

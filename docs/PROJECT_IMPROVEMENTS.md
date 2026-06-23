@@ -1,47 +1,80 @@
 # Helios Project Improvements
 
-Prioritized backlog for taking Helios from frontend prototype to production-ready platform.
+Prioritized backlog and phase completion status.
+
+---
+
+## Phase completion
+
+| Phase       | Scope                                                                    | Status       |
+| ----------- | ------------------------------------------------------------------------ | ------------ |
+| **Phase 1** | FastAPI backend, Postgres models, Alembic, trace/project APIs, demo seed | **Complete** |
+| **Phase 2** | Frontend API client, traces pages wired, demo fallback                   | **Complete** |
+| **Phase 3** | Dashboard, RAG, evals, prompts, datasets read APIs + frontend wiring     | **Complete** |
+| **Phase 4** | Python SDK, external RAG demo app, real trace ingestion                  | **Complete** |
+| **Phase 5** | Public demo polish — README, diagrams, screenshots, demo script          | **Complete** |
+
+---
 
 ## P0 — Critical path
 
-| Item                     | Description                                              | Status |
-| ------------------------ | -------------------------------------------------------- | ------ |
-| Backend API scaffold     | FastAPI project with health check, CORS, project scoping | Done   |
-| Database schema          | PostgreSQL tables for traces, spans, projects            | Done   |
-| Trace ingestion          | POST endpoint accepting OTel-style span batches          | Done   |
-| Trace list API           | Paginated, filterable trace query                        | Done   |
-| Trace detail API         | Span tree reconstruction                                 | Done   |
-| Frontend API integration | Replace demo data in traces pages with live fetch        | Done   |
-| Environment config       | Wire `VITE_API_BASE_URL` in frontend client              | Done   |
+| Item                     | Description                    | Status |
+| ------------------------ | ------------------------------ | ------ |
+| Backend API scaffold     | FastAPI, CORS, project scoping | Done   |
+| Database schema          | Traces, spans, projects        | Done   |
+| Trace ingestion          | `POST /v1/traces`              | Done   |
+| Trace list + detail APIs | Filterable list, span tree     | Done   |
+| Frontend API integration | Live fetch + demo fallback     | Done   |
+| Environment config       | `VITE_API_BASE_URL`, demo mode | Done   |
+
+---
 
 ## P1 — Core product features
 
-| Item                   | Description                                         | Status        |
-| ---------------------- | --------------------------------------------------- | ------------- |
-| Eval runner            | Async worker executing eval suites against datasets | Not started   |
-| Prompt versioning      | CRUD, immutable versions, diff metadata             | Not started   |
-| RAG analytics pipeline | Aggregate retrieval metrics from span attributes    | Not started   |
-| Cost tracking          | Token and cost aggregation from span attributes     | Not started   |
-| Dashboard metrics      | Real overview stats from trace data                 | Done (sample) |
-| Dataset management     | Upload and manage eval datasets                     | Not started   |
-| External trace demo    | RAG support bot submitting traces via SDK           | Done          |
+| Item                   | Description                     | Status              |
+| ---------------------- | ------------------------------- | ------------------- |
+| Dashboard metrics API  | Aggregates from trace/eval data | Done (sample scale) |
+| RAG analytics read API | Chunk metrics + aggregates      | Done (sample scale) |
+| Evaluations read API   | Seeded eval runs                | Done                |
+| Prompts read API       | Seeded prompt versions          | Done                |
+| Datasets read API      | Derived from eval runs          | Done                |
+| External trace demo    | RAG support bot via SDK         | Done                |
+| Eval runner            | Async worker for eval suites    | Not started         |
+| Prompt CRUD            | Immutable version history       | Not started         |
+| Dataset upload         | JSONL import                    | Not started         |
+
+---
 
 ## P2 — Platform and polish
 
-| Item             | Description                                    | Status      |
-| ---------------- | ---------------------------------------------- | ----------- |
-| Python SDK       | Lightweight `helios_sdk` for trace ingestion   | Done (demo) |
-| TypeScript SDK   | Client library for Node/browser apps           | Not started |
-| Auth             | API keys, project membership                   | Not started |
-| Deployment       | Docker Compose, production hosting guide       | Not started |
-| Monitoring       | Backend health, ingestion rate, error alerting | Not started |
-| Lint/format CI   | GitHub Actions for lint, build, typecheck      | Not started |
-| Documentation    | API reference, SDK guides, onboarding          | Not started |
-| Screenshots      | Capture and add to README                      | Not started |
-| Typecheck script | Add `tsc --noEmit` to package.json             | Not started |
+| Item                    | Description                              | Status      |
+| ----------------------- | ---------------------------------------- | ----------- |
+| Python SDK              | `helios_sdk` trace ingestion             | Done (demo) |
+| Portfolio README        | Screenshots, architecture, demo flow     | Done        |
+| Architecture diagrams   | Mermaid component, lifecycle, deployment | Done        |
+| Demo walkthrough script | [DEMO_SCRIPT.md](DEMO_SCRIPT.md)         | Done        |
+| TypeScript SDK          | Node/browser client                      | Not started |
+| Auth                    | API keys, project membership             | Not started |
+| OpenTelemetry           | Exporter compatibility                   | Not started |
+| CI/CD                   | GitHub Actions lint/build/test           | Not started |
+| Real screenshots        | Replace PNG placeholders                 | Not started |
+| Loom demo video         | Record using demo script                 | Not started |
+
+---
 
 ## Notes
 
-- Frontend visual design is approved — do not redesign during backend integration
-- Demo data should remain available behind `VITE_HELIOS_DEMO_MODE=true` for local development without backend
-- Prefer incremental integration: one page at a time, starting with traces
+- Frontend visual design is approved — do not redesign
+- Demo fallback must remain behind `VITE_HELIOS_DEMO_MODE=true`
+- Screenshot placeholders live in `screenshots/` — replace before public launch
+- See [DEMO_SCRIPT.md](DEMO_SCRIPT.md) for 90-second walkthrough
+
+---
+
+## Next priorities (post Phase 5)
+
+1. Capture real screenshots and record Loom demo
+2. API key auth for ingestion
+3. Eval runner with background workers
+4. TypeScript SDK
+5. GitHub Actions CI
