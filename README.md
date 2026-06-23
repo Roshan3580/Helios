@@ -17,7 +17,6 @@ Observability platform for tracing, evaluating, and debugging LLM applications, 
 
 <p align="center">
   <a href="https://www.loom.com/share/cd168cff3de843e8a0c00a1980085992">
-    Watch Full Demo →
   </a>
 </p>
 
