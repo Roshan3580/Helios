@@ -20,14 +20,14 @@ Set `VITE_HELIOS_DEMO_MODE=false` to load data from the backend. If the API is u
 
 ### Phase 3 — Dashboard & analytics
 
-| Route                 | API endpoint                  |
-| --------------------- | ----------------------------- |
-| `/app/dashboard`      | `GET /v1/dashboard/summary`   |
-|                       | `GET /v1/prompts` (failing)   |
-| `/app/rag-analytics`  | `GET /v1/rag/metrics`         |
-| `/app/evaluations`    | `GET /v1/evaluations`         |
-| `/app/prompts`        | `GET /v1/prompts`             |
-| `/app/datasets`       | `GET /v1/datasets`            |
+| Route                | API endpoint                |
+| -------------------- | --------------------------- |
+| `/app/dashboard`     | `GET /v1/dashboard/summary` |
+|                      | `GET /v1/prompts` (failing) |
+| `/app/rag-analytics` | `GET /v1/rag/metrics`       |
+| `/app/evaluations`   | `GET /v1/evaluations`       |
+| `/app/prompts`       | `GET /v1/prompts`           |
+| `/app/datasets`      | `GET /v1/datasets`          |
 
 All Phase 3 list endpoints accept optional `?project_slug=acme`.
 
@@ -43,11 +43,11 @@ RAG chunk status: `ok` → success badge, `drift` → warn, `low` → danger.
 
 ## Demo fallback behavior
 
-| `VITE_HELIOS_DEMO_MODE` | Backend available | Result                          |
-| ----------------------- | ----------------- | ------------------------------- |
-| `true`                  | any               | Static demo data, no banner     |
-| `false`                 | yes               | Live API data, no banner        |
-| `false`                 | no                | Demo fallback + banner          |
+| `VITE_HELIOS_DEMO_MODE` | Backend available | Result                      |
+| ----------------------- | ----------------- | --------------------------- |
+| `true`                  | any               | Static demo data, no banner |
+| `false`                 | yes               | Live API data, no banner    |
+| `false`                 | no                | Demo fallback + banner      |
 
 ## Local verification
 

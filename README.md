@@ -4,9 +4,9 @@ AI systems observability platform for tracing, evaluating, and debugging product
 
 ## Current status
 
-**Frontend prototype complete; Phase 1 backend foundation in progress.**
+**Frontend complete; backend and Phase 3 analytics APIs shipped. Phase 4 adds Python SDK trace ingestion.**
 
-Helios ships a visually complete frontend with demo data. A FastAPI backend with PostgreSQL models, migrations, trace APIs, and demo seeding is available for local development. Frontend-to-API integration is planned next.
+Helios ships a visually complete frontend with demo fallback. A FastAPI backend with PostgreSQL, trace ingestion, analytics read APIs, and a lightweight Python SDK is available for local development.
 
 ## Why this project exists
 
@@ -103,16 +103,26 @@ curl -X POST http://localhost:8000/v1/demo/seed
 ```
 
 See [backend/README.md](backend/README.md) for API details.
-See [docs/FRONTEND_BACKEND_INTEGRATION.md](docs/FRONTEND_BACKEND_INTEGRATION.md) for frontend ↔ backend wiring (traces, dashboard, RAG, evals, prompts, datasets).
+See [docs/FRONTEND_BACKEND_INTEGRATION.md](docs/FRONTEND_BACKEND_INTEGRATION.md) for frontend ↔ backend wiring.
+See [docs/SDK_INGESTION.md](docs/SDK_INGESTION.md) for Python SDK and external RAG demo.
+
+### SDK + external trace demo
+
+```bash
+# Backend running on :8000, then:
+cd sdk/python && pip install -e .
+cd examples/rag_support_bot && pip install -r requirements.txt
+python run_demo.py --query "How do I rotate API keys without downtime?"
+```
 
 ## Roadmap
 
 1. **Backend foundation** — API, database schema, trace ingestion
 2. **Trace detail integration** — Connect frontend to live trace data
-3. **Eval runner** — Dataset management and eval execution
-4. **Prompt versioning** — CRUD, diff, and version history
-5. **RAG analytics pipeline** — Retrieval metrics from production traffic
-6. **SDK** — Python and TypeScript client libraries
+3. **Analytics read APIs** — Dashboard, RAG, evals, prompts, datasets
+4. **SDK ingestion** — Python SDK + external RAG demo app
+5. **Eval runner** — Dataset management and eval execution
+6. **Prompt versioning** — CRUD, diff, and version history
 7. **Auth and deployment** — Multi-tenant projects, production hosting
 
 See [docs/PROJECT_IMPROVEMENTS.md](docs/PROJECT_IMPROVEMENTS.md) for prioritized backlog.

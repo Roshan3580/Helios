@@ -154,20 +154,16 @@ experiments (id, project_id, name, config JSONB, created_at)
 - Eval results API
 - Connect frontend eval pages
 
-### Phase 4 — RAG and experiments (3–4 weeks)
+### Phase 4 — SDK ingestion (current)
 
-- RAG metrics aggregation from spans
-- Experiment configuration and comparison
-- Dashboard metrics API
+- [x] Lightweight Python SDK (`sdk/python/helios_sdk`)
+- [x] External RAG support bot demo (`examples/rag_support_bot`)
+- [x] Trace submission via existing `POST /v1/traces`
+- [ ] OpenTelemetry-compatible exporter
+- [ ] TypeScript SDK
+- [ ] API key auth per project
 
-### Phase 5 — SDK and auth (4–6 weeks)
-
-- Python SDK with OTel-style span API
-- TypeScript SDK
-- API key auth per project
-- Rate limiting and ingestion quotas
-
-### Phase 6 — Production readiness
+### Phase 5 — Prompts, evals, and workers (4–6 weeks)
 
 - Deployment (Docker, CI/CD)
 - Monitoring and alerting

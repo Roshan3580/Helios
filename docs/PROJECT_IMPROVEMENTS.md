@@ -16,20 +16,21 @@ Prioritized backlog for taking Helios from frontend prototype to production-read
 
 ## P1 — Core product features
 
-| Item                   | Description                                         | Status      |
-| ---------------------- | --------------------------------------------------- | ----------- |
-| Eval runner            | Async worker executing eval suites against datasets | Not started |
-| Prompt versioning      | CRUD, immutable versions, diff metadata             | Not started |
-| RAG analytics pipeline | Aggregate retrieval metrics from span attributes    | Not started |
-| Cost tracking          | Token and cost aggregation from span attributes     | Not started |
-| Dashboard metrics      | Real overview stats from trace data                 | Not started |
-| Dataset management     | Upload and manage eval datasets                     | Not started |
+| Item                   | Description                                         | Status        |
+| ---------------------- | --------------------------------------------------- | ------------- |
+| Eval runner            | Async worker executing eval suites against datasets | Not started   |
+| Prompt versioning      | CRUD, immutable versions, diff metadata             | Not started   |
+| RAG analytics pipeline | Aggregate retrieval metrics from span attributes    | Not started   |
+| Cost tracking          | Token and cost aggregation from span attributes     | Not started   |
+| Dashboard metrics      | Real overview stats from trace data                 | Done (sample) |
+| Dataset management     | Upload and manage eval datasets                     | Not started   |
+| External trace demo    | RAG support bot submitting traces via SDK           | Done          |
 
 ## P2 — Platform and polish
 
 | Item             | Description                                    | Status      |
 | ---------------- | ---------------------------------------------- | ----------- |
-| Python SDK       | `@helios/sdk` with span decorators/wrappers    | Not started |
+| Python SDK       | Lightweight `helios_sdk` for trace ingestion   | Done (demo) |
 | TypeScript SDK   | Client library for Node/browser apps           | Not started |
 | Auth             | API keys, project membership                   | Not started |
 | Deployment       | Docker Compose, production hosting guide       | Not started |
