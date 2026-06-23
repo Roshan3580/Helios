@@ -4,6 +4,23 @@ Observability platform for tracing, evaluating, and debugging LLM applications, 
 
 **Portfolio MVP** — a full-stack prototype demonstrating real backend integration, not a production SaaS. What works today: FastAPI read/write APIs, PostgreSQL persistence, Python SDK trace ingestion, and live frontend-backend wiring. Some create/run actions in the UI are demo-only placeholders.
 
+## Demo
+
+<div align="center">
+  <a href="https://www.loom.com/share/cd168cff3de843e8a0c00a1980085992">
+    <img
+      style="max-width:900px;"
+      src="https://cdn.loom.com/sessions/thumbnails/cd168cff3de843e8a0c00a1980085992-ed903f21e01f44d3-full-play.gif#t=0.1"
+      alt="Helios Tracing for LLM and RAG Apps">
+  </a>
+</div>
+
+<p align="center">
+  <a href="https://www.loom.com/share/cd168cff3de843e8a0c00a1980085992">
+    Watch Full Demo →
+  </a>
+</p>
+
 ```mermaid
 flowchart TB
     subgraph External["External App"]
