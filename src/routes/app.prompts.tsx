@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/helios/app-shell";
 import { DataSourceNotice } from "@/components/helios/data-source-notice";
-import { Eyebrow, StatusBadge, ButtonLink } from "@/components/helios/primitives";
+import { DemoOnlyAction } from "@/components/helios/demo-only-action";
+import { Eyebrow, StatusBadge } from "@/components/helios/primitives";
 import { usePrompts } from "@/hooks/use-prompts";
 
 export const Route = createFileRoute("/app/prompts")({ component: PromptsPage });
@@ -15,7 +16,7 @@ function PromptsPage() {
         eyebrow="Improve"
         title="Prompt versions"
         description="Version your prompts as first-class artifacts. Diff, score, and promote across model providers."
-        actions={<ButtonLink to="/app/prompts">New prompt</ButtonLink>}
+        actions={<DemoOnlyAction>New prompt</DemoOnlyAction>}
       />
       <DataSourceNotice source={source} />
       <div className="border border-rule bg-card">

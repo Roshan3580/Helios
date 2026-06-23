@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/helios/app-shell";
 import { DataSourceNotice } from "@/components/helios/data-source-notice";
-import { Eyebrow, StatusBadge, ButtonLink } from "@/components/helios/primitives";
+import { DemoOnlyAction } from "@/components/helios/demo-only-action";
+import { Eyebrow, StatusBadge } from "@/components/helios/primitives";
 import { useEvaluations } from "@/hooks/use-evaluations";
 
 export const Route = createFileRoute("/app/evaluations")({ component: EvalsPage });
@@ -15,7 +16,7 @@ function EvalsPage() {
         eyebrow="Improve"
         title="Evaluations"
         description="Reproducible eval suites with deterministic, LLM-as-judge, and code-based scorers."
-        actions={<ButtonLink to="/app/evaluations">Run evaluation</ButtonLink>}
+        actions={<DemoOnlyAction>Run evaluation</DemoOnlyAction>}
       />
       <DataSourceNotice source={source} />
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-px bg-rule">

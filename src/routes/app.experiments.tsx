@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/helios/app-shell";
-import { Eyebrow, StatusBadge, ButtonLink } from "@/components/helios/primitives";
+import { DemoOnlyAction } from "@/components/helios/demo-only-action";
+import { Eyebrow, StatusBadge } from "@/components/helios/primitives";
 
 export const Route = createFileRoute("/app/experiments")({ component: ExperimentsPage });
 
@@ -35,7 +36,7 @@ function ExperimentsPage() {
         eyebrow="Improve"
         title="Experiments"
         description="A/B prompts, models, and retrieval configs against live traffic."
-        actions={<ButtonLink to="/app/experiments">New experiment</ButtonLink>}
+        actions={<DemoOnlyAction>New experiment</DemoOnlyAction>}
       />
       <div className="border border-rule bg-card">
         <div className="grid grid-cols-12 border-b border-rule px-4 py-2.5 label-eyebrow">

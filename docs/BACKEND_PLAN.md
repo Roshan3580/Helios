@@ -169,7 +169,7 @@ experiments (id, project_id, name, config JSONB, created_at)
 - [x] Portfolio README with screenshots and demo flow
 - [x] Loom demo script (`docs/DEMO_SCRIPT.md`)
 - [x] Updated architecture and project docs
-- [ ] Replace screenshot placeholders with real captures
+- [x] Real screenshots in `screenshots/`
 - [ ] Record Loom walkthrough
 
 ### Phase 6 — Production readiness

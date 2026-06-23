@@ -83,4 +83,3 @@ Use this script for a Loom walkthrough. Target length: **90 seconds**. Speak in 
 - [ ] Frontend: `VITE_HELIOS_DEMO_MODE=false`, `bun dev`
 - [ ] SDK demo venv ready: `pip install -r examples/rag_support_bot/requirements.txt`
 - [ ] Browser zoom 100%, clean window, no personal tabs
-- [ ] Replace placeholder PNGs in `screenshots/` (optional but recommended)

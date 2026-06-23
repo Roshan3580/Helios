@@ -2,6 +2,8 @@
 
 Observability platform for tracing, evaluating, and debugging LLM applications, agents, and RAG pipelines.
 
+**Portfolio MVP** — a full-stack prototype demonstrating real backend integration, not a production SaaS. What works today: FastAPI read/write APIs, PostgreSQL persistence, Python SDK trace ingestion, and live frontend-backend wiring. Some create/run actions in the UI are demo-only placeholders.
+
 ```mermaid
 flowchart TB
     subgraph External["External App"]
@@ -24,6 +26,16 @@ flowchart TB
     Read --> DB
     Console --> Read
 ```
+
+### What's real in this MVP
+
+| Layer        | Implemented                                                           |
+| ------------ | --------------------------------------------------------------------- |
+| **Backend**  | FastAPI, SQLAlchemy, Alembic, trace ingestion + analytics read APIs   |
+| **Database** | PostgreSQL — traces, spans, projects, seeded eval/RAG data            |
+| **SDK**      | Python client submitting nested spans via `POST /v1/traces`           |
+| **Frontend** | Live API mode with demo fallback; dashboard, traces, RAG, evals wired |
+| **Not yet**  | Auth, workers, prompt/dataset/eval creation flows, OpenTelemetry      |
 
 ---
 
@@ -52,8 +64,6 @@ flowchart TB
 | Prompts                             | Datasets                              | SDK demo                              |
 | ----------------------------------- | ------------------------------------- | ------------------------------------- |
 | ![Prompts](screenshots/prompts.png) | ![Datasets](screenshots/datasets.png) | ![SDK demo](screenshots/sdk-demo.png) |
-
-> Placeholder images — replace with real captures before recording. See [screenshots/README.md](screenshots/README.md).
 
 ---
 
@@ -111,6 +121,7 @@ External RAG app  →  Python SDK  →  POST /v1/traces  →  PostgreSQL  →  D
 Run the included demo from the repo root:
 
 ```bash
+python -m venv .venv-demo && source .venv-demo/bin/activate
 pip install -r examples/rag_support_bot/requirements.txt
 python examples/rag_support_bot/run_demo.py --query "How do I rotate API keys without downtime?"
 ```
@@ -140,6 +151,8 @@ cp .env.example .env   # set VITE_HELIOS_DEMO_MODE=false for live API
 bun dev
 ```
 
+Open http://localhost:5173
+
 ### Backend
 
 ```bash
@@ -153,9 +166,9 @@ curl -X POST http://localhost:8000/v1/demo/seed
 
 ### Demo app (SDK ingestion)
 
+From repo root with `.venv-demo` activated:
+
 ```bash
-python -m venv .venv-demo && source .venv-demo/bin/activate
-pip install -r examples/rag_support_bot/requirements.txt
 python examples/rag_support_bot/run_demo.py --query "How do I rotate API keys without downtime?"
 ```
 
@@ -172,11 +185,12 @@ python examples/rag_support_bot/run_demo.py --query "How do I rotate API keys wi
 
 ## Limitations
 
-- **Portfolio / demo scope** — sample data and small trace volumes, not production scale
-- **No auth** — ingestion and read APIs are open in local dev
+- **Portfolio MVP** — sample-scale metrics, not production volume or multi-tenant ops
+- **No auth** — local dev APIs are open; no API keys yet
 - **Lightweight SDK** — not OpenTelemetry; no batching or retries
-- **Simulated RAG demo** — keyword search + fake LLM, no paid API keys
-- **Static UI panels** — some trace detail side content remains demo placeholders
+- **Simulated RAG demo app** — keyword search + deterministic LLM responses; no paid API keys
+- **Demo-only UI actions** — New prompt, New dataset, Run evaluation, New experiment open a placeholder notice; no create flows yet
+- **Static panels** — some trace detail side content remains demo placeholders
 - **No workers** — eval execution and async pipelines are not implemented
 
 ---
@@ -186,14 +200,14 @@ python examples/rag_support_bot/run_demo.py --query "How do I rotate API keys wi
 - API key auth and project-scoped ingestion
 - TypeScript SDK and OpenTelemetry exporter
 - Eval runner with background workers
-- Prompt CRUD and immutable version history
+- Prompt/dataset/eval creation workflows
 - CI/CD, deployment guide, and production monitoring
-- Replace screenshot placeholders with live captures
+- Loom walkthrough video ([docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md))
 
-See [docs/PROJECT_IMPROVEMENTS.md](docs/PROJECT_IMPROVEMENTS.md) and [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md).
+See [docs/PROJECT_IMPROVEMENTS.md](docs/PROJECT_IMPROVEMENTS.md).
 
 ---
 
 ## Disclaimer
 
-Helios is a **portfolio project** built to demonstrate full-stack AI observability engineering. Demo metrics and seeded data are illustrative. No production deployments, customer claims, or compliance certifications are implied.
+Helios is a **portfolio project** built to demonstrate full-stack AI observability engineering — real FastAPI backend, PostgreSQL persistence, SDK ingestion, and frontend integration. Demo metrics and seeded data are illustrative. No production deployments, customer claims, or compliance certifications are implied.

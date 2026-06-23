@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/helios/app-shell";
 import { DataSourceNotice } from "@/components/helios/data-source-notice";
+import { DemoOnlyAction } from "@/components/helios/demo-only-action";
 import { MetricCard, StatusBadge, Eyebrow, ButtonLink } from "@/components/helios/primitives";
 import { statusTone } from "@/components/helios/demo-data";
 import { useDashboardSummary } from "@/hooks/use-dashboard-summary";
@@ -15,13 +16,13 @@ function DashboardPage() {
       <PageHeader
         eyebrow="Workspace · acme / production"
         title="Dashboard"
-        description="Sample telemetry from the last 24 hours. Demo data."
+        description="Sample telemetry from the backend when live API mode is on. Portfolio MVP."
         actions={
           <>
             <ButtonLink to="/app/traces" variant="outline">
               View traces
             </ButtonLink>
-            <ButtonLink to="/app/evaluations">Run evaluation</ButtonLink>
+            <DemoOnlyAction>Run evaluation</DemoOnlyAction>
           </>
         }
       />

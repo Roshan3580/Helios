@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/helios/app-shell";
 import { DataSourceNotice } from "@/components/helios/data-source-notice";
-import { Eyebrow, ButtonLink } from "@/components/helios/primitives";
+import { DemoOnlyAction } from "@/components/helios/demo-only-action";
+import { Eyebrow } from "@/components/helios/primitives";
 import { useDatasets } from "@/hooks/use-datasets";
 
 export const Route = createFileRoute("/app/datasets")({ component: DatasetsPage });
@@ -15,7 +16,7 @@ function DatasetsPage() {
         eyebrow="Improve"
         title="Datasets"
         description="Curated examples that ground every evaluation. Import from production traces or upload JSONL."
-        actions={<ButtonLink to="/app/datasets">New dataset</ButtonLink>}
+        actions={<DemoOnlyAction>New dataset</DemoOnlyAction>}
       />
       <DataSourceNotice source={source} />
       <div className="border border-rule bg-card">
