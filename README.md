@@ -109,10 +109,11 @@ See [docs/SDK_INGESTION.md](docs/SDK_INGESTION.md) for Python SDK and external R
 ### SDK + external trace demo
 
 ```bash
-# Backend running on :8000, then:
-cd sdk/python && pip install -e .
-cd examples/rag_support_bot && pip install -r requirements.txt
-python run_demo.py --query "How do I rotate API keys without downtime?"
+# Backend running on :8000, then from repo root:
+python -m venv .venv-demo
+source .venv-demo/bin/activate
+pip install -r examples/rag_support_bot/requirements.txt
+python examples/rag_support_bot/run_demo.py --query "How do I rotate API keys without downtime?"
 ```
 
 ## Roadmap

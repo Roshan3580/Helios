@@ -15,26 +15,25 @@ Deterministic sample app that simulates a RAG support bot and submits a trace to
 - Helios backend running at `http://localhost:8000`
 - Python 3.10+
 
-## Setup
+## Setup (from repo root)
 
 ```bash
-# Start backend (from repo root)
+# Start backend
 docker compose -f docker-compose.dev.yml up -d postgres
 cd backend && source .venv/bin/activate
 export DATABASE_URL=postgresql://helios:helios@localhost:5433/helios
 uvicorn app.main:app --reload --port 8000
 
-# Install demo dependencies
-cd examples/rag_support_bot
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+# Install demo + SDK (from repo root)
+python -m venv .venv-demo
+source .venv-demo/bin/activate
+pip install -r examples/rag_support_bot/requirements.txt
 ```
 
-## Run
+## Run (from repo root)
 
 ```bash
-python run_demo.py \
+python examples/rag_support_bot/run_demo.py \
   --query "How do I rotate API keys without downtime?" \
   --api-url http://localhost:8000
 ```
@@ -58,6 +57,8 @@ Trace submitted successfully
   backend:    http://localhost:8000
   view trace: http://localhost:5173/app/traces/trc_a1b2c3
 ```
+
+Each run generates a new `trc_...` ID. Reusing the same ID will fail.
 
 ## View in Helios UI
 

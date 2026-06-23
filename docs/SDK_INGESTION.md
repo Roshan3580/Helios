@@ -44,24 +44,20 @@ Optional: seed demo data for the `acme` project (separate from SDK traces):
 curl -X POST http://localhost:8000/v1/demo/seed
 ```
 
-## 2. Install the Python SDK
+## 2. Install the Python SDK and demo (from repo root)
 
 ```bash
-cd sdk/python
-python -m venv .venv
-source .venv/bin/activate
-pip install -e .
+python -m venv .venv-demo
+source .venv-demo/bin/activate
+pip install -r examples/rag_support_bot/requirements.txt
 ```
+
+This installs the editable SDK (`./sdk/python`) and demo dependencies in one step.
 
 ## 3. Run the RAG support bot demo
 
 ```bash
-cd examples/rag_support_bot
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-
-python run_demo.py \
+python examples/rag_support_bot/run_demo.py \
   --query "How do I rotate API keys without downtime?" \
   --api-url http://localhost:8000
 ```

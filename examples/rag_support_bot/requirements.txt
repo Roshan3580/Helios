@@ -1,1 +1,1 @@
--e ../../sdk/python
+-e ./sdk/python

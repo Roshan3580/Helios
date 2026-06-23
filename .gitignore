@@ -52,6 +52,7 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 backend/.venv/
+.venv-demo/
 sdk/python/.venv/
 examples/rag_support_bot/.venv/
 .pytest_cache/
