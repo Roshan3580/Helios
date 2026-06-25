@@ -64,13 +64,14 @@ Observability platform for tracing, evaluating, and debugging LLM applications, 
 
 Helios separates **ingestion** (SDK → API → Postgres) from **read APIs** (dashboard, traces, RAG, evals) consumed by the React console. Demo fallback keeps the UI usable when the backend is offline.
 
-**Diagrams:** [diagrams/component.md](diagrams/component.md) · [diagrams/trace-lifecycle.md](diagrams/trace-lifecycle.md) · [diagrams/deployment.md](diagrams/deployment.md)
+**Diagrams:** [diagrams/component.md](diagrams/component.md) · [diagrams/trace-lifecycle.md](diagrams/trace-lifecycle.md) · [diagrams/deployment.md](diagrams/deployment.md) · [diagrams/production-deployment.md](diagrams/production-deployment.md)
 
 **Docs:**
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — components, flows, tradeoffs
 - [docs/SDK_INGESTION.md](docs/SDK_INGESTION.md) — SDK install and RAG demo
 - [docs/BACKEND_PLAN.md](docs/BACKEND_PLAN.md) — phased backend roadmap
+- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — Railway + Vercel deployment guide
 
 ---
 
@@ -176,6 +177,25 @@ python examples/rag_support_bot/run_demo.py --query "How do I rotate API keys wi
 
 ---
 
+## Deployment
+
+Helios is ready to deploy as a public portfolio demo:
+
+| Layer    | Platform                 | URL (after deploy)       |
+| -------- | ------------------------ | ------------------------ |
+| Frontend | Vercel                   | `https://<frontend-url>` |
+| Backend  | Railway                  | `https://<backend-url>`  |
+| Database | Railway Postgres or Neon | via `DATABASE_URL`       |
+
+Full step-by-step instructions, env var matrix, seed commands, and CORS troubleshooting: **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
+
+Quick production settings:
+
+- **Vercel (build-time):** `VITE_API_BASE_URL=https://<backend-url>`, `VITE_HELIOS_DEMO_MODE=false`
+- **Railway (runtime):** `DATABASE_URL`, `CORS_ORIGINS=https://<frontend-url>`, `HELIOS_DEMO_MODE=true` until seeded, then `false`
+
+---
+
 ## Limitations
 
 - **Portfolio MVP** — sample-scale metrics, not production volume or multi-tenant ops
@@ -194,7 +214,7 @@ python examples/rag_support_bot/run_demo.py --query "How do I rotate API keys wi
 - TypeScript SDK and OpenTelemetry exporter
 - Eval runner with background workers
 - Prompt/dataset/eval creation workflows
-- CI/CD, deployment guide, and production monitoring
+- CI/CD and production monitoring
 - Loom walkthrough video ([docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md))
 
 See [docs/PROJECT_IMPROVEMENTS.md](docs/PROJECT_IMPROVEMENTS.md).
