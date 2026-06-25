@@ -1,8 +1,10 @@
 # Helios
 
-Observability platform for tracing, evaluating, and debugging LLM applications, agents, and RAG pipelines.
+AI observability platform for tracing, evaluating, and debugging LLM applications, agents, and RAG pipelines.
 
-**Portfolio MVP**: a full-stack prototype demonstrating real backend integration, not a production SaaS. What works today: FastAPI read/write APIs, PostgreSQL persistence, Python SDK trace ingestion, and live frontend-backend wiring. Some create/run actions in the UI are demo-only placeholders.
+**Live Demo:** [https://helios-alpha-nine.vercel.app/](https://helios-alpha-nine.vercel.app/)
+
+Helios ships as a deployed full-stack system: a TanStack Start console on Vercel, a FastAPI backend on Render, PostgreSQL persistence, read APIs for dashboard and analytics views, and a Python SDK that ingests nested traces via `POST /v1/traces`.
 
 ## Demo
 
@@ -16,31 +18,20 @@ Observability platform for tracing, evaluating, and debugging LLM applications, 
 </div>
 
 <p align="center">
-  <a href="https://www.loom.com/share/cd168cff3de843e8a0c00a1980085992">
-  </a>
+  <a href="https://www.loom.com/share/cd168cff3de843e8a0c00a1980085992">Watch the 90-second walkthrough</a>
 </p>
-
-### What's real in this MVP
-
-| Layer        | Implemented                                                           |
-| ------------ | --------------------------------------------------------------------- |
-| **Backend**  | FastAPI, SQLAlchemy, Alembic, trace ingestion + analytics read APIs   |
-| **Database** | PostgreSQL: traces, spans, projects, seeded eval/RAG data             |
-| **SDK**      | Python client submitting nested spans via `POST /v1/traces`           |
-| **Frontend** | Live API mode with demo fallback; dashboard, traces, RAG, evals wired |
-| **Not yet**  | Auth, workers, prompt/dataset/eval creation flows, OpenTelemetry      |
 
 ---
 
-## Features
+## What it does
 
-- **Trace visualization**: nested span trees for LLM, RAG, tool, and agent steps
-- **RAG analytics**: retrieval hit rate, citation coverage, chunk quality, missed queries
-- **Evaluations**: eval run summaries and model comparison tables
-- **Prompt tracking**: prompt version scores, latency, and cost
-- **Dataset metrics**: dataset summaries derived from eval runs
-- **Python SDK**: lightweight client for `POST /v1/traces` ingestion
-- **External demo app**: deterministic RAG support bot that submits real traces
+- **Trace ingestion:** accept nested span trees from the Python SDK at `POST /v1/traces`
+- **Trace and span inspection:** list, filter, and open trace detail with nested span timelines
+- **Dashboard summaries:** aggregate latency, cost, token usage, and recent traces via `GET /v1/dashboard/summary`
+- **RAG analytics:** chunk hit rates, citation coverage, and quality signals via `GET /v1/rag/metrics`
+- **Evaluations:** eval run summaries and model comparison tables via `GET /v1/evaluations`
+- **Prompt and dataset tracking:** prompt version metrics and dataset summaries derived from eval runs
+- **SDK-based external submission:** the deterministic RAG support bot under `examples/rag_support_bot` submits real traces into the same backend the UI reads
 
 ---
 
@@ -62,7 +53,11 @@ Observability platform for tracing, evaluating, and debugging LLM applications, 
 
 ## Architecture
 
-Helios separates **ingestion** (SDK → API → Postgres) from **read APIs** (dashboard, traces, RAG, evals) consumed by the React console. Demo fallback keeps the UI usable when the backend is offline.
+Helios separates **ingestion** (SDK → API → Postgres) from **read APIs** (dashboard, traces, RAG, evals) consumed by the React console.
+
+```
+External RAG app  →  Python SDK  →  POST /v1/traces  →  PostgreSQL  →  Dashboard & /app/traces
+```
 
 **Diagrams:** [diagrams/component.md](diagrams/component.md) · [diagrams/trace-lifecycle.md](diagrams/trace-lifecycle.md) · [diagrams/deployment.md](diagrams/deployment.md) · [diagrams/production-deployment.md](diagrams/production-deployment.md)
 
@@ -70,12 +65,79 @@ Helios separates **ingestion** (SDK → API → Postgres) from **read APIs** (da
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): components, flows, tradeoffs
 - [docs/SDK_INGESTION.md](docs/SDK_INGESTION.md): SDK install and RAG demo
-- [docs/BACKEND_PLAN.md](docs/BACKEND_PLAN.md): phased backend roadmap
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md): Render + Vercel deployment guide
+- [docs/BACKEND_PLAN.md](docs/BACKEND_PLAN.md): phased backend roadmap
 
 ---
 
-## Python SDK example
+## Tech stack
+
+| Layer          | Stack                                                                   |
+| -------------- | ----------------------------------------------------------------------- |
+| **Frontend**   | TanStack Start, React 19, TypeScript, Vite 8, Tailwind CSS 4, shadcn/ui |
+| **Backend**    | FastAPI, Python, SQLAlchemy 2.x, Alembic, Pydantic                      |
+| **Database**   | PostgreSQL 16                                                           |
+| **SDK/Demo**   | Python SDK (`sdk/python/helios_sdk`), external RAG support bot demo     |
+| **Deployment** | Vercel (frontend), Render (backend + Postgres)                          |
+
+---
+
+## Run locally
+
+### Frontend
+
+```bash
+bun install
+cp .env.example .env   # set VITE_HELIOS_DEMO_MODE=false for live API
+bun dev
+```
+
+Open http://localhost:5173
+
+### Backend
+
+```bash
+docker compose -f docker-compose.dev.yml up -d postgres
+cd backend && source .venv/bin/activate
+export DATABASE_URL=postgresql://helios:helios@localhost:5433/helios
+alembic upgrade head
+uvicorn app.main:app --reload --port 8000
+curl -X POST http://localhost:8000/v1/demo/seed
+```
+
+### Scripts
+
+| Command             | Description         |
+| ------------------- | ------------------- |
+| `bun run dev`       | Frontend dev server |
+| `bun run build`     | Production build    |
+| `bun run lint`      | ESLint              |
+| `bun run typecheck` | TypeScript check    |
+
+---
+
+## SDK demo
+
+The RAG support bot under `examples/rag_support_bot` runs a deterministic retrieval + LLM simulation and submits a nested trace to Helios. No external model API keys required.
+
+**Setup (from repo root):**
+
+```bash
+python -m venv .venv-demo && source .venv-demo/bin/activate
+pip install -r examples/rag_support_bot/requirements.txt
+```
+
+**Run against local backend:**
+
+```bash
+python examples/rag_support_bot/run_demo.py \
+  --query "How do I rotate API keys without downtime?" \
+  --api-url http://localhost:8000
+```
+
+Each run prints a new `trc_...` ID. With the frontend in live API mode (`VITE_HELIOS_DEMO_MODE=false`), open `/app/traces/<trace_id>` to inspect the submitted span tree.
+
+**Programmatic usage (`sdk/python/helios_sdk`):**
 
 ```python
 from helios_sdk import HeliosClient
@@ -104,109 +166,24 @@ with trace.span("llm.generate", span_type="llm", provider="openai", model="gpt-4
 client.submit_trace(trace)
 ```
 
----
-
-## Demo flow
-
-```
-External RAG app  →  Python SDK  →  POST /v1/traces  →  PostgreSQL  →  Dashboard & /app/traces
-```
-
-Run the included demo from the repo root:
-
-```bash
-python -m venv .venv-demo && source .venv-demo/bin/activate
-pip install -r examples/rag_support_bot/requirements.txt
-python examples/rag_support_bot/run_demo.py --query "How do I rotate API keys without downtime?"
-```
-
-Each run prints a new `trc_...` ID and a link to `/app/traces/<trace_id>`.
-
----
-
-## Tech stack
-
-| Layer        | Stack                                                                          |
-| ------------ | ------------------------------------------------------------------------------ |
-| **Frontend** | React 19, TypeScript, TanStack Start/Router, Vite 8, Tailwind CSS 4, shadcn/ui |
-| **Backend**  | FastAPI, SQLAlchemy 2.x, Alembic, Pydantic                                     |
-| **Database** | PostgreSQL 16                                                                  |
-| **SDK**      | Python 3.10+, httpx (`helios_sdk`)                                             |
-
----
-
-## Running locally
-
-### Frontend
-
-```bash
-bun install
-cp .env.example .env   # set VITE_HELIOS_DEMO_MODE=false for live API
-bun dev
-```
-
-Open http://localhost:5173
-
-### Backend
-
-```bash
-docker compose -f docker-compose.dev.yml up -d postgres
-cd backend && source .venv/bin/activate
-export DATABASE_URL=postgresql://helios:helios@localhost:5433/helios
-alembic upgrade head
-uvicorn app.main:app --reload --port 8000
-curl -X POST http://localhost:8000/v1/demo/seed
-```
-
-### Demo app (SDK ingestion)
-
-From repo root with `.venv-demo` activated:
-
-```bash
-python examples/rag_support_bot/run_demo.py --query "How do I rotate API keys without downtime?"
-```
-
-### Scripts
-
-| Command             | Description         |
-| ------------------- | ------------------- |
-| `bun run dev`       | Frontend dev server |
-| `bun run build`     | Production build    |
-| `bun run lint`      | ESLint              |
-| `bun run typecheck` | TypeScript check    |
+See [examples/rag_support_bot/README.md](examples/rag_support_bot/README.md) and [docs/SDK_INGESTION.md](docs/SDK_INGESTION.md) for full walkthrough.
 
 ---
 
 ## Deployment
 
-Recommended **free-tier** path for a public portfolio demo:
+| Layer    | Platform        | URL                                                                            |
+| -------- | --------------- | ------------------------------------------------------------------------------ |
+| Frontend | Vercel          | [https://helios-alpha-nine.vercel.app/](https://helios-alpha-nine.vercel.app/) |
+| Backend  | Render          | FastAPI web service (see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md))             |
+| Database | Render Postgres | via `DATABASE_URL`                                                             |
 
-| Layer    | Platform                          | URL (after deploy)             |
-| -------- | --------------------------------- | ------------------------------ |
-| Frontend | Vercel                            | `https://<frontend-url>`       |
-| Backend  | Render Web Service                | `https://<render-backend-url>` |
-| Database | Render Postgres (Supabase backup) | via `DATABASE_URL`             |
+Production frontend build settings:
 
-Full step-by-step instructions, env var matrix, seed commands, and CORS troubleshooting: **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
+- `VITE_API_BASE_URL`: Render backend URL
+- `VITE_HELIOS_DEMO_MODE=false`
 
-Quick production settings:
-
-- **Vercel (build-time):** `VITE_API_BASE_URL=https://<render-backend-url>`, `VITE_HELIOS_DEMO_MODE=false`
-- **Render (runtime):** `DATABASE_URL`, `CORS_ORIGINS=http://localhost:5173,https://<frontend-url>`, `HELIOS_DEMO_MODE=true` until seeded, then `false`
-
-Free Render web services may sleep when idle; expect cold starts on the first request after inactivity.
-
----
-
-## Limitations
-
-- **Portfolio MVP**: sample-scale metrics, not production volume or multi-tenant ops
-- **No auth**: local dev APIs are open; no API keys yet
-- **Lightweight SDK**: not OpenTelemetry; no batching or retries
-- **Simulated RAG demo app**: keyword search + deterministic LLM responses; no paid API keys
-- **Demo-only UI actions**: New prompt, New dataset, Run evaluation, New experiment open a placeholder notice; no create flows yet
-- **Static panels**: some trace detail side content remains demo placeholders
-- **No workers**: eval execution and async pipelines are not implemented
+Full setup, env vars, seed commands, and CORS notes: **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
 
 ---
 
@@ -215,14 +192,7 @@ Free Render web services may sleep when idle; expect cold starts on the first re
 - API key auth and project-scoped ingestion
 - TypeScript SDK and OpenTelemetry exporter
 - Eval runner with background workers
-- Prompt/dataset/eval creation workflows
+- Prompt, dataset, and eval creation workflows (create/run UI actions are placeholders today)
 - CI/CD and production monitoring
-- Loom walkthrough video ([docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md))
 
-See [docs/PROJECT_IMPROVEMENTS.md](docs/PROJECT_IMPROVEMENTS.md).
-
----
-
-## Disclaimer
-
-Helios is a **portfolio project** built to demonstrate full-stack AI observability engineering: real FastAPI backend, PostgreSQL persistence, SDK ingestion, and frontend integration. Demo metrics and seeded data are illustrative. No production deployments, customer claims, or compliance certifications are implied.
+See [docs/PROJECT_IMPROVEMENTS.md](docs/PROJECT_IMPROVEMENTS.md) and [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md).
