@@ -15,6 +15,7 @@ Prioritized backlog and phase completion status.
 | **Phase 5**   | Public demo polish — README, diagrams, screenshots, demo script          | **Complete** |
 | **Phase 5.5** | Real screenshots, portfolio README polish, demo-only UI actions          | **Complete** |
 | **Phase A**   | Deployment docs, Dockerfile migrations, env examples                     | **Complete** |
+| **Phase A.1** | Render + Vercel deployment path (Railway → optional)                     | **Complete** |
 
 ---
 
@@ -49,20 +50,20 @@ Prioritized backlog and phase completion status.
 
 ## P2 — Platform and polish
 
-| Item                    | Description                                     | Status      |
-| ----------------------- | ----------------------------------------------- | ----------- |
-| Python SDK              | `helios_sdk` trace ingestion                    | Done (demo) |
-| Portfolio README        | Screenshots, architecture, demo flow            | Done        |
-| Architecture diagrams   | Mermaid component, lifecycle, deployment        | Done        |
-| Demo walkthrough script | [DEMO_SCRIPT.md](DEMO_SCRIPT.md)                | Done        |
-| TypeScript SDK          | Node/browser client                             | Not started |
-| Auth                    | API keys, project membership                    | Not started |
-| OpenTelemetry           | Exporter compatibility                          | Not started |
-| Deployment guide        | [DEPLOYMENT.md](DEPLOYMENT.md) — Railway/Vercel | Done        |
-| CI/CD                   | GitHub Actions lint/build/test                  | Not started |
-| Real screenshots        | Portfolio README captures in `screenshots/`     | Done        |
-| Demo-only UI actions    | Placeholder notice for create/run buttons       | Done        |
-| Loom demo video         | Record using demo script                        | Not started |
+| Item                    | Description                                                       | Status      |
+| ----------------------- | ----------------------------------------------------------------- | ----------- |
+| Python SDK              | `helios_sdk` trace ingestion                                      | Done (demo) |
+| Portfolio README        | Screenshots, architecture, demo flow                              | Done        |
+| Architecture diagrams   | Mermaid component, lifecycle, deployment                          | Done        |
+| Demo walkthrough script | [DEMO_SCRIPT.md](DEMO_SCRIPT.md)                                  | Done        |
+| TypeScript SDK          | Node/browser client                                               | Not started |
+| Auth                    | API keys, project membership                                      | Not started |
+| OpenTelemetry           | Exporter compatibility                                            | Not started |
+| Deployment guide        | [DEPLOYMENT.md](DEPLOYMENT.md) — Render/Vercel (Railway optional) | Done        |
+| CI/CD                   | GitHub Actions lint/build/test                                    | Not started |
+| Real screenshots        | Portfolio README captures in `screenshots/`                       | Done        |
+| Demo-only UI actions    | Placeholder notice for create/run buttons                         | Done        |
+| Loom demo video         | Record using demo script                                          | Not started |
 
 ---
 
@@ -76,10 +77,12 @@ Prioritized backlog and phase completion status.
 
 ---
 
-## Next priorities (post Phase A)
+## Next priorities (post Phase A.1)
 
-1. Deploy backend + Postgres on Railway ([DEPLOYMENT.md](DEPLOYMENT.md))
+1. Deploy backend + Postgres on Render ([DEPLOYMENT.md](DEPLOYMENT.md))
 2. Deploy frontend on Vercel; seed demo data; verify live demo
 3. API key auth for ingestion
 4. Eval runner with background workers
 5. GitHub Actions CI
+
+> **Note:** Original Railway plan replaced by Render + Vercel free deployment path (Railway trial expired).
