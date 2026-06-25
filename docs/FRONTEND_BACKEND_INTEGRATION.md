@@ -11,14 +11,14 @@ Set `VITE_HELIOS_DEMO_MODE=false` to load data from the backend. If the API is u
 
 ## Wired pages
 
-### Phase 2 — Traces
+### Phase 2: Traces
 
 | Route             | API endpoint                |
 | ----------------- | --------------------------- |
 | `/app/traces`     | `GET /v1/traces`            |
 | `/app/traces/:id` | `GET /v1/traces/{trace_id}` |
 
-### Phase 3 — Dashboard & analytics
+### Phase 3: Dashboard & analytics
 
 | Route                | API endpoint                |
 | -------------------- | --------------------------- |
@@ -52,7 +52,7 @@ RAG chunk status: `ok` → success badge, `drift` → warn, `low` → danger.
 ## Local verification
 
 ```bash
-# Terminal 1 — backend
+# Terminal 1: backend
 docker compose -f docker-compose.dev.yml up -d postgres
 cd backend && source .venv/bin/activate
 export DATABASE_URL=postgresql://helios:helios@localhost:5433/helios
@@ -67,10 +67,10 @@ curl http://localhost:8000/v1/evaluations?project_slug=acme
 curl http://localhost:8000/v1/prompts?project_slug=acme
 curl http://localhost:8000/v1/datasets?project_slug=acme
 
-# Terminal 2 — frontend with live API
+# Terminal 2: frontend with live API
 cp .env.example .env
 # Set VITE_HELIOS_DEMO_MODE=false
 bun dev
 ```
 
-Open `/app/dashboard`, `/app/rag-analytics`, `/app/evaluations`, `/app/prompts`, and `/app/datasets` — values should load from the API when demo mode is off.
+Open `/app/dashboard`, `/app/rag-analytics`, `/app/evaluations`, `/app/prompts`, and `/app/datasets`: values should load from the API when demo mode is off.

@@ -2,7 +2,7 @@
 
 Observability platform for tracing, evaluating, and debugging LLM applications, agents, and RAG pipelines.
 
-**Portfolio MVP** — a full-stack prototype demonstrating real backend integration, not a production SaaS. What works today: FastAPI read/write APIs, PostgreSQL persistence, Python SDK trace ingestion, and live frontend-backend wiring. Some create/run actions in the UI are demo-only placeholders.
+**Portfolio MVP**: a full-stack prototype demonstrating real backend integration, not a production SaaS. What works today: FastAPI read/write APIs, PostgreSQL persistence, Python SDK trace ingestion, and live frontend-backend wiring. Some create/run actions in the UI are demo-only placeholders.
 
 ## Demo
 
@@ -25,7 +25,7 @@ Observability platform for tracing, evaluating, and debugging LLM applications, 
 | Layer        | Implemented                                                           |
 | ------------ | --------------------------------------------------------------------- |
 | **Backend**  | FastAPI, SQLAlchemy, Alembic, trace ingestion + analytics read APIs   |
-| **Database** | PostgreSQL — traces, spans, projects, seeded eval/RAG data            |
+| **Database** | PostgreSQL: traces, spans, projects, seeded eval/RAG data             |
 | **SDK**      | Python client submitting nested spans via `POST /v1/traces`           |
 | **Frontend** | Live API mode with demo fallback; dashboard, traces, RAG, evals wired |
 | **Not yet**  | Auth, workers, prompt/dataset/eval creation flows, OpenTelemetry      |
@@ -34,13 +34,13 @@ Observability platform for tracing, evaluating, and debugging LLM applications, 
 
 ## Features
 
-- **Trace visualization** — nested span trees for LLM, RAG, tool, and agent steps
-- **RAG analytics** — retrieval hit rate, citation coverage, chunk quality, missed queries
-- **Evaluations** — eval run summaries and model comparison tables
-- **Prompt tracking** — prompt version scores, latency, and cost
-- **Dataset metrics** — dataset summaries derived from eval runs
-- **Python SDK** — lightweight client for `POST /v1/traces` ingestion
-- **External demo app** — deterministic RAG support bot that submits real traces
+- **Trace visualization**: nested span trees for LLM, RAG, tool, and agent steps
+- **RAG analytics**: retrieval hit rate, citation coverage, chunk quality, missed queries
+- **Evaluations**: eval run summaries and model comparison tables
+- **Prompt tracking**: prompt version scores, latency, and cost
+- **Dataset metrics**: dataset summaries derived from eval runs
+- **Python SDK**: lightweight client for `POST /v1/traces` ingestion
+- **External demo app**: deterministic RAG support bot that submits real traces
 
 ---
 
@@ -68,10 +68,10 @@ Helios separates **ingestion** (SDK → API → Postgres) from **read APIs** (da
 
 **Docs:**
 
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — components, flows, tradeoffs
-- [docs/SDK_INGESTION.md](docs/SDK_INGESTION.md) — SDK install and RAG demo
-- [docs/BACKEND_PLAN.md](docs/BACKEND_PLAN.md) — phased backend roadmap
-- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — Render + Vercel deployment guide
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): components, flows, tradeoffs
+- [docs/SDK_INGESTION.md](docs/SDK_INGESTION.md): SDK install and RAG demo
+- [docs/BACKEND_PLAN.md](docs/BACKEND_PLAN.md): phased backend roadmap
+- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md): Render + Vercel deployment guide
 
 ---
 
@@ -200,13 +200,13 @@ Free Render web services may sleep when idle; expect cold starts on the first re
 
 ## Limitations
 
-- **Portfolio MVP** — sample-scale metrics, not production volume or multi-tenant ops
-- **No auth** — local dev APIs are open; no API keys yet
-- **Lightweight SDK** — not OpenTelemetry; no batching or retries
-- **Simulated RAG demo app** — keyword search + deterministic LLM responses; no paid API keys
-- **Demo-only UI actions** — New prompt, New dataset, Run evaluation, New experiment open a placeholder notice; no create flows yet
-- **Static panels** — some trace detail side content remains demo placeholders
-- **No workers** — eval execution and async pipelines are not implemented
+- **Portfolio MVP**: sample-scale metrics, not production volume or multi-tenant ops
+- **No auth**: local dev APIs are open; no API keys yet
+- **Lightweight SDK**: not OpenTelemetry; no batching or retries
+- **Simulated RAG demo app**: keyword search + deterministic LLM responses; no paid API keys
+- **Demo-only UI actions**: New prompt, New dataset, Run evaluation, New experiment open a placeholder notice; no create flows yet
+- **Static panels**: some trace detail side content remains demo placeholders
+- **No workers**: eval execution and async pipelines are not implemented
 
 ---
 
@@ -225,4 +225,4 @@ See [docs/PROJECT_IMPROVEMENTS.md](docs/PROJECT_IMPROVEMENTS.md).
 
 ## Disclaimer
 
-Helios is a **portfolio project** built to demonstrate full-stack AI observability engineering — real FastAPI backend, PostgreSQL persistence, SDK ingestion, and frontend integration. Demo metrics and seeded data are illustrative. No production deployments, customer claims, or compliance certifications are implied.
+Helios is a **portfolio project** built to demonstrate full-stack AI observability engineering: real FastAPI backend, PostgreSQL persistence, SDK ingestion, and frontend integration. Demo metrics and seeded data are illustrative. No production deployments, customer claims, or compliance certifications are implied.

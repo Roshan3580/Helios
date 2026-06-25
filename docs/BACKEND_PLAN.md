@@ -115,14 +115,14 @@ experiments (id, project_id, name, config JSONB, created_at)
 
 ### Indexing strategy
 
-- `traces(project_id, started_at DESC)` — list view
-- `traces(project_id, status)` — error filtering
-- `spans(trace_id, parent_span_id)` — tree reconstruction
+- `traces(project_id, started_at DESC)`: list view
+- `traces(project_id, status)`: error filtering
+- `spans(trace_id, parent_span_id)`: tree reconstruction
 - GIN index on `spans.attributes` for model/provider filters
 
 ## Implementation phases
 
-### Phase 1 — Foundation
+### Phase 1: Foundation
 
 - [x] FastAPI project scaffold (`backend/app/`)
 - [x] PostgreSQL schema + Alembic migrations
@@ -135,7 +135,7 @@ experiments (id, project_id, name, config JSONB, created_at)
 - [x] Connect frontend trace pages to API
 - [x] Prompt/eval/RAG read APIs for app pages
 
-### Phase 2 — Frontend integration and read APIs
+### Phase 2: Frontend integration and read APIs
 
 - [x] Frontend API client (`src/lib/api/`)
 - [x] Wire `/app/traces` to `GET /v1/traces`
@@ -146,7 +146,7 @@ experiments (id, project_id, name, config JSONB, created_at)
 - [x] Prompt/eval/RAG read APIs for remaining app pages
 - [x] Wire dashboard, RAG, evals, prompts, and datasets pages
 
-### Phase 3 — Prompts and evals (4–6 weeks)
+### Phase 3: Prompts and evals (4-6 weeks)
 
 - Prompt CRUD and versioning
 - Dataset management
@@ -154,7 +154,7 @@ experiments (id, project_id, name, config JSONB, created_at)
 - Eval results API
 - Connect frontend eval pages
 
-### Phase 4 — SDK ingestion (current)
+### Phase 4: SDK ingestion (current)
 
 - [x] Lightweight Python SDK (`sdk/python/helios_sdk`)
 - [x] External RAG support bot demo (`examples/rag_support_bot`)
@@ -163,7 +163,7 @@ experiments (id, project_id, name, config JSONB, created_at)
 - [ ] TypeScript SDK
 - [ ] API key auth per project
 
-### Phase 5 — Public demo polish
+### Phase 5: Public demo polish
 
 - [x] Architecture Mermaid diagrams (`diagrams/`)
 - [x] Portfolio README with screenshots and demo flow
@@ -172,4 +172,4 @@ experiments (id, project_id, name, config JSONB, created_at)
 - [x] Real screenshots in `screenshots/`
 - [ ] Record Loom walkthrough
 
-### Phase 6 — Production readiness
+### Phase 6: Production readiness

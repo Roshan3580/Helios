@@ -208,7 +208,7 @@ Each span stores: `span_id`, `parent_span_id`, `name`, `span_type`, timing, toke
 | ------------------------------------ | ------------------------------------------------------------------------------- |
 | **FastAPI**                          | Typed Pydantic schemas, auto OpenAPI docs, fast local dev for portfolio backend |
 | **PostgreSQL**                       | Relational trace/span trees, Alembic migrations, familiar ops story             |
-| **SDK instead of UI-only ingestion** | Proves external apps can emit observability data — core recruiting signal       |
+| **SDK instead of UI-only ingestion** | Proves external apps can emit observability data: core recruiting signal        |
 | **Demo fallback in frontend**        | UI stays usable without backend; live mode proves integration                   |
 | **Read APIs + seed data**            | Dashboard/RAG/evals work before workers exist                                   |
 | **No auth (yet)**                    | Keeps scope focused on ingestion + visualization                                |

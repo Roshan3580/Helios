@@ -6,14 +6,14 @@ Helios can receive observability data from external applications via `POST /v1/t
 
 | Component              | Real                           | Simulated                    |
 | ---------------------- | ------------------------------ | ---------------------------- |
-| Trace ingestion API    | Yes                            | —                            |
-| PostgreSQL persistence | Yes                            | —                            |
-| Frontend trace UI      | Yes                            | —                            |
-| Python SDK HTTP client | Yes                            | —                            |
+| Trace ingestion API    | Yes                            | :                            |
+| PostgreSQL persistence | Yes                            | :                            |
+| Frontend trace UI      | Yes                            | :                            |
+| Python SDK HTTP client | Yes                            | :                            |
 | RAG demo retrieval     | Keyword search over local docs | Not vector DB                |
-| RAG demo LLM           | —                              | Deterministic text responses |
-| Auth / API keys        | —                              | Not implemented yet          |
-| OpenTelemetry          | —                              | Not implemented yet          |
+| RAG demo LLM           | :                              | Deterministic text responses |
+| Auth / API keys        | :                              | Not implemented yet          |
+| OpenTelemetry          | :                              | Not implemented yet          |
 
 ## Architecture
 
@@ -93,9 +93,9 @@ bun dev
 
 Open:
 
-- `/app/traces` — SDK trace appears in the list (may need to clear `project_slug=acme` filter if added later; currently lists all projects)
-- `/app/traces/<trace_id>` — nested span timeline from backend
-- `/app/dashboard` — aggregate counts update when live API mode is on
+- `/app/traces`: SDK trace appears in the list (may need to clear `project_slug=acme` filter if added later; currently lists all projects)
+- `/app/traces/<trace_id>`: nested span timeline from backend
+- `/app/dashboard`: aggregate counts update when live API mode is on
 
 If the backend is stopped, pages fall back to demo data with the existing **Demo fallback** banner.
 
@@ -127,7 +127,7 @@ client.submit_trace(trace)
 
 ## Known limitations
 
-- SDK is lightweight and portfolio-focused — not a full OTel SDK
+- SDK is lightweight and portfolio-focused; not a full OTel SDK
 - No ingestion auth or rate limits
 - Trace detail side panels (retrieved chunks UI) may still show static demo content
 - Dashboard metrics for SDK project are sample-scale

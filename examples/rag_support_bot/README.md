@@ -1,4 +1,4 @@
-# RAG Support Bot — Helios SDK Demo
+# RAG Support Bot: Helios SDK Demo
 
 Deterministic sample app that simulates a RAG support bot and submits a trace to Helios via the Python SDK. **No external API keys required.**
 
@@ -70,7 +70,7 @@ The trace also appears in `/app/traces` and updates dashboard aggregates.
 
 ## Honest limitations
 
-- Retrieval and LLM steps are **simulated** — no OpenAI/Anthropic calls
+- Retrieval and LLM steps are **simulated**; no OpenAI/Anthropic calls
 - Knowledge base is a tiny in-memory sample
 - No auth on ingestion yet
 - This proves external trace submission, not production-scale ingestion

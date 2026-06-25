@@ -73,13 +73,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Helios — Observability for production AI systems" },
+      { title: "Helios: Observability for production AI systems" },
       {
         name: "description",
         content:
           "Trace, evaluate, and optimize LLM applications. Helios captures agent traces, prompt versions, RAG retrieval, evaluations, latency, and cost in one observability console.",
       },
-      { property: "og:title", content: "Helios — Observability for production AI systems" },
+      { property: "og:title", content: "Helios: Observability for production AI systems" },
       {
         property: "og:description",
         content:

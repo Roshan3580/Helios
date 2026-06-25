@@ -12,14 +12,14 @@ Prioritized backlog and phase completion status.
 | **Phase 2**   | Frontend API client, traces pages wired, demo fallback                   | **Complete** |
 | **Phase 3**   | Dashboard, RAG, evals, prompts, datasets read APIs + frontend wiring     | **Complete** |
 | **Phase 4**   | Python SDK, external RAG demo app, real trace ingestion                  | **Complete** |
-| **Phase 5**   | Public demo polish — README, diagrams, screenshots, demo script          | **Complete** |
+| **Phase 5**   | Public demo polish: README, diagrams, screenshots, demo script           | **Complete** |
 | **Phase 5.5** | Real screenshots, portfolio README polish, demo-only UI actions          | **Complete** |
 | **Phase A**   | Deployment docs, Dockerfile migrations, env examples                     | **Complete** |
 | **Phase A.1** | Render + Vercel deployment path (Railway → optional)                     | **Complete** |
 
 ---
 
-## P0 — Critical path
+## P0: Critical path
 
 | Item                     | Description                    | Status |
 | ------------------------ | ------------------------------ | ------ |
@@ -32,7 +32,7 @@ Prioritized backlog and phase completion status.
 
 ---
 
-## P1 — Core product features
+## P1: Core product features
 
 | Item                   | Description                     | Status              |
 | ---------------------- | ------------------------------- | ------------------- |
@@ -48,30 +48,30 @@ Prioritized backlog and phase completion status.
 
 ---
 
-## P2 — Platform and polish
+## P2: Platform and polish
 
-| Item                    | Description                                                       | Status      |
-| ----------------------- | ----------------------------------------------------------------- | ----------- |
-| Python SDK              | `helios_sdk` trace ingestion                                      | Done (demo) |
-| Portfolio README        | Screenshots, architecture, demo flow                              | Done        |
-| Architecture diagrams   | Mermaid component, lifecycle, deployment                          | Done        |
-| Demo walkthrough script | [DEMO_SCRIPT.md](DEMO_SCRIPT.md)                                  | Done        |
-| TypeScript SDK          | Node/browser client                                               | Not started |
-| Auth                    | API keys, project membership                                      | Not started |
-| OpenTelemetry           | Exporter compatibility                                            | Not started |
-| Deployment guide        | [DEPLOYMENT.md](DEPLOYMENT.md) — Render/Vercel (Railway optional) | Done        |
-| CI/CD                   | GitHub Actions lint/build/test                                    | Not started |
-| Real screenshots        | Portfolio README captures in `screenshots/`                       | Done        |
-| Demo-only UI actions    | Placeholder notice for create/run buttons                         | Done        |
-| Loom demo video         | Record using demo script                                          | Not started |
+| Item                    | Description                                                      | Status      |
+| ----------------------- | ---------------------------------------------------------------- | ----------- |
+| Python SDK              | `helios_sdk` trace ingestion                                     | Done (demo) |
+| Portfolio README        | Screenshots, architecture, demo flow                             | Done        |
+| Architecture diagrams   | Mermaid component, lifecycle, deployment                         | Done        |
+| Demo walkthrough script | [DEMO_SCRIPT.md](DEMO_SCRIPT.md)                                 | Done        |
+| TypeScript SDK          | Node/browser client                                              | Not started |
+| Auth                    | API keys, project membership                                     | Not started |
+| OpenTelemetry           | Exporter compatibility                                           | Not started |
+| Deployment guide        | [DEPLOYMENT.md](DEPLOYMENT.md): Render/Vercel (Railway optional) | Done        |
+| CI/CD                   | GitHub Actions lint/build/test                                   | Not started |
+| Real screenshots        | Portfolio README captures in `screenshots/`                      | Done        |
+| Demo-only UI actions    | Placeholder notice for create/run buttons                        | Done        |
+| Loom demo video         | Record using demo script                                         | Not started |
 
 ---
 
 ## Notes
 
-- Frontend visual design is approved — do not redesign
+- Frontend visual design is approved; do not redesign
 - Demo mode: `VITE_HELIOS_DEMO_MODE=true` → static demo data; `false` → live API with demo fallback on failure
-- Real screenshots live in `screenshots/` — see [screenshots/README.md](../screenshots/README.md)
+- Real screenshots live in `screenshots/`; see [screenshots/README.md](../screenshots/README.md)
 - Create/run header buttons show a demo-only notice (no fake navigation)
 - See [DEMO_SCRIPT.md](DEMO_SCRIPT.md) for 90-second walkthrough
 

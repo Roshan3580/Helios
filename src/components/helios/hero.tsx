@@ -20,7 +20,7 @@ export function Hero() {
             </h1>
             <p className="mt-7 max-w-xl text-[17px] leading-relaxed text-muted-foreground">
               Helios gives AI teams a complete view into LLM calls, agent workflows, RAG retrieval,
-              prompt versions, evaluations, latency, and cost — so production AI systems can be
+              prompt versions, evaluations, latency, and cost, so production AI systems can be
               debugged, measured, and improved.
             </p>
             <div className="mt-9 flex flex-wrap items-center gap-3">

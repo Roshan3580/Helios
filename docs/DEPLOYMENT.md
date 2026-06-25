@@ -1,6 +1,6 @@
 # Helios Deployment Guide
 
-Step-by-step instructions for deploying Helios as a public portfolio demo. This guide covers configuration only — run deployments manually from the Render/Vercel dashboards (not from Cursor).
+Step-by-step instructions for deploying Helios as a public portfolio demo. This guide covers configuration only; run deployments manually from the Render/Vercel dashboards (not from Cursor).
 
 ## Recommended stack (free tier)
 
@@ -10,7 +10,7 @@ Step-by-step instructions for deploying Helios as a public portfolio demo. This 
 | **Backend**  | [Render](https://render.com) Web Service                                        | Python or Docker; `$PORT` injected at runtime         |
 | **Database** | Render Postgres (primary) or [Supabase](https://supabase.com) Postgres (backup) | Standard PostgreSQL 16; no Redis/workers required     |
 
-> **Free-tier note:** Render free web services **sleep after ~15 minutes of inactivity**. The first request after sleep triggers a **cold start** (often 30–60+ seconds). Health checks, seed curls, and the frontend may appear slow until the service wakes. This is fine for a portfolio demo; upgrade to a paid Render instance for always-on.
+> **Free-tier note:** Render free web services **sleep after ~15 minutes of inactivity**. The first request after sleep triggers a **cold start** (often 30-60+ seconds). Health checks, seed curls, and the frontend may appear slow until the service wakes. This is fine for a portfolio demo; upgrade to a paid Render instance for always-on.
 
 **Alternatives:** [Railway](#alternative-railway) (if you have an active plan); Lovable publish for frontend if you prefer zero Vercel config.
 
@@ -36,14 +36,14 @@ External RAG demo app   →  Python SDK       →  POST /v1/traces
 | `DATABASE_URL`     | Yes      | From Render Postgres **Internal Database URL**, or Supabase URI with `?sslmode=require` if needed |
 | `CORS_ORIGINS`     | Yes      | Comma-separated origins, e.g. `http://localhost:5173,https://<frontend-url>`                      |
 | `HELIOS_DEMO_MODE` | Yes      | `true` to enable `POST /v1/demo/seed`; set `false` after initial seeding                          |
-| `BACKEND_HOST`     | No       | Default `0.0.0.0` — uvicorn bind address                                                          |
+| `BACKEND_HOST`     | No       | Default `0.0.0.0`: uvicorn bind address                                                           |
 | `BACKEND_PORT`     | No       | Default `8000` locally; Render injects `$PORT` at runtime                                         |
 
 ### Frontend (Vercel project)
 
 | Variable                | Required | Example / notes                                           |
 | ----------------------- | -------- | --------------------------------------------------------- |
-| `VITE_API_BASE_URL`     | Yes      | `https://<render-backend-url>` — **no trailing slash**    |
+| `VITE_API_BASE_URL`     | Yes      | `https://<render-backend-url>`: **no trailing slash**     |
 | `VITE_HELIOS_DEMO_MODE` | Yes      | `false` for live demo; `true` for static in-app demo only |
 
 > **Build-time warning:** `VITE_*` variables are embedded at **build time** on Vercel. Changing them requires a redeploy. Set them in **Project → Settings → Environment Variables** before the first production build.
@@ -60,15 +60,15 @@ External RAG demo app   →  Python SDK       →  POST /v1/traces
 
 ## Render Postgres setup
 
-### Option A — Render Postgres (recommended)
+### Option A: Render Postgres (recommended)
 
 1. [Render Dashboard](https://dashboard.render.com) → **New +** → **PostgreSQL**.
 2. Name it (e.g. `helios-db`); choose **Free** tier if available in your region.
 3. After creation, open the database → **Connections**:
-   - Copy **Internal Database URL** for the backend web service on Render (preferred — lower latency, no egress).
+   - Copy **Internal Database URL** for the backend web service on Render (preferred: lower latency, no egress).
    - **External Database URL** is for tools outside Render (local `psql`, one-off scripts).
 
-### Option B — Supabase Postgres (backup)
+### Option B: Supabase Postgres (backup)
 
 Use if Render Postgres is unavailable or you already use Supabase:
 
@@ -106,7 +106,7 @@ Use if Render Postgres is unavailable or you already use Supabase:
 alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
 ```
 
-You can still set an explicit **Start Command** on Render if needed — use the Python form with `$PORT`.
+You can still set an explicit **Start Command** on Render if needed; use the Python form with `$PORT`.
 
 3. **Health Check Path:** `/health`
 4. **Instance type:** Free (for portfolio demo)
@@ -124,12 +124,12 @@ In the web service → **Environment**:
 ### 3. Deploy and get public URL
 
 1. Click **Create Web Service** (or **Manual Deploy**).
-2. Wait for build + deploy logs — confirm Alembic migration and uvicorn startup.
+2. Wait for build + deploy logs; confirm Alembic migration and uvicorn startup.
 3. Copy the public URL, e.g. `https://helios-backend.onrender.com` → this is `<render-backend-url>`.
 
 ### 4. Verify backend
 
-Allow for cold start on free tier (retry after 30–60s if the first request times out):
+Allow for cold start on free tier (retry after 30-60s if the first request times out):
 
 ```bash
 curl https://<render-backend-url>/health
@@ -169,7 +169,7 @@ On Render → Environment:
 HELIOS_DEMO_MODE=false
 ```
 
-`POST /v1/demo/seed` then returns **403**. Trace ingestion (`POST /v1/traces`) remains open — see [Portfolio scope](#portfolio-scope-intentional-limitations).
+`POST /v1/demo/seed` then returns **403**. Trace ingestion (`POST /v1/traces`) remains open; see [Portfolio scope](#portfolio-scope-intentional-limitations).
 
 ---
 
@@ -182,11 +182,11 @@ HELIOS_DEMO_MODE=false
 
 ### 2. Build settings
 
-| Setting          | Value              |
-| ---------------- | ------------------ |
-| Install Command  | `bun install`      |
-| Build Command    | `bun run build`    |
-| Output Directory | (auto — Nitro/SSR) |
+| Setting          | Value             |
+| ---------------- | ----------------- |
+| Install Command  | `bun install`     |
+| Build Command    | `bun run build`   |
+| Output Directory | (auto: Nitro/SSR) |
 
 Use **Node.js 20+** in Project Settings → General.
 
@@ -213,8 +213,8 @@ Redeploy or restart the Render service after changing `CORS_ORIGINS`.
 
 ### 5. Verify frontend
 
-1. Open `https://<frontend-url>/app/dashboard` — metrics should match seeded backend data.
-2. Open `/app/traces` — list should include seeded `trc_...` rows.
+1. Open `https://<frontend-url>/app/dashboard`: metrics should match seeded backend data.
+2. Open `/app/traces`: list should include seeded `trc_...` rows.
 3. No “Demo fallback · backend unavailable” banner when backend is healthy (may take a moment if Render was sleeping).
 
 ---
@@ -249,7 +249,7 @@ Verify the new trace:
 curl "https://<render-backend-url>/v1/traces?project_slug=rag-support-bot"
 ```
 
-The script prints a new `trace_id` and a localhost view link — substitute your Vercel `<frontend-url>` when sharing.
+The script prints a new `trace_id` and a localhost view link; substitute your Vercel `<frontend-url>` when sharing.
 
 ---
 
@@ -266,7 +266,7 @@ The script prints a new `trace_id` and a localhost view link — substitute your
 2. Redeploy/restart the Render service after changing `CORS_ORIGINS`.
 3. Confirm `VITE_API_BASE_URL` uses `https://` and matches the Render public URL.
 4. Check Render deploy logs for Alembic/uvicorn errors.
-5. If requests time out, the free tier may be cold-starting — retry after ~60s.
+5. If requests time out, the free tier may be cold-starting; retry after ~60s.
 
 **Test CORS from terminal:**
 
@@ -282,7 +282,7 @@ Look for `access-control-allow-origin` in the response headers.
 
 - **Render Postgres:** Use the **Internal Database URL** from the Render dashboard for the backend service on Render.
 - **Supabase:** Use the connection string from the dashboard; append `?sslmode=require` if you see SSL errors.
-- **Local dev:** `docker-compose.dev.yml` uses non-SSL Postgres on port **5433** — unchanged by production setup.
+- **Local dev:** `docker-compose.dev.yml` uses non-SSL Postgres on port **5433**; unchanged by production setup.
 
 ---
 
@@ -317,14 +317,14 @@ Seed and verify with the same curl commands, substituting your Railway URL for `
 
 Helios is a **portfolio MVP**, not production SaaS. After deployment, these remain true:
 
-- **No auth** — `POST /v1/traces` is open; anyone can ingest traces
-- **No rate limiting** — public URL can receive abuse/spam traces
-- **Demo seed** — when `HELIOS_DEMO_MODE=true`, anyone can call `/v1/demo/seed`
-- **Sample-scale metrics** — dashboard/RAG numbers are illustrative
-- **Demo-only UI** — create/run buttons show a placeholder notice
-- **`/app/experiments`** — static demo data only (not wired to API)
+- **No auth**: `POST /v1/traces` is open; anyone can ingest traces
+- **No rate limiting**: public URL can receive abuse/spam traces
+- **Demo seed**: when `HELIOS_DEMO_MODE=true`, anyone can call `/v1/demo/seed`
+- **Sample-scale metrics**: dashboard/RAG numbers are illustrative
+- **Demo-only UI**: create/run buttons show a placeholder notice
+- **`/app/experiments`**: static demo data only (not wired to API)
 - **No workers, OTel, or billing**
-- **Render free tier sleep** — cold starts affect demo responsiveness
+- **Render free tier sleep**: cold starts affect demo responsiveness
 
 Disable demo seed after initial setup; plan auth/rate limiting before any non-portfolio use.
 
@@ -332,7 +332,7 @@ Disable demo seed after initial setup; plan auth/rate limiting before any non-po
 
 ## Related docs
 
-- [FRONTEND_BACKEND_INTEGRATION.md](FRONTEND_BACKEND_INTEGRATION.md) — demo mode and API wiring
-- [SDK_INGESTION.md](SDK_INGESTION.md) — Python SDK and RAG demo
-- [diagrams/production-deployment.md](../diagrams/production-deployment.md) — Mermaid topology
-- [diagrams/deployment.md](../diagrams/deployment.md) — local dev topology
+- [FRONTEND_BACKEND_INTEGRATION.md](FRONTEND_BACKEND_INTEGRATION.md): demo mode and API wiring
+- [SDK_INGESTION.md](SDK_INGESTION.md): Python SDK and RAG demo
+- [diagrams/production-deployment.md](../diagrams/production-deployment.md): Mermaid topology
+- [diagrams/deployment.md](../diagrams/deployment.md): local dev topology

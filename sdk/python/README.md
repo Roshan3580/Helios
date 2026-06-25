@@ -2,7 +2,7 @@
 
 Lightweight client for submitting observability traces to a Helios backend via `POST /v1/traces`.
 
-This is a **demo/portfolio SDK** — not a full OpenTelemetry integration and not production-hardened (no auth yet).
+This is a **demo/portfolio SDK**: not a full OpenTelemetry integration and not production-hardened (no auth yet).
 
 ## Install (local editable)
 
@@ -58,10 +58,10 @@ print(result["trace_id"])
 
 ## Errors
 
-- `HeliosConnectionError` — backend unreachable
-- `HeliosAPIError` — non-2xx API response
+- `HeliosConnectionError`: backend unreachable
+- `HeliosAPIError`: non-2xx API response
 
 ## See also
 
-- [examples/rag_support_bot](../../examples/rag_support_bot/) — deterministic RAG demo app
-- [docs/SDK_INGESTION.md](../../docs/SDK_INGESTION.md) — end-to-end ingestion walkthrough
+- [examples/rag_support_bot](../../examples/rag_support_bot/): deterministic RAG demo app
+- [docs/SDK_INGESTION.md](../../docs/SDK_INGESTION.md): end-to-end ingestion walkthrough

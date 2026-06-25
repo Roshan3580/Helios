@@ -226,7 +226,7 @@ function formatUsdCompact(value: number): string {
 }
 
 function formatRelative(iso: string | null | undefined): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   const diffMs = Date.now() - new Date(iso).getTime();
   const days = Math.floor(diffMs / 86_400_000);
   if (days <= 0) return "today";
@@ -295,12 +295,12 @@ export function mapDashboardSummary(summary: BackendDashboardSummary): Dashboard
     },
     {
       label: "Eval pass rate",
-      value: summary.eval_pass_rate != null ? formatPercent(summary.eval_pass_rate) : "—",
+      value: summary.eval_pass_rate != null ? formatPercent(summary.eval_pass_rate) : "-",
       hint: "from eval runs",
     },
     {
       label: "Citation coverage",
-      value: summary.citation_coverage != null ? formatPercent(summary.citation_coverage) : "—",
+      value: summary.citation_coverage != null ? formatPercent(summary.citation_coverage) : "-",
       hint: "from eval runs",
     },
     {
@@ -395,7 +395,7 @@ export function mapEvaluations(runs: BackendEvaluationRun[]): EvaluationsViewMod
     suites,
     compare,
     compareLabel: primary ? `Model comparison · ${primary.dataset_name}` : "Model comparison",
-    compareRunAt: primary ? formatRelative(primary.created_at) : "—",
+    compareRunAt: primary ? formatRelative(primary.created_at) : "-",
   };
 }
 
@@ -419,8 +419,8 @@ export function mapPromptVersions(versions: BackendPromptVersion[]): PromptRow[]
         latest: latest.version,
         model: latest.model,
         score: latest.eval_score ?? 0,
-        lat: latest.latency_ms != null ? formatLatencySeconds(latest.latency_ms) : "—",
-        cost: latest.cost_usd != null ? formatUsdCompact(latest.cost_usd) : "—",
+        lat: latest.latency_ms != null ? formatLatencySeconds(latest.latency_ms) : "-",
+        cost: latest.cost_usd != null ? formatUsdCompact(latest.cost_usd) : "-",
         updated: formatRelative(latest.created_at),
       };
     })

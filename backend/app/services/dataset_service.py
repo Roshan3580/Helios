@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.models import EvaluationRun
 
-# Sample dataset catalog — demo metadata for datasets referenced in eval runs.
+# Sample dataset catalog: demo metadata for datasets referenced in eval runs.
 DEMO_DATASET_CATALOG: dict[str, dict[str, int]] = {
     "support_qa.v4": {"total_cases": 412},
     "research_summaries.v2": {"total_cases": 218},

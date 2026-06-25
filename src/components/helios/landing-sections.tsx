@@ -55,7 +55,7 @@ export function PlatformSection() {
             }
             description="Helios is built for engineers running agents, RAG, and LLM pipelines in production. One observability console for traces, evaluations, prompts, retrieval quality, cost, and latency."
           />
-          <div className="hidden md:block label-eyebrow text-right">§ Platform — 06 modules</div>
+          <div className="hidden md:block label-eyebrow text-right">§ Platform: 06 modules</div>
         </div>
         <div className="grid grid-cols-1 border-l border-t border-rule md:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map((f) => {
@@ -103,7 +103,7 @@ const PIPELINE = [
   {
     step: "IV.",
     title: "Evaluate output",
-    body: "Score against datasets — code, regex, LLM-judge, custom.",
+    body: "Score against datasets: code, regex, LLM-judge, custom.",
   },
   {
     step: "V.",
@@ -158,7 +158,7 @@ export function TracesSection() {
           <SectionHeader
             eyebrow="Traces"
             title="Every span. Every input. Every output."
-            description="Helios records the full request graph — spans, inputs, outputs, retrieved chunks, model settings, tool calls, errors, and cost breakdowns — and links them back to the prompt version that produced them."
+            description="Helios records the full request graph: spans, inputs, outputs, retrieved chunks, model settings, tool calls, errors, and cost breakdowns, and links them back to the prompt version that produced them."
           />
           <ul className="mt-8 space-y-3 text-[14px] text-muted-foreground">
             {[
