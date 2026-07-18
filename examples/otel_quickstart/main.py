@@ -9,6 +9,8 @@ span carries representative gen_ai.* attributes without calling a provider.
 from __future__ import annotations
 
 import argparse
+import os
+import sys
 import time
 
 from opentelemetry import trace
@@ -19,16 +21,17 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.trace import SpanKind, Status, StatusCode
 
 
-def build_provider(api_url: str, project_slug: str, service_name: str) -> TracerProvider:
+def build_provider(api_url: str, api_key: str, service_name: str) -> TracerProvider:
     resource = Resource.create(
         {
             "service.name": service_name,
             "deployment.environment.name": "development",
         }
     )
+    # The project is derived from the API key; no project slug is sent.
     exporter = OTLPSpanExporter(
         endpoint=f"{api_url.rstrip('/')}/v1/otlp/traces",
-        headers={"X-Helios-Project-Slug": project_slug},
+        headers={"Authorization": f"Bearer {api_key}"},
     )
     provider = TracerProvider(resource=resource)
     provider.add_span_processor(BatchSpanProcessor(exporter))
@@ -72,11 +75,21 @@ def run_demo_trace(tracer: trace.Tracer) -> str:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Send a demo OTel trace to Helios")
     parser.add_argument("--api-url", default="http://localhost:8000")
-    parser.add_argument("--project-slug", default="otel-quickstart")
     parser.add_argument("--service-name", default="otel-quickstart-agent")
     args = parser.parse_args()
 
-    provider = build_provider(args.api_url, args.project_slug, args.service_name)
+    api_key = os.environ.get("HELIOS_API_KEY")
+    if not api_key:
+        print(
+            "error: HELIOS_API_KEY is not set. Create a key with the admin CLI:\n"
+            "  python -m app.cli.api_keys create --project-slug otel-quickstart \\\n"
+            "      --name 'Local dev' --scopes traces:ingest,traces:read\n"
+            "then: export HELIOS_API_KEY=<the key printed once>",
+            file=sys.stderr,
+        )
+        return 1
+
+    provider = build_provider(args.api_url, api_key, args.service_name)
     tracer = provider.get_tracer("helios.otel_quickstart")
 
     trace_id = run_demo_trace(tracer)
@@ -85,13 +98,17 @@ def main() -> int:
     provider.force_flush()
     provider.shutdown()
 
+    # The API key is never printed.
     print("OTel quickstart trace submitted")
     print(f"  trace_id:  {trace_id}")
-    print(f"  project:   {args.project_slug}")
-    print(f"  list:      {args.api_url}/v2/traces?project_slug={args.project_slug}")
+    print("  read with your key, e.g.:")
     print(
-        f"  detail:    {args.api_url}/v2/traces/{trace_id}"
-        f"?project_slug={args.project_slug}"
+        f'    curl -H "Authorization: Bearer $HELIOS_API_KEY" '
+        f'"{args.api_url}/v2/traces"'
+    )
+    print(
+        f'    curl -H "Authorization: Bearer $HELIOS_API_KEY" '
+        f'"{args.api_url}/v2/traces/{trace_id}"'
     )
     return 0
 

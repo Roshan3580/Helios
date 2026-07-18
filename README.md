@@ -25,7 +25,7 @@ Helios ships as a deployed full-stack system: a TanStack Start console on Vercel
 
 ## What it does
 
-- **OpenTelemetry ingestion (v2, canonical):** OTLP/HTTP protobuf at `POST /v1/otlp/traces`, project-scoped reads at `GET /v2/traces` — see [docs/ADR_001_OTLP_TRACE_FOUNDATION.md](docs/ADR_001_OTLP_TRACE_FOUNDATION.md) and [examples/otel_quickstart](examples/otel_quickstart/)
+- **OpenTelemetry ingestion (v2, canonical):** OTLP/HTTP protobuf at `POST /v1/otlp/traces`, project-key-authenticated reads at `GET /v2/traces` (`Authorization: Bearer <project-api-key>`) — see [docs/ADR_001_OTLP_TRACE_FOUNDATION.md](docs/ADR_001_OTLP_TRACE_FOUNDATION.md), [docs/ADR_002_PROJECT_API_KEYS.md](docs/ADR_002_PROJECT_API_KEYS.md), and [examples/otel_quickstart](examples/otel_quickstart/)
 - **Trace ingestion (v1, legacy):** accept nested span trees from the Python SDK at `POST /v1/traces`
 - **Trace and span inspection:** list, filter, and open trace detail with nested span timelines
 - **Dashboard summaries:** aggregate latency, cost, token usage, and recent traces via `GET /v1/dashboard/summary`
@@ -216,12 +216,38 @@ Full setup, env vars, seed commands, and CORS notes: **[docs/DEPLOYMENT.md](docs
 
 ---
 
+## Canonical v2 authentication
+
+The canonical OTel path (`POST /v1/otlp/traces`, `GET /v2/traces`) is secured
+with **project API keys** sent as `Authorization: Bearer <project-api-key>`; the
+key determines the project. Keys are managed via the admin CLI:
+
+```bash
+cd backend                      # DATABASE_URL set, venv active, migrations applied
+python -m app.cli.api_keys create --project-slug demo --name "Local dev" \
+  --scopes traces:ingest,traces:read      # prints the key ONCE
+python -m app.cli.api_keys list   --project-slug demo
+python -m app.cli.api_keys revoke --key-prefix <prefix>
+```
+
+Notes:
+
+- Project keys are **secrets**: never commit them or place them in browser code.
+- The full key is displayed **only once** at creation and cannot be retrieved later.
+- Keys are currently managed through this administrative CLI only.
+- **Browser/user authentication and rate limiting are not implemented yet.**
+- Legacy `/v1/traces` remains a temporary **unsecured** compatibility route.
+
+Full walkthrough: [docs/ADR_002_PROJECT_API_KEYS.md](docs/ADR_002_PROJECT_API_KEYS.md),
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [examples/otel_quickstart](examples/otel_quickstart/).
+
 ## Future improvements
 
-- API key auth and project-scoped ingestion
-- TypeScript SDK and OpenTelemetry exporter
+- Browser/user authentication (sessions, OAuth) and rate limiting
+- Migrate the frontend and Python SDK onto the authenticated v2 path
+- TypeScript SDK and auto-instrumentation
 - Eval runner with background workers
 - Prompt, dataset, and eval creation workflows (create/run UI actions are placeholders today)
-- CI/CD and production monitoring
+- Production monitoring
 
 See [docs/PROJECT_IMPROVEMENTS.md](docs/PROJECT_IMPROVEMENTS.md) and [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md).

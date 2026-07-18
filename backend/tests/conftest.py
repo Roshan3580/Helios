@@ -120,3 +120,42 @@ def db_session():
         yield session
     finally:
         session.close()
+
+
+@pytest.fixture()
+def make_api_key(db_session):
+    """Factory: create a project + API key and return the CreatedKey (has .token)."""
+    from app.services import api_key_service
+
+    def _make(
+        *,
+        project_slug: str = "otel-proj",
+        project_name: str | None = None,
+        environment: str = "test",
+        scopes=("traces:ingest", "traces:read"),
+        name: str = "test-key",
+        expires_at=None,
+    ):
+        project = api_key_service.get_or_create_project(
+            db_session,
+            slug=project_slug,
+            name=project_name,
+            environment=environment,
+        )
+        created = api_key_service.create_api_key(
+            db_session,
+            project=project,
+            name=name,
+            scopes=list(scopes),
+            expires_at=expires_at,
+        )
+        db_session.commit()
+        return created
+
+    return _make
+
+
+@pytest.fixture()
+def ingest_token(make_api_key):
+    """A ready-to-use combined-scope token for the default project."""
+    return make_api_key().token

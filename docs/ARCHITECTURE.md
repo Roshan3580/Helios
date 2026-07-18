@@ -90,9 +90,9 @@ backend/app/
 
 | Method | Path                    | Purpose                    | Status |
 | ------ | ----------------------- | -------------------------- | ------ |
-| POST   | `/v1/otlp/traces`       | OTLP/HTTP protobuf ingest  | **Canonical v2** |
-| GET    | `/v2/traces`            | List OTel traces (project-scoped) | **Canonical v2** |
-| GET    | `/v2/traces/{trace_id}` | OTel trace detail (project-scoped) | **Canonical v2** |
+| POST   | `/v1/otlp/traces`       | OTLP/HTTP protobuf ingest (Bearer key, `traces:ingest`) | **Canonical v2** |
+| GET    | `/v2/traces`            | List OTel traces (Bearer key, `traces:read`) | **Canonical v2** |
+| GET    | `/v2/traces/{trace_id}` | OTel trace detail (Bearer key, `traces:read`) | **Canonical v2** |
 | POST   | `/v1/traces`            | Ingest trace + spans (SDK) | Legacy compatibility |
 | GET    | `/v1/traces`            | List traces                | Legacy compatibility |
 | GET    | `/v1/traces/{id}`       | Trace detail               | Legacy compatibility |
@@ -105,22 +105,29 @@ backend/app/
 
 ### Canonical v2: OpenTelemetry path
 
-See [ADR_001_OTLP_TRACE_FOUNDATION.md](ADR_001_OTLP_TRACE_FOUNDATION.md) for the full decision record.
+Decision records: [ADR_001_OTLP_TRACE_FOUNDATION.md](ADR_001_OTLP_TRACE_FOUNDATION.md)
+(protocol/schema/storage) and [ADR_002_PROJECT_API_KEYS.md](ADR_002_PROJECT_API_KEYS.md)
+(authentication).
 
+- **Authentication:** canonical routes require
+  `Authorization: Bearer <project-api-key>`. The key determines the project;
+  there is no project slug header or query parameter. Ingestion needs scope
+  `traces:ingest`; reads need `traces:read`. Missing/invalid credentials → 401
+  (`WWW-Authenticate: Bearer`); valid key without the scope → 403. Project keys
+  are **secrets** — never commit them or put them in browser code. Keys are
+  managed by the admin CLI `python -m app.cli.api_keys`.
 - `POST /v1/otlp/traces` accepts official OTLP/HTTP **protobuf**
-  (`Content-Type: application/x-protobuf`) and requires the temporary
-  `X-Helios-Project-Slug` header (optional `X-Helios-Environment`). Project
-  headers are a stopgap until project-scoped API keys land; they are not a
-  security control.
-- Spans persist into `otel_traces`/`otel_spans` (migration
-  `002_otel_foundation`) incrementally and idempotently; trace summaries are
-  recomputed from stored spans.
-- `GET /v2/traces` and `GET /v2/traces/{trace_id}` require an explicit
-  `project_slug` — unscoped reads are impossible in the v2 path.
+  (`Content-Type: application/x-protobuf`); `X-Helios-Environment` is an
+  optional environment fallback. Spans persist into `otel_traces`/`otel_spans`
+  (migrations `002_otel_foundation`, `003_project_api_keys`) incrementally and
+  idempotently; trace summaries are recomputed from stored spans.
+- `GET /v2/traces` and `GET /v2/traces/{trace_id}` return only the
+  authenticated project's traces; another project's trace is a 404.
 - Reference client: [examples/otel_quickstart](../examples/otel_quickstart/)
-  (official OTel SDK + OTLP/HTTP exporter).
-- Not yet: authentication, OTLP/gRPC, collector support, auto-instrumentation,
-  frontend on v2 data. This is not production-ready.
+  (official OTel SDK + OTLP/HTTP exporter, `HELIOS_API_KEY`).
+- Not yet: browser/user authentication, rate limiting, OTLP/gRPC, collector
+  support, auto-instrumentation, frontend on v2 data. This is not
+  production-ready.
 
 #### Local verification (v2 path)
 
@@ -131,20 +138,36 @@ cd backend
 export HELIOS_TEST_DATABASE_URL=postgresql://helios_test:helios_test@localhost:5434/helios_test
 pytest
 
-# 2. Local dev backend (applies migration 002 to the dev database)
+# 2. Local dev backend (applies migrations 001-003 to the dev database)
 docker compose -f docker-compose.dev.yml up -d postgres
 export DATABASE_URL=postgresql://helios:helios@localhost:5433/helios
 alembic upgrade head
 uvicorn app.main:app --reload --port 8000
 
-# 3. OTel quickstart (see examples/otel_quickstart/README.md for setup)
+# 3. Create a project key (prints the key once) and export it
+python -m app.cli.api_keys create --project-slug otel-quickstart \
+  --project-name "OTel Quickstart" --environment development \
+  --name "Local dev" --scopes traces:ingest,traces:read
+export HELIOS_API_KEY=<the key printed once>
+
+# 4. OTel quickstart (see examples/otel_quickstart/README.md for setup)
 python examples/otel_quickstart/main.py --api-url http://localhost:8000
 
-# 4. Canonical v2 reads
-curl "http://localhost:8000/v2/traces?project_slug=otel-quickstart"
-curl "http://localhost:8000/v2/traces/<trace_id>?project_slug=otel-quickstart"
+# 5. Canonical v2 reads (project derived from the key)
+curl -H "Authorization: Bearer $HELIOS_API_KEY" "http://localhost:8000/v2/traces"
+curl -H "Authorization: Bearer $HELIOS_API_KEY" "http://localhost:8000/v2/traces/<trace_id>"
 
-# 5. Legacy v1 demo still works unchanged
+# 6. Scoped keys: ingest-only cannot read (403), read-only cannot ingest (403)
+python -m app.cli.api_keys create --project-slug otel-quickstart --name ingest \
+  --scopes traces:ingest
+python -m app.cli.api_keys create --project-slug otel-quickstart --name read \
+  --scopes traces:read
+
+# 7. Revoke a key -> future use returns 401
+python -m app.cli.api_keys list --project-slug otel-quickstart
+python -m app.cli.api_keys revoke --key-prefix <prefix>
+
+# 8. Legacy v1 demo still works unchanged (no auth)
 python examples/rag_support_bot/run_demo.py --api-url http://localhost:8000
 ```
 

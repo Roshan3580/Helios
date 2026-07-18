@@ -106,11 +106,23 @@ def nested_trace_spans(trace_id: bytes = TRACE_ID_A) -> list[Span]:
     ]
 
 
-def post_otlp(client, request: ExportTraceServiceRequest, *, project_slug: str = "otel-proj",
-              extra_headers: dict | None = None):
-    headers = {**PROTOBUF_HEADERS, "X-Helios-Project-Slug": project_slug}
+def post_otlp(
+    client,
+    request: ExportTraceServiceRequest,
+    *,
+    token: str | None,
+    extra_headers: dict | None = None,
+):
+    """POST an OTLP export. Auth via Bearer token; project is key-derived."""
+    headers = dict(PROTOBUF_HEADERS)
+    if token is not None:
+        headers["Authorization"] = f"Bearer {token}"
     if extra_headers:
         headers.update(extra_headers)
     return client.post(
         "/v1/otlp/traces", content=request.SerializeToString(), headers=headers
     )
+
+
+def bearer(token: str) -> dict:
+    return {"Authorization": f"Bearer {token}"}

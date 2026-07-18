@@ -2,6 +2,14 @@
 
 Status: Accepted · Branch: `helios-v2-otel-foundation`
 
+> **Superseded in part by [ADR 002](ADR_002_PROJECT_API_KEYS.md).** The
+> temporary project-header / `project_slug` scoping described below was a
+> deliberate pre-auth stopgap. As of ADR 002 the canonical routes require a
+> project API key (`Authorization: Bearer`), the project is derived from the
+> key, `X-Helios-Project-Slug` is removed from ingestion, and `project_slug` is
+> removed from the v2 reads. The rest of this ADR (protocol, schema, storage,
+> idempotency) still stands. The original text is preserved below for context.
+
 ## Context
 
 Helios v1 ingests traces through a custom JSON contract (`POST /v1/traces`)
