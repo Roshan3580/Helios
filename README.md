@@ -26,6 +26,7 @@ Helios ships as a deployed full-stack system: a TanStack Start console on Vercel
 ## What it does
 
 - **OpenTelemetry ingestion (v2, canonical):** OTLP/HTTP protobuf at `POST /v1/otlp/traces`, project-key-authenticated reads at `GET /v2/traces` (`Authorization: Bearer <project-api-key>`) — see [docs/ADR_001_OTLP_TRACE_FOUNDATION.md](docs/ADR_001_OTLP_TRACE_FOUNDATION.md), [docs/ADR_002_PROJECT_API_KEYS.md](docs/ADR_002_PROJECT_API_KEYS.md), and [examples/otel_quickstart](examples/otel_quickstart/)
+- **Python instrumentation SDK (v2):** `Helios.configure(...)` exports standard OpenTelemetry spans to the canonical path with automatic OpenAI tracing and manual agent/retrieval/tool span helpers — see [sdk/python/README.md](sdk/python/README.md), [docs/ADR_003_PYTHON_OTEL_SDK.md](docs/ADR_003_PYTHON_OTEL_SDK.md), and [examples/python_sdk_quickstart](examples/python_sdk_quickstart/)
 - **Trace ingestion (v1, legacy):** accept nested span trees from the Python SDK at `POST /v1/traces`
 - **Trace and span inspection:** list, filter, and open trace detail with nested span timelines
 - **Dashboard summaries:** aggregate latency, cost, token usage, and recent traces via `GET /v1/dashboard/summary`

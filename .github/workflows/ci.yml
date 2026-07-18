@@ -49,6 +49,10 @@ jobs:
       - name: Install dependencies
         working-directory: backend
         run: pip install -r requirements-dev.txt
+      - name: Install SDK (for the end-to-end OTLP export test)
+        # The e2e test (backend/tests/test_sdk_e2e.py) runs in this Postgres job
+        # rather than a separate job, reusing the DB service and migrations.
+        run: pip install -e "sdk/python[otel,openai]"
       - name: Run tests (applies Alembic migrations to the test database)
         working-directory: backend
         run: pytest -v

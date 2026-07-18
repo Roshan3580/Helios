@@ -1,0 +1,2 @@
+# Installs the Helios SDK (editable) with the v2 OTLP runtime + OpenAI extras.
+-e ./sdk/python[otel,openai]
