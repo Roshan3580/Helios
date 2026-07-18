@@ -114,6 +114,34 @@ curl -X POST http://localhost:8000/v1/demo/seed
 | `bun run lint`      | ESLint              |
 | `bun run typecheck` | TypeScript check    |
 
+### Testing
+
+Backend tests run against an isolated PostgreSQL instance (port **5434**, tmpfs storage, distinct from the dev database on 5433) and refuse to start without a dedicated test database URL.
+
+```bash
+# Start the isolated test database
+docker compose -f docker-compose.test.yml up -d --wait
+
+# Backend tests (from backend/, inside its venv)
+cd backend
+pip install -r requirements-dev.txt   # once
+export HELIOS_TEST_DATABASE_URL=postgresql://helios_test:helios_test@localhost:5434/helios_test
+pytest
+
+# Python SDK tests (no database or network needed)
+cd sdk/python
+pip install -e ".[dev]"               # once
+pytest
+
+# Frontend checks
+bun run typecheck && bun run lint && bun run build
+
+# Stop and remove the test database
+docker compose -f docker-compose.test.yml down -v
+```
+
+CI runs the same three suites on every push and pull request (`.github/workflows/ci.yml`).
+
 ---
 
 ## SDK demo

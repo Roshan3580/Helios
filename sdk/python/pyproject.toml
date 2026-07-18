@@ -20,3 +20,6 @@ dev = [
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["helios_sdk*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
