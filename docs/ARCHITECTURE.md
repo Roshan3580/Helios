@@ -88,17 +88,65 @@ backend/app/
 
 ### API surface (read + write)
 
-| Method | Path                    | Purpose                    |
-| ------ | ----------------------- | -------------------------- |
-| POST   | `/v1/traces`            | Ingest trace + spans (SDK) |
-| GET    | `/v1/traces`            | List traces                |
-| GET    | `/v1/traces/{id}`       | Trace detail               |
-| GET    | `/v1/dashboard/summary` | Dashboard aggregates       |
-| GET    | `/v1/rag/metrics`       | RAG analytics              |
-| GET    | `/v1/evaluations`       | Eval runs                  |
-| GET    | `/v1/prompts`           | Prompt versions            |
-| GET    | `/v1/datasets`          | Dataset summaries          |
-| POST   | `/v1/demo/seed`         | Seed sample data           |
+| Method | Path                    | Purpose                    | Status |
+| ------ | ----------------------- | -------------------------- | ------ |
+| POST   | `/v1/otlp/traces`       | OTLP/HTTP protobuf ingest  | **Canonical v2** |
+| GET    | `/v2/traces`            | List OTel traces (project-scoped) | **Canonical v2** |
+| GET    | `/v2/traces/{trace_id}` | OTel trace detail (project-scoped) | **Canonical v2** |
+| POST   | `/v1/traces`            | Ingest trace + spans (SDK) | Legacy compatibility |
+| GET    | `/v1/traces`            | List traces                | Legacy compatibility |
+| GET    | `/v1/traces/{id}`       | Trace detail               | Legacy compatibility |
+| GET    | `/v1/dashboard/summary` | Dashboard aggregates       | Legacy compatibility |
+| GET    | `/v1/rag/metrics`       | RAG analytics              | Legacy compatibility |
+| GET    | `/v1/evaluations`       | Eval runs                  | Legacy compatibility |
+| GET    | `/v1/prompts`           | Prompt versions            | Legacy compatibility |
+| GET    | `/v1/datasets`          | Dataset summaries          | Legacy compatibility |
+| POST   | `/v1/demo/seed`         | Seed sample data           | Legacy compatibility |
+
+### Canonical v2: OpenTelemetry path
+
+See [ADR_001_OTLP_TRACE_FOUNDATION.md](ADR_001_OTLP_TRACE_FOUNDATION.md) for the full decision record.
+
+- `POST /v1/otlp/traces` accepts official OTLP/HTTP **protobuf**
+  (`Content-Type: application/x-protobuf`) and requires the temporary
+  `X-Helios-Project-Slug` header (optional `X-Helios-Environment`). Project
+  headers are a stopgap until project-scoped API keys land; they are not a
+  security control.
+- Spans persist into `otel_traces`/`otel_spans` (migration
+  `002_otel_foundation`) incrementally and idempotently; trace summaries are
+  recomputed from stored spans.
+- `GET /v2/traces` and `GET /v2/traces/{trace_id}` require an explicit
+  `project_slug` — unscoped reads are impossible in the v2 path.
+- Reference client: [examples/otel_quickstart](../examples/otel_quickstart/)
+  (official OTel SDK + OTLP/HTTP exporter).
+- Not yet: authentication, OTLP/gRPC, collector support, auto-instrumentation,
+  frontend on v2 data. This is not production-ready.
+
+#### Local verification (v2 path)
+
+```bash
+# 1. Isolated test DB + backend tests (applies migrations automatically)
+docker compose -f docker-compose.test.yml up -d --wait
+cd backend
+export HELIOS_TEST_DATABASE_URL=postgresql://helios_test:helios_test@localhost:5434/helios_test
+pytest
+
+# 2. Local dev backend (applies migration 002 to the dev database)
+docker compose -f docker-compose.dev.yml up -d postgres
+export DATABASE_URL=postgresql://helios:helios@localhost:5433/helios
+alembic upgrade head
+uvicorn app.main:app --reload --port 8000
+
+# 3. OTel quickstart (see examples/otel_quickstart/README.md for setup)
+python examples/otel_quickstart/main.py --api-url http://localhost:8000
+
+# 4. Canonical v2 reads
+curl "http://localhost:8000/v2/traces?project_slug=otel-quickstart"
+curl "http://localhost:8000/v2/traces/<trace_id>?project_slug=otel-quickstart"
+
+# 5. Legacy v1 demo still works unchanged
+python examples/rag_support_bot/run_demo.py --api-url http://localhost:8000
+```
 
 ---
 

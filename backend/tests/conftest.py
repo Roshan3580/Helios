@@ -66,6 +66,8 @@ TestingSessionLocal = sessionmaker(bind=test_engine, autoflush=False, autocommit
 
 # Application tables in FK-safe truncation order (alembic_version excluded).
 _APP_TABLES = (
+    "otel_spans",
+    "otel_traces",
     "spans",
     "traces",
     "prompt_versions",

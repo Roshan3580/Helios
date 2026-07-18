@@ -8,10 +8,12 @@ from app.routers import (
     demo,
     evaluations,
     health,
+    otlp,
     projects,
     prompts,
     rag,
     traces,
+    traces_v2,
 )
 
 settings = get_settings()
@@ -39,3 +41,5 @@ app.include_router(evaluations.router, prefix="/v1")
 app.include_router(prompts.router, prefix="/v1")
 app.include_router(datasets.router, prefix="/v1")
 app.include_router(demo.router, prefix="/v1")
+app.include_router(otlp.router, prefix="/v1")  # canonical v2 OTLP ingestion
+app.include_router(traces_v2.router, prefix="/v2")  # canonical v2 reads
