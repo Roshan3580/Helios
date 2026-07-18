@@ -109,13 +109,24 @@ Decision records: [ADR_001_OTLP_TRACE_FOUNDATION.md](ADR_001_OTLP_TRACE_FOUNDATI
 (protocol/schema/storage) and [ADR_002_PROJECT_API_KEYS.md](ADR_002_PROJECT_API_KEYS.md)
 (authentication).
 
-- **Authentication:** canonical routes require
+- **Authentication (machines):** canonical routes require
   `Authorization: Bearer <project-api-key>`. The key determines the project;
   there is no project slug header or query parameter. Ingestion needs scope
   `traces:ingest`; reads need `traces:read`. Missing/invalid credentials → 401
   (`WWW-Authenticate: Bearer`); valid key without the scope → 403. Project keys
   are **secrets** — never commit them or put them in browser code. Keys are
   managed by the admin CLI `python -m app.cli.api_keys`.
+- **Authentication (humans):** WorkOS AuthKit signs users in
+  ([ADR_004_WORKOS_HUMAN_AUTH.md](ADR_004_WORKOS_HUMAN_AUTH.md)). The browser
+  calls `GET /v2/user/me`, `GET /v2/user/projects`, and
+  `GET /v2/user/projects/{project}/traces[/{trace_id}]` with
+  `Authorization: Bearer <WorkOS access token>`; FastAPI verifies the JWT
+  against the WorkOS JWKS and scopes access to the organization in the token's
+  `org_id`. Organizations are linked and projects assigned via
+  `python -m app.cli.organizations`. **User JWTs must not be used for OTLP
+  ingestion, and project keys must never be used by browsers.**
+  Organization-wide access is the initial model; per-project user membership
+  is deferred.
 - `POST /v1/otlp/traces` accepts official OTLP/HTTP **protobuf**
   (`Content-Type: application/x-protobuf`); `X-Helios-Environment` is an
   optional environment fallback. Spans persist into `otel_traces`/`otel_spans`

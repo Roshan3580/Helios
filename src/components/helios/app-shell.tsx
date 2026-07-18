@@ -1,4 +1,5 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
+import { useAuth } from "@workos/authkit-tanstack-react-start/client";
 import {
   LayoutDashboard,
   ListTree,
@@ -10,9 +11,47 @@ import {
   Settings,
   Bell,
   Command,
+  LogOut,
 } from "lucide-react";
 import { HeliosMark, StatusBadge } from "./primitives";
+import { useUserMe } from "@/hooks/use-user-me";
 import { cn } from "@/lib/utils";
+
+function UserIdentity() {
+  const { user, loading, signOut } = useAuth();
+  const { me } = useUserMe();
+
+  if (loading || !user) {
+    return <div className="size-7 border border-rule bg-paper-2" aria-hidden />;
+  }
+
+  const label =
+    user.firstName || user.lastName
+      ? [user.firstName, user.lastName].filter(Boolean).join(" ")
+      : user.email;
+  const orgLabel = me?.organization.linked
+    ? me.organization.name
+    : me?.organization.workos_org_id
+      ? "org not linked"
+      : null;
+
+  return (
+    <div className="flex items-center gap-3">
+      <div className="text-right leading-tight hidden sm:block">
+        <div className="font-mono text-[11px]">{label}</div>
+        {orgLabel && <div className="label-eyebrow">{orgLabel}</div>}
+      </div>
+      <button
+        type="button"
+        onClick={() => void signOut({ returnTo: "/" })}
+        title="Sign out"
+        className="flex size-7 items-center justify-center border border-rule bg-paper-2 hover:bg-paper text-muted-foreground hover:text-foreground"
+      >
+        <LogOut className="size-3.5" strokeWidth={1.5} />
+      </button>
+    </div>
+  );
+}
 
 const NAV = [
   { to: "/app/dashboard", label: "Dashboard", icon: LayoutDashboard, group: "Observe" },
@@ -98,9 +137,7 @@ helios.init("hel_••••")`}</pre>
             <div className="flex items-center gap-4">
               <StatusBadge tone="success">ingest 1.2k/s</StatusBadge>
               <Bell className="size-4 text-muted-foreground" strokeWidth={1.5} />
-              <div className="size-7 border border-rule bg-paper-2 font-mono text-[11px] flex items-center justify-center">
-                MM
-              </div>
+              <UserIdentity />
             </div>
           </header>
           <main className="px-6 py-8">

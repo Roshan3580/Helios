@@ -236,8 +236,49 @@ Notes:
 - Project keys are **secrets**: never commit them or place them in browser code.
 - The full key is displayed **only once** at creation and cannot be retrieved later.
 - Keys are currently managed through this administrative CLI only.
-- **Browser/user authentication and rate limiting are not implemented yet.**
+- **Rate limiting is not implemented yet.**
 - Legacy `/v1/traces` remains a temporary **unsecured** compatibility route.
+
+## Human authentication (WorkOS AuthKit)
+
+Humans sign in through **WorkOS AuthKit**; services keep using project API
+keys. User JWTs must not be used for OTLP ingestion, and project keys must
+never reach browser code. Organization-wide access is the initial model
+(per-project membership deferred). Full decision record:
+[docs/ADR_004_WORKOS_HUMAN_AUTH.md](docs/ADR_004_WORKOS_HUMAN_AUTH.md).
+
+**WorkOS dashboard setup (manual, once):**
+
+1. Create a WorkOS development environment/application.
+2. Configure the redirect URI: `http://localhost:5173/api/auth/callback`.
+3. Set the app's sign-in endpoint to `http://localhost:5173/api/auth/sign-in`.
+4. Configure the sign-out redirect to `http://localhost:5173/`.
+5. Create a WorkOS organization; copy its `org_...` ID.
+6. Copy the development `WORKOS_*` credentials into your local `.env`
+   (see `.env.example`; server-only — never `VITE_*`, never commit).
+7. Link the organization and assign a project (below).
+
+**Local link + verification:**
+
+```bash
+# Backend: apply migrations, link the org, assign a project
+cd backend && export DATABASE_URL=postgresql://helios:helios@localhost:5433/helios
+alembic upgrade head
+python -m app.cli.organizations create --workos-org-id org_XXX --slug acme --name "Acme"
+python -m app.cli.organizations assign-project --workos-org-id org_XXX --project-slug <existing-project>
+python -m app.cli.organizations list
+
+# Start backend + frontend, sign in at http://localhost:5173 ("Sign in")
+uvicorn app.main:app --reload --port 8000    # terminal 1 (from backend/)
+bun dev                                       # terminal 2 (repo root)
+
+# The browser calls these with the WorkOS access token:
+#   GET /v2/user/me          -> identity + active organization
+#   GET /v2/user/projects    -> projects owned by the linked organization
+
+# Machine paths are unchanged (project API keys):
+curl -H "Authorization: Bearer $HELIOS_API_KEY" "http://localhost:8000/v2/traces"
+```
 
 Full walkthrough: [docs/ADR_002_PROJECT_API_KEYS.md](docs/ADR_002_PROJECT_API_KEYS.md),
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [examples/otel_quickstart](examples/otel_quickstart/).

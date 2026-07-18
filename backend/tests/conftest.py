@@ -73,7 +73,10 @@ _APP_TABLES = (
     "prompt_versions",
     "evaluation_runs",
     "rag_chunk_metrics",
+    "project_api_keys",
     "projects",
+    "organizations",
+    "users",
 )
 
 
@@ -120,6 +123,38 @@ def db_session():
         yield session
     finally:
         session.close()
+
+
+@pytest.fixture()
+def workos_verifier():
+    """Install a WorkOS token verifier backed by local test JWKS (no network)."""
+    from app.security.workos_auth import (
+        JWKSClient,
+        WorkOSTokenVerifier,
+        set_verifier_for_tests,
+    )
+    from workos_helpers import JWKS_DOCUMENT, TEST_ISSUER
+
+    verifier = WorkOSTokenVerifier(
+        issuer=TEST_ISSUER,
+        jwks_client=JWKSClient("https://jwks.test/keys", fetcher=lambda: JWKS_DOCUMENT),
+    )
+    set_verifier_for_tests(verifier)
+    yield verifier
+    set_verifier_for_tests(None)
+
+
+@pytest.fixture()
+def linked_org(db_session):
+    """A local organization linked to the default test WorkOS org ID."""
+    from app.services import organization_service
+    from workos_helpers import DEFAULT_ORG
+
+    organization, _ = organization_service.create_organization(
+        db_session, workos_org_id=DEFAULT_ORG, slug="test-org", name="Test Org"
+    )
+    db_session.commit()
+    return organization
 
 
 @pytest.fixture()

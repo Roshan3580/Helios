@@ -37,7 +37,7 @@ class TestMigrationAndSchema:
 
     def test_alembic_version_is_new_head(self, db_session):
         version = db_session.execute(text("SELECT version_num FROM alembic_version")).scalar()
-        assert version == "003_project_api_keys"
+        assert version == "004_human_identity"
 
     def test_span_identity_unique_within_project_trace(self, client, db_session, ingest_token):
         post_otlp(client, make_request([make_span()]), token=ingest_token)

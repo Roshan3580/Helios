@@ -14,6 +14,7 @@ from app.routers import (
     rag,
     traces,
     traces_v2,
+    user_v2,
 )
 
 settings = get_settings()
@@ -43,3 +44,4 @@ app.include_router(datasets.router, prefix="/v1")
 app.include_router(demo.router, prefix="/v1")
 app.include_router(otlp.router, prefix="/v1")  # canonical v2 OTLP ingestion
 app.include_router(traces_v2.router, prefix="/v2")  # canonical v2 reads
+app.include_router(user_v2.router, prefix="/v2")  # human (WorkOS JWT) routes

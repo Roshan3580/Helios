@@ -44,6 +44,11 @@ class Project(Base):
     slug: Mapped[str] = mapped_column(String(128), unique=True, index=True)
     name: Mapped[str] = mapped_column(String(255))
     environment: Mapped[str] = mapped_column(String(64), default="production")
+    # Nullable: legacy projects exist before organizations; assignment happens
+    # via the admin CLI (see app/cli/organizations.py and ADR 004).
+    organization_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("organizations.id"), nullable=True, index=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     traces: Mapped[list["Trace"]] = relationship(back_populates="project")
