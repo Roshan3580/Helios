@@ -92,6 +92,81 @@ export interface UserTraceListParams {
   has_errors?: boolean;
 }
 
+export interface DashboardOverview {
+  trace_count: number;
+  error_trace_count: number;
+  trace_error_rate: number;
+  total_span_count: number;
+  avg_duration_ms: number | null;
+  p50_duration_ms: number | null;
+  p95_duration_ms: number | null;
+  distinct_service_count: number;
+}
+
+export interface DashboardTokenUsage {
+  input_tokens: number;
+  output_tokens: number;
+  total_tokens: number;
+  spans_with_token_data: number;
+}
+
+export interface DashboardServiceRow {
+  service_name: string;
+  trace_count: number;
+  error_trace_count: number;
+  error_rate: number;
+  avg_duration_ms: number | null;
+  p50_duration_ms: number | null;
+  p95_duration_ms: number | null;
+  total_spans: number;
+}
+
+export interface DashboardModelRow {
+  model: string;
+  span_count: number;
+  trace_count: number;
+  input_tokens: number;
+  output_tokens: number;
+  error_span_count: number;
+  avg_duration_ms: number | null;
+}
+
+export interface DashboardRecentError {
+  trace_id: string;
+  service_name: string;
+  root_span_name: string | null;
+  start_time: string;
+  duration_ms: number;
+  span_count: number;
+  error_count: number;
+}
+
+export interface DashboardLatencyBucket {
+  bucket_start: string;
+  trace_count: number;
+  error_count: number;
+  avg_duration_ms: number | null;
+  p95_duration_ms: number | null;
+}
+
+export interface ProjectDashboard {
+  project_id: string;
+  project_slug: string;
+  hours: number;
+  window_start: string;
+  window_end: string;
+  overview: DashboardOverview;
+  tokens: DashboardTokenUsage;
+  services: DashboardServiceRow[];
+  models: DashboardModelRow[];
+  recent_errors: DashboardRecentError[];
+  latency_trend: DashboardLatencyBucket[];
+}
+
+export interface UserDashboardParams {
+  hours?: number;
+}
+
 /**
  * Typed error for authenticated user API calls.
  * Never includes Authorization headers or tokens.
@@ -177,4 +252,19 @@ export function fetchUserProjectTraceDetail(
   const project = encodeURIComponent(projectRef);
   const trace = encodeURIComponent(traceId);
   return userApiFetch<OtelTraceDetail>(`/v2/user/projects/${project}/traces/${trace}`, accessToken);
+}
+
+export function fetchUserProjectDashboard(
+  accessToken: string,
+  projectRef: string,
+  params: UserDashboardParams = {},
+): Promise<ProjectDashboard> {
+  const encoded = encodeURIComponent(projectRef);
+  const search = new URLSearchParams();
+  if (params.hours != null) search.set("hours", String(params.hours));
+  const qs = search.toString();
+  return userApiFetch<ProjectDashboard>(
+    `/v2/user/projects/${encoded}/dashboard${qs ? `?${qs}` : ""}`,
+    accessToken,
+  );
 }

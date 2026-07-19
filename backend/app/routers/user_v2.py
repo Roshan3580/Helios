@@ -15,11 +15,12 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Project
+from app.schemas_dashboard import ProjectDashboardRead
 from app.schemas_user import UserMeRead, UserOrganizationRead, UserProjectRead
 from app.schemas_v2 import OtelTraceDetailRead, OtelTraceSummaryRead
 from app.security.human_dependencies import require_human, require_org_member
 from app.security.workos_auth import HumanAuthContext
-from app.services import otel_trace_service
+from app.services import otel_dashboard_service, otel_trace_service
 
 router = APIRouter(prefix="/user", tags=["user-v2"])
 
@@ -70,6 +71,27 @@ def _resolve_project(db: Session, auth: HumanAuthContext, project_ref: str) -> P
     if project is None:
         raise HTTPException(status_code=404, detail=f"Project '{project_ref}' not found")
     return project
+
+
+@router.get(
+    "/projects/{project_ref}/dashboard",
+    response_model=ProjectDashboardRead,
+)
+def get_project_dashboard(
+    project_ref: str,
+    hours: int = Query(default=24, ge=1, le=720),
+    auth: HumanAuthContext = Depends(require_org_member),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Organization-authorized OTel aggregates for the selected project.
+
+    Window is evaluated on trace ``start_time``. There is no cost field and no
+    fabricated token/model estimates — only stored GenAI attributes.
+    """
+    project = _resolve_project(db, auth, project_ref)
+    return otel_dashboard_service.get_project_dashboard(
+        db, project=project, hours=hours
+    )
 
 
 @router.get("/projects/{project_ref}/traces", response_model=list[OtelTraceSummaryRead])

@@ -106,8 +106,8 @@ treated as a security control (nor is CORS).
 
 ## Consequences
 
-- Two parallel trace stores exist until the frontend/SDK migration; the
-  dashboard does not yet read v2 data.
+- Two parallel trace stores exist until remaining legacy pages migrate; the
+  authenticated dashboard and traces UI now read canonical v2 OTel tables.
 - Request-size limit (4 MiB) and slug validation are application-level;
   rate limiting and auth remain open security items for the next batch.
 - Nanosecond timestamps are truncated to microseconds in `TIMESTAMPTZ`

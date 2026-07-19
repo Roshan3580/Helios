@@ -1,130 +1,104 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useAccessToken } from "@workos/authkit-tanstack-react-start/client";
 
-import { TRACES } from "@/components/helios/demo-data";
-import type { DataSource } from "@/hooks/data-source";
-import { IS_DEMO_MODE } from "@/lib/api/client";
-import { fetchDashboardSummary } from "@/lib/api/dashboard";
-import {
-  mapDashboardSummary,
-  mapFailingPrompts,
-  type DashboardViewModel,
-  type TraceListItem,
-} from "@/lib/api/mappers";
-import { fetchPrompts } from "@/lib/api/prompts";
+import { useProjectSelection } from "@/contexts/project-selection";
+import { redirectToSignIn } from "@/lib/auth/redirect-to-sign-in";
+import { fetchUserProjectDashboard, UserApiError, type ProjectDashboard } from "@/lib/api/user";
+
+export type DashboardHours = 24 | 168 | 720;
 
 export interface DashboardLoadState {
-  data: DashboardViewModel;
-  source: DataSource;
+  data: ProjectDashboard | null;
+  hours: DashboardHours;
+  setHours: (hours: DashboardHours) => void;
   loading: boolean;
   error: string | null;
+  errorStatus: number | null;
+  reload: () => void;
 }
 
-const DEMO_RECENT_TRACES: TraceListItem[] = TRACES.slice(0, 6).map((trace) => ({
-  id: trace.id,
-  app: trace.app,
-  query: trace.query,
-  model: trace.model,
-  lat: trace.lat,
-  cost: trace.cost,
-  tok: trace.tok,
-  status: trace.status,
-}));
-
-const DEMO_DASHBOARD: DashboardViewModel = {
-  metrics: [
-    {
-      label: "Total requests",
-      value: "124,891",
-      delta: { value: "+8.2%", tone: "up" },
-      hint: "vs. previous 24h",
-    },
-    {
-      label: "Avg latency",
-      value: "1.34s",
-      delta: { value: "−110ms", tone: "up" },
-      hint: "p50 across models",
-    },
-    {
-      label: "Token usage",
-      value: "48.2M",
-      delta: { value: "+3.1%", tone: "neutral" },
-      hint: "prompt + completion",
-    },
-    {
-      label: "Estimated cost",
-      value: "$ 612.40",
-      delta: { value: "+4.4%", tone: "down" },
-      hint: "USD · all envs",
-    },
-    {
-      label: "Error rate",
-      value: "1.8%",
-      delta: { value: "−0.4 pts", tone: "up" },
-      hint: "5xx + tool failures",
-    },
-    {
-      label: "Eval pass rate",
-      value: "88.1%",
-      delta: { value: "+3.4 pts", tone: "up" },
-      hint: "support_qa.v4",
-    },
-    {
-      label: "Citation coverage",
-      value: "84.1%",
-      delta: { value: "+1.2 pts", tone: "up" },
-      hint: "rag.knowledge_base",
-    },
-    { label: "Active models", value: "3", hint: "gpt-4o · claude-3.5 · gemini-1.5" },
-  ],
-  recentTraces: DEMO_RECENT_TRACES,
-  failingPrompts: [
-    ["support.router.system / v5", "12 errs"],
-    ["rag.answer.synth / v7", "8 errs"],
-    ["router.classify.intent / v3", "3 errs"],
-  ],
-  modelUsage: [
-    ["gpt-4o", 62],
-    ["claude-3.5-sonnet", 26],
-    ["gemini-1.5-pro", 9],
-    ["gpt-4o-mini", 3],
-  ],
-};
-
+/**
+ * Authenticated v2 dashboard for the currently selected project.
+ * Never falls back to demo data or legacy /v1/dashboard/summary.
+ */
 export function useDashboardSummary(): DashboardLoadState {
-  const [state, setState] = useState<DashboardLoadState>({
-    data: IS_DEMO_MODE ? DEMO_DASHBOARD : DEMO_DASHBOARD,
-    source: IS_DEMO_MODE ? "demo" : "api",
-    loading: !IS_DEMO_MODE,
-    error: null,
-  });
+  const { getAccessToken } = useAccessToken();
+  const { selectedProject, loading: projectLoading, error: projectError } = useProjectSelection();
+  const [hours, setHours] = useState<DashboardHours>(24);
+  const [data, setData] = useState<ProjectDashboard | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
+
+  const reload = useCallback(() => setReloadToken((value) => value + 1), []);
 
   useEffect(() => {
-    if (IS_DEMO_MODE) {
-      setState({ data: DEMO_DASHBOARD, source: "demo", loading: false, error: null });
+    if (projectLoading) {
+      setLoading(true);
+      return;
+    }
+    if (projectError) {
+      setData(null);
+      setLoading(false);
+      setError(projectError);
+      setErrorStatus(null);
+      return;
+    }
+    if (!selectedProject) {
+      setData(null);
+      setLoading(false);
+      setError(null);
+      setErrorStatus(null);
       return;
     }
 
     let cancelled = false;
+    const projectId = selectedProject.id;
 
     async function load() {
-      setState((prev) => ({ ...prev, loading: true, error: null }));
+      setLoading(true);
+      setError(null);
+      setErrorStatus(null);
       try {
-        const [summary, prompts] = await Promise.all([
-          fetchDashboardSummary("acme"),
-          fetchPrompts("acme"),
-        ]);
+        const token = await getAccessToken();
+        if (!token) {
+          redirectToSignIn();
+          if (!cancelled) {
+            setData(null);
+            setLoading(false);
+            setError("Session expired. Redirecting to sign in…");
+            setErrorStatus(401);
+          }
+          return;
+        }
+        const dashboard = await fetchUserProjectDashboard(token, projectId, { hours });
         if (cancelled) return;
-        const data = mapDashboardSummary(summary);
-        data.failingPrompts = mapFailingPrompts(prompts);
-        setState({ data, source: "api", loading: false, error: null });
-      } catch (error) {
+        setData(dashboard);
+        setLoading(false);
+      } catch (err) {
         if (cancelled) return;
-        setState({
-          data: DEMO_DASHBOARD,
-          source: "fallback",
-          loading: false,
-          error: error instanceof Error ? error.message : "Failed to load dashboard",
-        });
+        if (err instanceof UserApiError && err.status === 401) {
+          redirectToSignIn();
+          setData(null);
+          setLoading(false);
+          setError("Session expired. Redirecting to sign in…");
+          setErrorStatus(401);
+          return;
+        }
+        const status = err instanceof UserApiError ? err.status : null;
+        const message =
+          err instanceof UserApiError
+            ? err.status === 403
+              ? "You do not have access to this organization or project."
+              : err.message
+            : err instanceof Error
+              ? err.message
+              : "Failed to load dashboard";
+        setData(null);
+        setLoading(false);
+        setError(message);
+        setErrorStatus(status);
       }
     }
 
@@ -132,7 +106,8 @@ export function useDashboardSummary(): DashboardLoadState {
     return () => {
       cancelled = true;
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectLoading, projectError, selectedProject?.id, hours, reloadToken]);
 
-  return state;
+  return { data, hours, setHours, loading, error, errorStatus, reload };
 }

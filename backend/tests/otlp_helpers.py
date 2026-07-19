@@ -22,6 +22,10 @@ def any_string(value: str) -> AnyValue:
     return AnyValue(string_value=value)
 
 
+def any_int(value: int) -> AnyValue:
+    return AnyValue(int_value=value)
+
+
 def kv(key: str, value: AnyValue) -> KeyValue:
     return KeyValue(key=key, value=value)
 

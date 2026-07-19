@@ -49,7 +49,7 @@ src/
 ├── contexts/           # ProjectSelectionProvider (authenticated app)
 ├── lib/api/            # Legacy public client + authenticated /v2/user client
 ├── lib/otel/           # Duration, status, timeline, JSON helpers
-├── hooks/              # use-traces (v2), use-dashboard-summary (legacy), etc.
+├── hooks/              # use-traces / use-dashboard-summary (v2), legacy analytics hooks
 └── styles.css
 ```
 
@@ -58,7 +58,7 @@ src/
 | Route                | Purpose                          |
 | -------------------- | -------------------------------- |
 | `/`                  | Marketing landing page           |
-| `/app/dashboard`     | Overview metrics + recent traces |
+| `/app/dashboard`     | Authenticated OTel overview metrics |
 | `/app/traces`        | Authenticated OTel trace list    |
 | `/app/traces/:id`    | Authenticated OTel trace detail  |
 | `/app/rag-analytics` | RAG quality metrics              |
@@ -68,8 +68,9 @@ src/
 
 ### Data layer
 
+- **Dashboard (`/app/dashboard`):** WorkOS JWT → `GET /v2/user/projects/.../dashboard`; real `otel_traces` / `otel_spans` aggregates; no demo fallback; no cost estimation.
 - **Traces (`/app/traces*`):** WorkOS JWT → `GET /v2/user/projects/.../traces*`; project selector in app shell; no demo fallback.
-- **Legacy analytics pages:** still use `VITE_HELIOS_DEMO_MODE` + unauthenticated `/v1/*` with optional demo fallback.
+- **Legacy analytics pages** (RAG, evals, prompts, datasets, experiments, settings): still use `VITE_HELIOS_DEMO_MODE` + unauthenticated `/v1/*` with optional demo fallback.
 - Machine ingestion/reads remain project API keys on `/v1/otlp/traces` and `/v2/traces*`.
 
 See [FRONTEND_BACKEND_INTEGRATION.md](FRONTEND_BACKEND_INTEGRATION.md).
@@ -98,6 +99,7 @@ backend/app/
 | POST   | `/v1/traces`            | Ingest trace + spans (SDK) | Legacy compatibility |
 | GET    | `/v1/traces`            | List traces                | Legacy compatibility |
 | GET    | `/v1/traces/{id}`       | Trace detail               | Legacy compatibility |
+| GET    | `/v2/user/projects/{ref}/dashboard` | Org-scoped OTel dashboard aggregates (WorkOS JWT) | **Canonical v2** |
 | GET    | `/v1/dashboard/summary` | Dashboard aggregates       | Legacy compatibility |
 | GET    | `/v1/rag/metrics`       | RAG analytics              | Legacy compatibility |
 | GET    | `/v1/evaluations`       | Eval runs                  | Legacy compatibility |
@@ -120,7 +122,8 @@ Decision records: [ADR_001_OTLP_TRACE_FOUNDATION.md](ADR_001_OTLP_TRACE_FOUNDATI
   managed by the admin CLI `python -m app.cli.api_keys`.
 - **Authentication (humans):** WorkOS AuthKit signs users in
   ([ADR_004_WORKOS_HUMAN_AUTH.md](ADR_004_WORKOS_HUMAN_AUTH.md)). The browser
-  calls `GET /v2/user/me`, `GET /v2/user/projects`, and
+  calls `GET /v2/user/me`, `GET /v2/user/projects`,
+  `GET /v2/user/projects/{project}/dashboard`, and
   `GET /v2/user/projects/{project}/traces[/{trace_id}]` with
   `Authorization: Bearer <WorkOS access token>`; FastAPI verifies the JWT
   against the WorkOS JWKS and scopes access to the organization in the token's
