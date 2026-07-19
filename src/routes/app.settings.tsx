@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
 import { PageHeader } from "@/components/helios/app-shell";
@@ -8,7 +8,13 @@ import { useProjectSelection } from "@/contexts/project-selection";
 export const Route = createFileRoute("/app/settings")({ component: SettingsPage });
 
 function SettingsPage() {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { selectedProject } = useProjectSelection();
+
+  // Nested `/app/settings/api-keys` is a child route; render it via Outlet.
+  if (pathname !== "/app/settings") {
+    return <Outlet />;
+  }
 
   return (
     <div>

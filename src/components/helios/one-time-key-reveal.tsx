@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   Dialog,
@@ -19,7 +19,6 @@ export function OneTimeKeyReveal({ created, onDismiss }: OneTimeKeyRevealProps) 
   const open = created !== null;
   const keyRef = useRef<HTMLPreElement>(null);
   const [copied, setCopied] = useState(false);
-  const titleId = useId();
 
   useEffect(() => {
     if (!open) {
@@ -53,12 +52,9 @@ export function OneTimeKeyReveal({ created, onDismiss }: OneTimeKeyRevealProps) 
         if (!next) onDismiss();
       }}
     >
-      <DialogContent
-        className="max-w-xl rounded-none border-rule bg-paper sm:rounded-none"
-        aria-labelledby={titleId}
-      >
+      <DialogContent className="max-w-xl rounded-none border-rule bg-paper sm:rounded-none">
         <DialogHeader>
-          <DialogTitle id={titleId} className="font-serif text-xl">
+          <DialogTitle className="font-serif text-xl">
             Copy this key now. Helios will not show it again.
           </DialogTitle>
           <DialogDescription className="text-[13px] text-muted-foreground">

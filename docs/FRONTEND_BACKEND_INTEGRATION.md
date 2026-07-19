@@ -20,9 +20,10 @@ those behind `VITE_*`. See [ADR 004](ADR_004_WORKOS_HUMAN_AUTH.md).
 | Legacy analytics (temporary) | None | `/v1/dashboard`, `/v1/rag`, … |
 
 The browser **never** sends project API keys. Tokens are obtained fresh via
-`useAccessToken().getAccessToken()` immediately before each authenticated
-request and are not written to localStorage, sessionStorage, query strings, or
-error messages.
+`useHeliosAccessToken().getAccessToken()` (WorkOS AuthKit in normal mode;
+locked-down `/api/e2e/session` only when the Checkpoint 13 E2E seam is active)
+immediately before each authenticated request and are not written to
+localStorage, sessionStorage, query strings, or error messages.
 
 ## Authenticated product pages (Checkpoints 6–7)
 

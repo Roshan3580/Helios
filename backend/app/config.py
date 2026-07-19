@@ -36,6 +36,10 @@ class Settings(BaseSettings):
     helios_analyst_max_findings: int = Field(default=25, ge=1, le=200)
     openai_api_key: SecretStr = SecretStr("")
 
+    # Browser E2E release gate only. Disabled by default. When true, registers
+    # /v2/e2e/* helpers that still require verified human JWTs and loopback JWKS.
+    helios_e2e_test_mode: bool = False
+
     @field_validator("helios_analyst_provider")
     @classmethod
     def _normalize_provider(cls, value: str) -> str:

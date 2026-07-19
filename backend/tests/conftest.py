@@ -50,6 +50,20 @@ if "test" not in _database_name:
 # Must happen before any `app` import so settings/engine/Alembic all see it.
 os.environ["DATABASE_URL"] = _test_db_url
 
+# A prior browser E2E harness in the same shell may leave HELIOS_E2E_* /
+# loopback WorkOS overrides set. Strip them so the default TestClient app
+# matches production-like configuration (E2E router absent).
+for _e2e_key in (
+    "HELIOS_E2E_TEST_MODE",
+    "HELIOS_E2E_ACCESS_TOKEN",
+    "HELIOS_E2E_ORG_ID",
+    "HELIOS_E2E_USER_ID",
+    "HELIOS_E2E_USER_EMAIL",
+    "HELIOS_E2E_JWKS_URL",
+    "HELIOS_E2E_ISSUER",
+):
+    os.environ.pop(_e2e_key, None)
+
 from alembic import command  # noqa: E402
 from alembic.config import Config  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402

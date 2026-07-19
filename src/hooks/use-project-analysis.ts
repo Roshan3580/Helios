@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useAccessToken, useAuth } from "@workos/authkit-tanstack-react-start/client";
+import {
+  useHeliosAccessToken as useAccessToken,
+  useHeliosAuth as useAuth,
+} from "@/lib/auth/helios-auth";
 
 import { useProjectSelection } from "@/contexts/project-selection";
 import { redirectToSignIn } from "@/lib/auth/redirect-to-sign-in";

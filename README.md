@@ -142,11 +142,16 @@ pytest
 # Frontend checks
 bun run typecheck && bun run lint && bun run build
 
+# Browser E2E release gate (Chromium; loopback JWKS — no production WorkOS)
+bunx playwright install chromium --with-deps   # once
+bun run test:e2e
+# See docs/BROWSER_E2E_RELEASE_GATE.md and docs/RELEASE_READINESS.md
+
 # Stop and remove the test database
 docker compose -f docker-compose.test.yml down -v
 ```
 
-CI runs the same three suites on every push and pull request (`.github/workflows/ci.yml`).
+CI runs frontend, backend, SDK, and browser E2E suites on every push and pull request (`.github/workflows/ci.yml`).
 
 ---
 

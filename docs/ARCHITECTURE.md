@@ -166,6 +166,11 @@ Decision records: [ADR_001_OTLP_TRACE_FOUNDATION.md](ADR_001_OTLP_TRACE_FOUNDATI
   ingestion, and project keys must never be used by browsers.**
   Organization-wide access is the initial model; per-project user membership
   is deferred.
+- **Browser E2E release gate:** Chromium Playwright suite under `e2e/` driven by
+  `scripts/run-e2e.sh` uses a test-only AuthKit session seam (loopback JWKS +
+  runtime JWT). It does **not** replace staging WorkOS login. See
+  [BROWSER_E2E_RELEASE_GATE.md](BROWSER_E2E_RELEASE_GATE.md) and
+  [RELEASE_READINESS.md](RELEASE_READINESS.md).
 - `POST /v1/otlp/traces` accepts official OTLP/HTTP **protobuf**
   (`Content-Type: application/x-protobuf`); `X-Helios-Environment` is an
   optional environment fallback. Spans persist into `otel_traces`/`otel_spans`

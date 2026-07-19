@@ -24,6 +24,7 @@ import { Route as AppDatasetsRouteImport } from './routes/app.datasets'
 import { Route as AppDashboardRouteImport } from './routes/app.dashboard'
 import { Route as AppTracesIdRouteImport } from './routes/app.traces.$id'
 import { Route as AppSettingsApiKeysRouteImport } from './routes/app.settings.api-keys'
+import { Route as ApiE2eSessionRouteImport } from './routes/api.e2e.session'
 import { Route as ApiAuthSignUpRouteImport } from './routes/api.auth.sign-up'
 import { Route as ApiAuthSignOutRouteImport } from './routes/api.auth.sign-out'
 import { Route as ApiAuthSignInRouteImport } from './routes/api.auth.sign-in'
@@ -104,6 +105,11 @@ const AppSettingsApiKeysRoute = AppSettingsApiKeysRouteImport.update({
   path: '/api-keys',
   getParentRoute: () => AppSettingsRoute,
 } as any)
+const ApiE2eSessionRoute = ApiE2eSessionRouteImport.update({
+  id: '/api/e2e/session',
+  path: '/api/e2e/session',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthSignUpRoute = ApiAuthSignUpRouteImport.update({
   id: '/api/auth/sign-up',
   path: '/api/auth/sign-up',
@@ -143,6 +149,7 @@ export interface FileRoutesByFullPath {
   '/api/auth/sign-in': typeof ApiAuthSignInRoute
   '/api/auth/sign-out': typeof ApiAuthSignOutRoute
   '/api/auth/sign-up': typeof ApiAuthSignUpRoute
+  '/api/e2e/session': typeof ApiE2eSessionRoute
   '/app/settings/api-keys': typeof AppSettingsApiKeysRoute
   '/app/traces/$id': typeof AppTracesIdRoute
 }
@@ -163,6 +170,7 @@ export interface FileRoutesByTo {
   '/api/auth/sign-in': typeof ApiAuthSignInRoute
   '/api/auth/sign-out': typeof ApiAuthSignOutRoute
   '/api/auth/sign-up': typeof ApiAuthSignUpRoute
+  '/api/e2e/session': typeof ApiE2eSessionRoute
   '/app/settings/api-keys': typeof AppSettingsApiKeysRoute
   '/app/traces/$id': typeof AppTracesIdRoute
 }
@@ -185,6 +193,7 @@ export interface FileRoutesById {
   '/api/auth/sign-in': typeof ApiAuthSignInRoute
   '/api/auth/sign-out': typeof ApiAuthSignOutRoute
   '/api/auth/sign-up': typeof ApiAuthSignUpRoute
+  '/api/e2e/session': typeof ApiE2eSessionRoute
   '/app/settings/api-keys': typeof AppSettingsApiKeysRoute
   '/app/traces/$id': typeof AppTracesIdRoute
 }
@@ -208,6 +217,7 @@ export interface FileRouteTypes {
     | '/api/auth/sign-in'
     | '/api/auth/sign-out'
     | '/api/auth/sign-up'
+    | '/api/e2e/session'
     | '/app/settings/api-keys'
     | '/app/traces/$id'
   fileRoutesByTo: FileRoutesByTo
@@ -228,6 +238,7 @@ export interface FileRouteTypes {
     | '/api/auth/sign-in'
     | '/api/auth/sign-out'
     | '/api/auth/sign-up'
+    | '/api/e2e/session'
     | '/app/settings/api-keys'
     | '/app/traces/$id'
   id:
@@ -249,6 +260,7 @@ export interface FileRouteTypes {
     | '/api/auth/sign-in'
     | '/api/auth/sign-out'
     | '/api/auth/sign-up'
+    | '/api/e2e/session'
     | '/app/settings/api-keys'
     | '/app/traces/$id'
   fileRoutesById: FileRoutesById
@@ -260,6 +272,7 @@ export interface RootRouteChildren {
   ApiAuthSignInRoute: typeof ApiAuthSignInRoute
   ApiAuthSignOutRoute: typeof ApiAuthSignOutRoute
   ApiAuthSignUpRoute: typeof ApiAuthSignUpRoute
+  ApiE2eSessionRoute: typeof ApiE2eSessionRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -369,6 +382,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsApiKeysRouteImport
       parentRoute: typeof AppSettingsRoute
     }
+    '/api/e2e/session': {
+      id: '/api/e2e/session'
+      path: '/api/e2e/session'
+      fullPath: '/api/e2e/session'
+      preLoaderRoute: typeof ApiE2eSessionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/sign-up': {
       id: '/api/auth/sign-up'
       path: '/api/auth/sign-up'
@@ -461,6 +481,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthSignInRoute: ApiAuthSignInRoute,
   ApiAuthSignOutRoute: ApiAuthSignOutRoute,
   ApiAuthSignUpRoute: ApiAuthSignUpRoute,
+  ApiE2eSessionRoute: ApiE2eSessionRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -1,5 +1,5 @@
 import { useEffect, useId, useState, type FormEvent } from "react";
-import { useAccessToken } from "@workos/authkit-tanstack-react-start/client";
+import { useHeliosAccessToken as useAccessToken } from "@/lib/auth/helios-auth";
 
 import { useProjectSelection } from "@/contexts/project-selection";
 import { createUserProject, UserApiError } from "@/lib/api/user";

@@ -16,6 +16,11 @@ export default tseslint.config(
       ".tanstack/**",
       ".nitro/**",
       ".vite/**",
+      // Playwright (fixtures use Playwright's `use`, not React hooks)
+      "e2e/**",
+      "playwright.config.ts",
+      "playwright-report/**",
+      "test-results/**",
       // Python virtual environments and bytecode caches
       "**/.venv/**",
       ".venv-demo/**",

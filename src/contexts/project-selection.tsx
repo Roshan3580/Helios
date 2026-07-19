@@ -7,7 +7,10 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useAccessToken, useAuth } from "@workos/authkit-tanstack-react-start/client";
+import {
+  useHeliosAccessToken as useAccessToken,
+  useHeliosAuth as useAuth,
+} from "@/lib/auth/helios-auth";
 
 import { redirectToSignIn } from "@/lib/auth/redirect-to-sign-in";
 import { fetchUserProjects, UserApiError, type UserProject } from "@/lib/api/user";

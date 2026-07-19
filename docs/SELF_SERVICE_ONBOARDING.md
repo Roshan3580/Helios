@@ -25,6 +25,10 @@ Helios does **not** implement per-project roles, administrator-only key
 management, or audit history in this checkpoint. Finer-grained RBAC is
 deferred.
 
+Browser release-gate coverage for this flow lives in
+[BROWSER_E2E_RELEASE_GATE.md](BROWSER_E2E_RELEASE_GATE.md) (Chromium + loopback
+JWKS; not a substitute for real WorkOS staging login).
+
 ## Project creation
 
 ```http

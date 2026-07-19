@@ -16,6 +16,7 @@ from app.routers import (
     traces_v2,
     user_v2,
 )
+from app.routers.e2e import include_e2e_router
 
 settings = get_settings()
 
@@ -25,13 +26,16 @@ app = FastAPI(
     version=settings.app_version,
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.cors_origin_list,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+_cors: dict = {
+    "allow_origins": settings.cors_origin_list,
+    "allow_credentials": True,
+    "allow_methods": ["*"],
+    "allow_headers": ["*"],
+    # Ephemeral local/CI frontend ports (Vite) on loopback.
+    "allow_origin_regex": r"https?://(127\.0\.0\.1|localhost)(:\d+)?",
+}
+
+app.add_middleware(CORSMiddleware, **_cors)
 
 app.include_router(health.router)
 app.include_router(projects.router, prefix="/v1")
@@ -45,3 +49,4 @@ app.include_router(demo.router, prefix="/v1")
 app.include_router(otlp.router, prefix="/v1")  # canonical v2 OTLP ingestion
 app.include_router(traces_v2.router, prefix="/v2")  # canonical v2 reads
 app.include_router(user_v2.router, prefix="/v2")  # human (WorkOS JWT) routes
+include_e2e_router(app)  # no-op unless HELIOS_E2E_TEST_MODE=true

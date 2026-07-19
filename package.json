@@ -10,7 +10,11 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "test:e2e": "bash scripts/run-e2e.sh",
+    "test:e2e:headed": "bash scripts/run-e2e.sh --headed",
+    "test:e2e:debug": "bash scripts/run-e2e.sh -- --debug",
+    "test:e2e:report": "playwright show-report"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -70,6 +74,7 @@
   "devDependencies": {
     "@eslint/js": "^9.32.0",
     "@lovable.dev/vite-tanstack-config": "2.5.3",
+    "@playwright/test": "1.57.0",
     "@types/node": "^22.16.5",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",

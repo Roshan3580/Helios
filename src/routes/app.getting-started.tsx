@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useAccessToken } from "@workos/authkit-tanstack-react-start/client";
+import { useHeliosAccessToken as useAccessToken } from "@/lib/auth/helios-auth";
 
 import { PageHeader } from "@/components/helios/app-shell";
 import { ProjectApiKeysPanel } from "@/components/helios/project-api-keys-panel";

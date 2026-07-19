@@ -1,5 +1,5 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { useAuth } from "@workos/authkit-tanstack-react-start/client";
+import { useHeliosAuth as useAuth } from "@/lib/auth/helios-auth";
 import {
   LayoutDashboard,
   ListTree,
