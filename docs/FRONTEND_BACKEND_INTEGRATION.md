@@ -83,11 +83,12 @@ The trace-detail page includes a **Trace analysis** panel backed by the
 deterministic evidence engine (see
 [ANALYST_EVIDENCE_ENGINE.md](ANALYST_EVIDENCE_ENGINE.md)):
 
-- Explicit **Analyze trace** action (never auto-runs); **Run again** reruns it.
-- Request body is `{ "rules": null }`-shaped: omitted/null runs all default
-  `single-trace-v1` rules; the UI does not expose a rule picker yet, but the
-  API accepts a non-empty rule subset for future use. Empty lists and unknown
-  rule IDs return `422`.
+- Explicit **Analyze trace** action (never auto-runs); **Run again** / **Run again**
+  reruns the last selected mode.
+- Request body accepts optional `rules` and `include_narrative` (default
+  `false`). Omitted/null `rules` runs all default `single-trace-v1` rules.
+  Empty lists and unknown rule IDs return `422`. Callers cannot send
+  provider/model/prompt/temperature fields.
 - Response is deterministic (`mode: "deterministic"`), ephemeral (never
   persisted anywhere, including localStorage/sessionStorage), project-scoped,
   and content-excluding: no prompts, completions, tool arguments/outputs,
@@ -97,8 +98,11 @@ deterministic evidence engine (see
   trace (`span:<span_id>` selectors parsed via `src/lib/analyst/span-selectors.ts`).
 - Telemetry coverage counts and mandatory analyst limitations are always
   shown; zero findings does not claim the trace is healthy.
-- No external LLM provider is required or called. This is the evidence
-  foundation for a future optional narrative layer.
+- Optional **Generate explanation** requests `include_narrative: true`. The
+  UI shows `narrative_status` (`not_requested` / `disabled` / `complete` /
+  `failed`). Narrative is disabled by default in Helios environments and
+  never required for deterministic analysis. See
+  [ADR_005_OPTIONAL_ANALYST_NARRATIVE.md](ADR_005_OPTIONAL_ANALYST_NARRATIVE.md).
 
 ### Error handling (authenticated APIs)
 

@@ -141,7 +141,7 @@ def get_project_trace(
     "/projects/{project_ref}/analysis/traces/{trace_id}",
     response_model=TraceAnalysisRead,
 )
-def analyze_project_trace(
+async def analyze_project_trace(
     project_ref: str,
     trace_id: str,
     request: TraceAnalysisRequest | None = None,
@@ -150,16 +150,23 @@ def analyze_project_trace(
 ) -> TraceAnalysisRead:
     """Run the deterministic evidence engine on one project-scoped trace.
 
-    Synchronous, ephemeral, and content-excluding: nothing is persisted, no
-    external service or LLM is called, and the response only carries what the
-    engine's redaction layer approved. The project/trace/ruleset cannot be
-    overridden through the body — only an optional rule-ID subset is accepted.
+    Ephemeral and content-excluding: nothing is persisted. Deterministic
+    findings are always computed first. When ``include_narrative`` is true and
+    the environment is configured for it, an optional provider may explain
+    existing evidence IDs; provider failure never suppresses deterministic
+    results. Callers cannot override project, trace, ruleset, provider, or
+    model — only an optional rule-ID subset and the narrative flag.
     """
     project = _resolve_project(db, auth, project_ref)
     rules = request.rules if request is not None else None
+    include_narrative = bool(request.include_narrative) if request is not None else False
     try:
-        analysis = trace_analysis_service.analyze_project_trace(
-            db, project=project, trace_id=trace_id, rules=rules
+        analysis = await trace_analysis_service.analyze_project_trace(
+            db,
+            project=project,
+            trace_id=trace_id,
+            rules=rules,
+            include_narrative=include_narrative,
         )
     except AnalystValidationError as exc:
         raise HTTPException(status_code=422, detail=str(exc))

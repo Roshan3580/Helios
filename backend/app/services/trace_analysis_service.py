@@ -6,11 +6,13 @@ Sits between the human-authenticated router and the pure engine in
 - fetch canonical trace detail through the existing project-scoped read
   service (never an unscoped query),
 - invoke the pure ``analyze_trace`` runner,
-- convert the engine result into the browser-safe API schema.
+- convert the engine result into the browser-safe API schema,
+- optionally attach an evidence-constrained narrative via
+  ``app.analyst_narrative`` (never altering deterministic findings).
 
-This module performs no network access, no database writes, and no logging of
-telemetry content. Results are ephemeral: nothing is persisted anywhere.
-Authorization stays in the router/dependency layer; the engine stays pure.
+This module performs no database writes and no logging of telemetry content.
+Results are ephemeral. Authorization stays in the router; the engine stays
+pure; the narrative provider receives only a sanitized evidence bundle.
 """
 
 from __future__ import annotations
@@ -22,6 +24,8 @@ from sqlalchemy.orm import Session
 from app.analyst import analyze_trace
 from app.analyst.models import TraceAnalysisResult
 from app.analyst.rules import DEFAULT_RULE_IDS
+from app.analyst_narrative.provider import NarrativeProvider
+from app.analyst_narrative.service import attach_narrative
 from app.models import Project
 from app.schemas_analysis import (
     AnalysisCoverageRead,
@@ -66,21 +70,26 @@ def _to_api_response(result: TraceAnalysisResult, executed_rules: list[str]) -> 
         limitations=list(result.limitations),
         available_rules=list(DEFAULT_RULE_IDS),
         executed_rules=executed_rules,
+        narrative_status="not_requested",
+        narrative=None,
     )
 
 
-def analyze_project_trace(
+async def analyze_project_trace(
     db: Session,
     *,
     project: Project,
     trace_id: str,
     rules: Sequence[str] | None = None,
+    include_narrative: bool = False,
+    narrative_provider: NarrativeProvider | None = None,
 ) -> TraceAnalysisRead | None:
-    """Run deterministic analysis for one trace inside an authorized project.
+    """Run deterministic analysis (and optional narrative) for one project trace.
 
     Returns ``None`` when the trace does not exist in this project (the router
-    maps that to 404 without revealing whether it exists elsewhere). Raises
-    ``AnalystValidationError`` for unknown rule IDs (router maps to 422).
+    maps that to 404). Raises ``AnalystValidationError`` for unknown rule IDs.
+    Provider failures yield ``narrative_status="failed"`` with unchanged
+    deterministic findings — never a 500 solely for narrative errors.
     """
     detail = otel_trace_service.get_trace_detail(
         db, project_slug=project.slug, trace_id=trace_id
@@ -94,4 +103,9 @@ def analyze_project_trace(
         rules=list(rules) if rules is not None else None,
     )
     executed = list(DEFAULT_RULE_IDS) if rules is None else list(rules)
-    return _to_api_response(result, executed_rules=executed)
+    analysis = _to_api_response(result, executed_rules=executed)
+    return await attach_narrative(
+        analysis,
+        include_narrative=include_narrative,
+        provider=narrative_provider,
+    )

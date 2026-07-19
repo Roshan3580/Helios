@@ -184,8 +184,14 @@ Layering: router (`routers/user_v2.py`) → application service
 - coverage counts and the mandatory limitations are always displayed
 - zero findings shows truthful copy — the trace is not declared healthy
 
-## Future boundary
+## Optional narrative layer
 
-A later checkpoint may add optional LLM narration that may only explain
-existing evidence IDs. Deterministic findings remain the source of truth when
-narration is disabled, unavailable, or fails.
+An optional provider-backed narrative may explain existing evidence IDs when
+explicitly requested (`include_narrative: true`) and when both
+`HELIOS_ANALYST_NARRATIVE_ENABLED` and `HELIOS_ANALYST_ALLOW_THIRD_PARTY` are
+enabled with a configured provider/model/key. See
+[ADR_005_OPTIONAL_ANALYST_NARRATIVE.md](ADR_005_OPTIONAL_ANALYST_NARRATIVE.md).
+
+Narrative statuses: `not_requested` | `disabled` | `complete` | `failed`.
+Provider failure never suppresses deterministic findings. Narrative is
+disabled by default and is not required for CI or local development.

@@ -265,12 +265,21 @@ class TestRequestValidation:
         seed_project(db_session, client, slug="p", org=linked_org)
         for payload in (
             {"include_content": True},
-            {"include_narrative": True},
             {"prompt": "explain this trace"},
+            {"model": "gpt-test"},
+            {"provider": "openai"},
             {"thresholds": {"latency": 0.1}},
         ):
             response = analyze(client, "p", token=make_token(), json=payload)
             assert response.status_code == 422, payload
+
+    def test_default_response_marks_narrative_not_requested(
+        self, client, db_session, workos_verifier, linked_org
+    ):
+        seed_project(db_session, client, slug="p", org=linked_org)
+        body = analyze(client, "p", token=make_token()).json()
+        assert body["narrative_status"] == "not_requested"
+        assert body["narrative"] is None
 
 
 class TestResponseIntegrity:

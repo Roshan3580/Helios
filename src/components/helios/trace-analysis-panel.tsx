@@ -1,7 +1,11 @@
 import { useState } from "react";
 
 import { Eyebrow, StatusBadge } from "@/components/helios/primitives";
-import type { AnalysisFinding, TraceAnalysis } from "@/lib/api/user";
+import type {
+  AnalysisFinding,
+  TraceAnalysis,
+  TraceAnalysisFindingExplanation,
+} from "@/lib/api/user";
 import {
   categoryLabel,
   confidenceLabel,
@@ -17,9 +21,9 @@ import { resolveCitedSpanIds } from "@/lib/analyst/span-selectors";
 import { cn } from "@/lib/utils";
 
 /**
- * Deterministic trace-analysis panel: explicit run action, evidence-backed
- * findings, telemetry coverage, and analyst limitations. Everything shown is
- * returned verbatim by the backend engine — no reinterpretation, no LLM.
+ * Deterministic trace-analysis panel with an optional narrative section.
+ * Deterministic findings remain the primary surface; narrative only explains
+ * existing evidence IDs and never invents findings.
  */
 export function TraceAnalysisPanel({
   state,
@@ -29,15 +33,23 @@ export function TraceAnalysisPanel({
   onSelectSpan,
 }: {
   state: TraceAnalysisState;
-  /** True while the trace itself is loading/unavailable. */
   actionDisabled: boolean;
   knownSpanIds: ReadonlySet<string>;
   selectedSpanId: string | null;
   onSelectSpan: (spanId: string) => void;
 }) {
-  const { status, analysis, error, runAnalysis } = state;
+  const {
+    status,
+    analysis,
+    error,
+    runAnalysis,
+    generateExplanation,
+    rerunAnalysis,
+    narrativeRequestStatus,
+  } = state;
   const running = status === "loading";
-  const disabled = actionDisabled || running || !state.canRun;
+  const narrativeLoading = narrativeRequestStatus === "loading";
+  const disabled = actionDisabled || running || narrativeLoading || !state.canRun;
 
   return (
     <section className="border border-rule bg-card" aria-label="Trace analysis">
@@ -48,15 +60,21 @@ export function TraceAnalysisPanel({
         </div>
         <button
           type="button"
-          onClick={runAnalysis}
+          onClick={status === "success" ? rerunAnalysis : runAnalysis}
           disabled={disabled}
-          aria-busy={running}
+          aria-busy={running || narrativeLoading}
           className={cn(
             "label-eyebrow border border-rule px-3 py-1.5 hover:bg-paper-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink",
             disabled && "opacity-50 cursor-not-allowed hover:bg-transparent",
           )}
         >
-          {running ? "Analyzing…" : status === "success" ? "Run again" : "Analyze trace"}
+          {running
+            ? "Analyzing…"
+            : narrativeLoading
+              ? "Generating explanation…"
+              : status === "success"
+                ? "Run again"
+                : "Analyze trace"}
         </button>
       </div>
 
@@ -92,6 +110,9 @@ export function TraceAnalysisPanel({
           knownSpanIds={knownSpanIds}
           selectedSpanId={selectedSpanId}
           onSelectSpan={onSelectSpan}
+          generateExplanation={generateExplanation}
+          narrativeLoading={narrativeLoading}
+          actionDisabled={disabled}
         />
       ) : null}
     </section>
@@ -103,13 +124,28 @@ function AnalysisBody({
   knownSpanIds,
   selectedSpanId,
   onSelectSpan,
+  generateExplanation,
+  narrativeLoading,
+  actionDisabled,
 }: {
   analysis: TraceAnalysis;
   knownSpanIds: ReadonlySet<string>;
   selectedSpanId: string | null;
   onSelectSpan: (spanId: string) => void;
+  generateExplanation: () => void;
+  narrativeLoading: boolean;
+  actionDisabled: boolean;
 }) {
   const summary = severitySummary(analysis.findings);
+  const narrativeStatus = analysis.narrative_status ?? "not_requested";
+  const explanationsById = new Map(
+    (analysis.narrative?.finding_explanations ?? []).map((item) => [item.evidence_id, item]),
+  );
+
+  const selectFindingSpans = (finding: AnalysisFinding) => {
+    const cited = resolveCitedSpanIds(finding.span_ids, knownSpanIds);
+    if (cited[0]) onSelectSpan(cited[0]);
+  };
 
   return (
     <div>
@@ -128,6 +164,18 @@ function AnalysisBody({
 
       <CoverageStrip analysis={analysis} />
 
+      <NarrativeSection
+        analysis={analysis}
+        narrativeStatus={narrativeStatus}
+        narrativeLoading={narrativeLoading}
+        actionDisabled={actionDisabled}
+        generateExplanation={generateExplanation}
+        onSelectEvidence={(evidenceId) => {
+          const finding = analysis.findings.find((item) => item.evidence_id === evidenceId);
+          if (finding) selectFindingSpans(finding);
+        }}
+      />
+
       {analysis.findings.length === 0 ? (
         <p className="px-4 py-6 text-[13px] text-muted-foreground">
           No findings were produced by the current deterministic rule set. This does not certify
@@ -142,6 +190,7 @@ function AnalysisBody({
               knownSpanIds={knownSpanIds}
               selectedSpanId={selectedSpanId}
               onSelectSpan={onSelectSpan}
+              explanation={explanationsById.get(finding.evidence_id)}
             />
           ))}
         </ul>
@@ -155,6 +204,153 @@ function AnalysisBody({
           ))}
         </ul>
       </div>
+    </div>
+  );
+}
+
+function NarrativeSection({
+  analysis,
+  narrativeStatus,
+  narrativeLoading,
+  actionDisabled,
+  generateExplanation,
+  onSelectEvidence,
+}: {
+  analysis: TraceAnalysis;
+  narrativeStatus: string;
+  narrativeLoading: boolean;
+  actionDisabled: boolean;
+  generateExplanation: () => void;
+  onSelectEvidence: (evidenceId: string) => void;
+}) {
+  const showGenerateButton =
+    narrativeStatus !== "disabled" &&
+    (narrativeStatus === "not_requested" ||
+      narrativeStatus === "failed" ||
+      narrativeStatus === "complete");
+
+  return (
+    <div className="border-b border-rule px-4 py-4" aria-label="Optional explanation">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Eyebrow>Optional explanation</Eyebrow>
+        {showGenerateButton ? (
+          <button
+            type="button"
+            onClick={generateExplanation}
+            disabled={actionDisabled || narrativeLoading}
+            aria-busy={narrativeLoading}
+            className={cn(
+              "label-eyebrow border border-rule px-3 py-1.5 hover:bg-paper-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink",
+              (actionDisabled || narrativeLoading) &&
+                "opacity-50 cursor-not-allowed hover:bg-transparent",
+            )}
+          >
+            {narrativeLoading
+              ? "Generating explanation…"
+              : narrativeStatus === "complete"
+                ? "Regenerate explanation"
+                : "Generate explanation"}
+          </button>
+        ) : null}
+      </div>
+
+      <p className="mt-2 text-[12px] text-muted-foreground">
+        Deterministic findings are always primary. An optional explanation may send bounded,
+        redacted evidence metadata to the configured third-party provider. Prompt, completion,
+        tool-output, retrieval-document, credential, and identity content are excluded.
+      </p>
+
+      {narrativeLoading ? (
+        <p className="mt-3 text-[13px] text-muted-foreground" role="status">
+          Generating explanation…
+        </p>
+      ) : null}
+
+      {!narrativeLoading && narrativeStatus === "disabled" ? (
+        <p className="mt-3 text-[13px] text-muted-foreground" role="status">
+          Narrative explanation is not enabled for this Helios environment.
+        </p>
+      ) : null}
+
+      {!narrativeLoading && narrativeStatus === "failed" ? (
+        <div className="mt-3" role="alert">
+          <p className="text-[13px] text-muted-foreground">
+            The optional explanation could not be generated. Deterministic findings remain available
+            below.
+          </p>
+          <button
+            type="button"
+            onClick={generateExplanation}
+            disabled={actionDisabled}
+            className="mt-2 label-eyebrow border border-rule px-3 py-1.5 hover:bg-paper-2"
+          >
+            Retry explanation
+          </button>
+        </div>
+      ) : null}
+
+      {!narrativeLoading && narrativeStatus === "complete" && analysis.narrative ? (
+        <div className="mt-4 space-y-4">
+          <div>
+            <h3 className="text-[12px] font-medium text-foreground">Summary</h3>
+            <p className="mt-1 whitespace-normal break-words text-[13px] leading-relaxed">
+              {analysis.narrative.summary}
+            </p>
+          </div>
+          {analysis.narrative.finding_explanations.length > 0 ? (
+            <ul className="space-y-3" aria-label="Finding explanations">
+              {analysis.narrative.finding_explanations.map((item) => (
+                <li key={item.evidence_id} className="border border-rule bg-paper px-3 py-2.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-mono text-[11px] text-muted-foreground">
+                      {item.evidence_id}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => onSelectEvidence(item.evidence_id)}
+                      className="label-eyebrow border border-rule px-2 py-0.5 hover:bg-paper-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink"
+                    >
+                      View related span
+                    </button>
+                  </div>
+                  <p className="mt-2 whitespace-normal break-words text-[13px] leading-relaxed">
+                    {item.explanation}
+                  </p>
+                  {item.remediation ? (
+                    <p className="mt-2 whitespace-normal break-words text-[12.5px] text-muted-foreground">
+                      <span className="font-medium text-foreground">Suggestion: </span>
+                      {item.remediation}
+                    </p>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {analysis.narrative.caveats.length > 0 ? (
+            <div>
+              <h3 className="text-[12px] font-medium text-foreground">Explanation caveats</h3>
+              <ul className="mt-1 list-disc space-y-1 pl-5 text-[12.5px] text-muted-foreground">
+                {analysis.narrative.caveats.map((caveat) => (
+                  <li key={caveat}>{caveat}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {!narrativeLoading && narrativeStatus === "not_requested" ? (
+        <p className="mt-3 text-[13px] text-muted-foreground">
+          No optional explanation has been requested for this analysis.
+        </p>
+      ) : null}
+
+      {!["not_requested", "disabled", "complete", "failed"].includes(narrativeStatus) &&
+      !narrativeLoading ? (
+        <p className="mt-3 text-[13px] text-muted-foreground" role="status">
+          The optional explanation status is unavailable. Deterministic findings remain below.
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -190,11 +386,13 @@ function FindingCard({
   knownSpanIds,
   selectedSpanId,
   onSelectSpan,
+  explanation,
 }: {
   finding: AnalysisFinding;
   knownSpanIds: ReadonlySet<string>;
   selectedSpanId: string | null;
   onSelectSpan: (spanId: string) => void;
+  explanation?: TraceAnalysisFindingExplanation;
 }) {
   const [expanded, setExpanded] = useState(false);
   const citedSpanIds = resolveCitedSpanIds(finding.span_ids, knownSpanIds);
@@ -205,7 +403,7 @@ function FindingCard({
   };
 
   return (
-    <li className="px-4 py-4">
+    <li className="px-4 py-4" id={`finding-${finding.evidence_id}`}>
       <div className="flex flex-wrap items-center gap-2">
         <StatusBadge tone={severityTone(finding.severity)}>
           {severityLabel(finding.severity)}
@@ -214,11 +412,27 @@ function FindingCard({
         <span className="font-mono text-[11px] text-muted-foreground">
           {categoryLabel(finding.category)} · {confidenceLabel(finding.confidence)}
         </span>
+        <span className="font-mono text-[10.5px] text-muted-foreground">{finding.evidence_id}</span>
       </div>
 
       <p className="mt-2 whitespace-normal break-words text-[13px] leading-relaxed text-foreground">
         {finding.statement}
       </p>
+
+      {explanation ? (
+        <div className="mt-2 border border-rule bg-paper px-3 py-2">
+          <Eyebrow>Explanation</Eyebrow>
+          <p className="mt-1 whitespace-normal break-words text-[12.5px] leading-relaxed">
+            {explanation.explanation}
+          </p>
+          {explanation.remediation ? (
+            <p className="mt-1 whitespace-normal break-words text-[12px] text-muted-foreground">
+              <span className="font-medium text-foreground">Suggestion: </span>
+              {explanation.remediation}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
       <dl className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-[12px]">
         <div className="flex items-baseline gap-1.5 min-w-0">

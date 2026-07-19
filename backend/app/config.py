@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -22,6 +23,24 @@ class Settings(BaseSettings):
     workos_jwks_cache_ttl: int = 3600  # seconds
     workos_jwks_timeout: float = 5.0  # seconds per JWKS HTTP request
 
+    # Optional analyst narrative (disabled by default; server-only — never VITE_*).
+    # Requires BOTH helios_analyst_narrative_enabled and
+    # helios_analyst_allow_third_party before any provider call is made.
+    helios_analyst_narrative_enabled: bool = False
+    helios_analyst_allow_third_party: bool = False
+    helios_analyst_provider: str = ""
+    helios_analyst_model: str = ""
+    helios_analyst_timeout_seconds: float = Field(default=20.0, ge=1.0, le=120.0)
+    helios_analyst_max_output_tokens: int = Field(default=1200, ge=64, le=8192)
+    helios_analyst_max_evidence_bytes: int = Field(default=24000, ge=1024, le=200_000)
+    helios_analyst_max_findings: int = Field(default=25, ge=1, le=200)
+    openai_api_key: SecretStr = SecretStr("")
+
+    @field_validator("helios_analyst_provider")
+    @classmethod
+    def _normalize_provider(cls, value: str) -> str:
+        return (value or "").strip().lower()
+
     @property
     def workos_issuer_resolved(self) -> str:
         if self.workos_issuer:
@@ -41,6 +60,15 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    def __repr__(self) -> str:
+        # Never include API-key material in settings representations.
+        return (
+            "Settings(helios_analyst_narrative_enabled="
+            f"{self.helios_analyst_narrative_enabled!r}, "
+            f"helios_analyst_provider={self.helios_analyst_provider!r}, "
+            f"helios_analyst_model={self.helios_analyst_model!r})"
+        )
 
 
 @lru_cache

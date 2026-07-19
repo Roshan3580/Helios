@@ -2,37 +2,41 @@
 
 Thin conversion layer over the pure engine models in ``app.analyst``:
 
-- The request cannot override project, trace, ruleset version, severity, or
-  thresholds; the only accepted field is an optional rule-ID subset.
+- The request cannot override project, trace, ruleset version, severity,
+  thresholds, provider, or model. Accepted fields are an optional rule-ID
+  subset and an optional ``include_narrative`` flag.
 - The response never carries raw JWTs, project API keys, prompt/completion
   content, or attributes beyond what the engine's redaction layer approved.
-- ``mode`` is fixed to ``"deterministic"``: no external LLM is involved.
+- ``mode`` remains ``"deterministic"``. Optional narrative prose is additive
+  and may be absent when disabled or failed.
 """
 
 from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class TraceAnalysisRequest(BaseModel):
-    """Command payload for one deterministic analysis run.
+    """Command payload for one analysis run.
 
     ``rules`` semantics:
     - omitted or ``null`` → run every default ``single-trace-v1`` rule
     - non-empty list → run only those rules (duplicates are deduplicated,
       first occurrence wins)
-    - empty list → rejected with 422 (a run that executes nothing is
-      considered a caller error, not a valid analysis)
+    - empty list → rejected with 422
 
-    Unknown fields are rejected (422) so the contract cannot silently grow
-    ``include_content``-style options.
+    ``include_narrative`` defaults to ``false``. When ``true``, the server may
+    attempt an optional provider-backed explanation of the deterministic
+    findings. Narrative never runs without deterministic analysis first.
+    Callers cannot select provider, model, temperature, or prompts.
     """
 
     model_config = ConfigDict(extra="forbid")
 
     rules: list[str] | None = None
+    include_narrative: bool = False
 
     @field_validator("rules")
     @classmethod
@@ -44,7 +48,6 @@ class TraceAnalysisRequest(BaseModel):
                 "rules must be omitted/null to run all default rules, "
                 "or a non-empty list of rule IDs"
             )
-        # Deduplicate while preserving first-seen order.
         return list(dict.fromkeys(value))
 
 
@@ -77,6 +80,18 @@ class AnalysisCoverageRead(BaseModel):
     orphan_spans: int
 
 
+class NarrativeFindingExplanationRead(BaseModel):
+    evidence_id: str
+    explanation: str
+    remediation: str = ""
+
+
+class TraceAnalysisNarrativeRead(BaseModel):
+    summary: str
+    finding_explanations: list[NarrativeFindingExplanationRead] = Field(default_factory=list)
+    caveats: list[str] = Field(default_factory=list)
+
+
 class TraceAnalysisRead(BaseModel):
     analysis_version: str
     mode: Literal["deterministic"]
@@ -88,3 +103,7 @@ class TraceAnalysisRead(BaseModel):
     limitations: list[str]
     available_rules: list[str]
     executed_rules: list[str]
+    narrative_status: Literal["not_requested", "disabled", "complete", "failed"] = (
+        "not_requested"
+    )
+    narrative: TraceAnalysisNarrativeRead | None = None

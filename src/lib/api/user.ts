@@ -197,6 +197,21 @@ export interface AnalysisCoverage {
   orphan_spans: number;
 }
 
+/** Optional narrative status returned with deterministic analysis. */
+export type NarrativeStatus = "not_requested" | "disabled" | "complete" | "failed" | string;
+
+export interface TraceAnalysisFindingExplanation {
+  evidence_id: string;
+  explanation: string;
+  remediation: string;
+}
+
+export interface TraceAnalysisNarrative {
+  summary: string;
+  finding_explanations: TraceAnalysisFindingExplanation[];
+  caveats: string[];
+}
+
 /** Response of POST /v2/user/projects/{ref}/analysis/traces/{trace_id}. */
 export interface TraceAnalysis {
   analysis_version: string;
@@ -209,6 +224,8 @@ export interface TraceAnalysis {
   limitations: string[];
   available_rules: string[];
   executed_rules: string[];
+  narrative_status?: NarrativeStatus;
+  narrative?: TraceAnalysisNarrative | null;
 }
 
 /**
@@ -321,22 +338,28 @@ export function analyzeUserProjectTrace({
   projectRef,
   traceId,
   rules,
+  includeNarrative,
   signal,
 }: {
   accessToken: string;
   projectRef: string;
   traceId: string;
   rules?: string[];
+  /** When true, request an optional evidence-constrained explanation. */
+  includeNarrative?: boolean;
   signal?: AbortSignal;
 }): Promise<TraceAnalysis> {
   const project = encodeURIComponent(projectRef);
   const trace = encodeURIComponent(traceId);
+  const body: { rules?: string[]; include_narrative?: boolean } = {};
+  if (rules && rules.length > 0) body.rules = rules;
+  if (includeNarrative) body.include_narrative = true;
   return userApiFetch<TraceAnalysis>(
     `/v2/user/projects/${project}/analysis/traces/${trace}`,
     accessToken,
     {
       method: "POST",
-      body: rules && rules.length > 0 ? { rules } : {},
+      body,
       signal,
     },
   );

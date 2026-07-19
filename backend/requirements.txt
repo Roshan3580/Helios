@@ -9,3 +9,4 @@ python-dotenv>=1.0.0
 httpx>=0.28.0
 opentelemetry-proto>=1.30.0
 PyJWT[crypto]>=2.8.0,<3
+openai>=2.46.0,<3
