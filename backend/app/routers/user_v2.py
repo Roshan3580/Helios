@@ -18,6 +18,7 @@ from app.database import get_db
 from app.models import Project
 from app.schemas_analysis import TraceAnalysisRead, TraceAnalysisRequest
 from app.schemas_dashboard import ProjectDashboardRead
+from app.schemas_project_analysis import ProjectAnalysisRead, ProjectAnalysisRequest
 from app.schemas_user import UserMeRead, UserOrganizationRead, UserProjectRead
 from app.schemas_v2 import OtelTraceDetailRead, OtelTraceSummaryRead
 from app.security.human_dependencies import require_human, require_org_member
@@ -25,6 +26,7 @@ from app.security.workos_auth import HumanAuthContext
 from app.services import (
     otel_dashboard_service,
     otel_trace_service,
+    project_analysis_service,
     trace_analysis_service,
 )
 
@@ -135,6 +137,41 @@ def get_project_trace(
     if not detail:
         raise HTTPException(status_code=404, detail=f"Trace '{trace_id}' not found")
     return detail
+
+
+@router.post(
+    "/projects/{project_ref}/analysis",
+    response_model=ProjectAnalysisRead,
+)
+async def analyze_project(
+    project_ref: str,
+    request: ProjectAnalysisRequest | None = None,
+    auth: HumanAuthContext = Depends(require_org_member),
+    db: Session = Depends(get_db),
+) -> ProjectAnalysisRead:
+    """Run the deterministic project-window evidence analysis.
+
+    Compares the selected current window against the immediately preceding
+    equal-length baseline window over canonical OTel data for one authorized
+    project. Ephemeral, content-excluding, and bounded: nothing is persisted,
+    and callers cannot override project, ``as_of``, thresholds, provider, or
+    model — only ``hours``, an optional rule-ID subset, and the optional
+    narrative flag.
+    """
+    project = _resolve_project(db, auth, project_ref)
+    hours = request.hours if request is not None else 24
+    rules = request.rules if request is not None else None
+    include_narrative = bool(request.include_narrative) if request is not None else False
+    try:
+        return await project_analysis_service.analyze_project(
+            db,
+            project=project,
+            hours=hours,
+            rules=rules,
+            include_narrative=include_narrative,
+        )
+    except AnalystValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
 
 
 @router.post(

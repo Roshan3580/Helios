@@ -30,7 +30,11 @@ class ProviderNarrative(BaseModel):
 
 
 class NarrativeEvidenceFinding(BaseModel):
-    """Sanitized finding fields safe to send to a narrative provider."""
+    """Sanitized finding fields safe to send to a narrative provider.
+
+    ``entity_type``/``entity_label`` are populated only by the project-window
+    serializer; single-trace bundles leave them unset (backward compatible).
+    """
 
     evidence_id: str
     rule_id: str
@@ -41,6 +45,8 @@ class NarrativeEvidenceFinding(BaseModel):
     metric_name: str
     observed_value: Any = None
     baseline_value: Any | None = None
+    entity_type: str | None = None
+    entity_label: str | None = None
     supporting_attributes: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -68,6 +74,34 @@ class NarrativeEvidenceBundle(BaseModel):
     evidence_truncated: bool = False
     findings_included: int = 0
     findings_total: int = 0
+
+
+class ProjectNarrativeEvidenceBundle(BaseModel):
+    """Bounded, redacted provider payload for project-window analysis.
+
+    Contains only deterministic analysis outputs: version, window boundaries
+    and durations, factual coverage counts, limitations, and sanitized
+    findings. It never carries project names, organization or user identity,
+    raw trace/span rows, trace IDs, credentials, or captured content —
+    deterministic evidence links stay in the API response, outside the
+    narrative path.
+    """
+
+    analysis_version: str
+    window_hours: int
+    current_window_start: str
+    current_window_end: str
+    baseline_window_start: str
+    baseline_window_end: str
+    limitations: list[str]
+    coverage: dict[str, int]
+    findings: list[NarrativeEvidenceFinding]
+    evidence_truncated: bool = False
+    findings_included: int = 0
+    findings_total: int = 0
+
+
+AnyNarrativeEvidenceBundle = NarrativeEvidenceBundle | ProjectNarrativeEvidenceBundle
 
 
 class NarrativeConfigSnapshot(BaseModel):

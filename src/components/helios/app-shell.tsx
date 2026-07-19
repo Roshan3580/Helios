@@ -12,6 +12,7 @@ import {
   Bell,
   Command,
   LogOut,
+  ScanSearch,
 } from "lucide-react";
 import { HeliosMark, StatusBadge } from "./primitives";
 import { ProjectSelector } from "./project-selector";
@@ -58,6 +59,7 @@ function UserIdentity() {
 const NAV = [
   { to: "/app/dashboard", label: "Dashboard", icon: LayoutDashboard, group: "Observe" },
   { to: "/app/traces", label: "Traces", icon: ListTree, group: "Observe" },
+  { to: "/app/insights", label: "Insights", icon: ScanSearch, group: "Observe" },
   { to: "/app/rag-analytics", label: "RAG Analytics", icon: Search, group: "Observe" },
   { to: "/app/prompts", label: "Prompts", icon: FileCode2, group: "Improve" },
   { to: "/app/evaluations", label: "Evaluations", icon: ClipboardCheck, group: "Improve" },

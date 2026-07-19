@@ -104,6 +104,30 @@ deterministic evidence engine (see
   never required for deterministic analysis. See
   [ADR_005_OPTIONAL_ANALYST_NARRATIVE.md](ADR_005_OPTIONAL_ANALYST_NARRATIVE.md).
 
+### Project insights (Checkpoint 11)
+
+| Route | API |
+| ----- | --- |
+| `/app/insights` | `POST /v2/user/projects/{project_id_or_slug}/analysis` |
+
+Project-wide, time-windowed evidence analysis (ruleset `project-window-v1`;
+see [PROJECT_INSIGHTS.md](PROJECT_INSIGHTS.md)):
+
+- Explicit **Analyze project** action with a 24h / 7d / 30d window selector;
+  never auto-runs on page entry. The current window is compared against the
+  immediately preceding equal-length baseline window.
+- Request accepts only `hours` (1–720, default 24), optional `rules`, and
+  `include_narrative` (default `false`); everything else is `422`.
+- Findings cite bounded lists of real supporting traces that link to
+  `/app/traces/{trace_id}`; coverage counts, caps/truncation metadata, and
+  mandatory limitations are always rendered. Zero findings never claims the
+  project is healthy.
+- Results are ephemeral (React memory only) and clear on project/
+  organization/window change; superseded requests are aborted. Errors reuse
+  the standard handling below (404 copy: "This project was not found in the
+  active organization."; network copy: "Project analysis could not be
+  completed.").
+
 ### Error handling (authenticated APIs)
 
 | Status | Behavior |

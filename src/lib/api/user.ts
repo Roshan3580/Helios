@@ -228,6 +228,107 @@ export interface TraceAnalysis {
   narrative?: TraceAnalysisNarrative | null;
 }
 
+/** Half-open UTC window: start inclusive, end exclusive. */
+export interface ProjectAnalysisWindow {
+  start: string;
+  end: string;
+}
+
+/** Browser-safe reference to one real trace cited by a project finding. */
+export interface ProjectSupportingTrace {
+  trace_id: string;
+  service_name: string;
+  root_span_name: string | null;
+  start_time: string;
+  duration_ms: number;
+  span_count: number;
+  error_count: number;
+  trace_ui_path: string;
+}
+
+/** One deterministic project-window finding (ruleset project-window-v1). */
+export interface ProjectFinding {
+  evidence_id: string;
+  rule_id: string;
+  ruleset_version: string;
+  severity: "error" | "warning" | "info";
+  confidence: "low" | "medium" | "high";
+  category: string;
+  statement: string;
+  metric_name: string;
+  observed_value: OtelJsonValue;
+  baseline_value: OtelJsonValue | null;
+  current_window: ProjectAnalysisWindow;
+  baseline_window: ProjectAnalysisWindow;
+  entity_type: "service" | "model" | "error_signature" | "instrumentation" | "project";
+  entity_label: string;
+  supporting_traces: ProjectSupportingTrace[];
+  supporting_span_ids: string[];
+  sample_size: Record<string, number>;
+  supporting_values: Record<string, OtelJsonValue>;
+}
+
+/** Factual data-coverage counts for both windows. Not a quality score. */
+export interface ProjectAnalysisCoverage {
+  current_trace_count: number;
+  baseline_trace_count: number;
+  current_span_count: number;
+  baseline_span_count: number;
+  current_error_trace_count: number;
+  baseline_error_trace_count: number;
+  services_observed: number;
+  models_observed: number;
+  model_like_span_count: number;
+  spans_with_model_data: number;
+  spans_with_token_data: number;
+  tool_like_span_count: number;
+  traces_without_root_span: number;
+  orphan_span_count: number;
+  current_sample_sparse: boolean;
+  baseline_sample_sparse: boolean;
+}
+
+/** Configured caps plus whether any candidate set was actually truncated. */
+export interface ProjectAnalysisBounds {
+  max_findings: number;
+  max_example_traces_per_finding: number;
+  max_services_analyzed: number;
+  max_models_analyzed: number;
+  max_error_groups: number;
+  max_error_span_candidates: number;
+  services_truncated: boolean;
+  models_truncated: boolean;
+  error_groups_truncated: boolean;
+  error_span_candidates_truncated: boolean;
+  findings_truncated: boolean;
+}
+
+/** Request body of POST /v2/user/projects/{ref}/analysis. */
+export interface ProjectAnalysisRequest {
+  hours?: number;
+  rules?: string[];
+  include_narrative?: boolean;
+}
+
+/** Response of POST /v2/user/projects/{ref}/analysis. */
+export interface ProjectAnalysis {
+  analysis_version: string;
+  mode: "deterministic";
+  project_id: string;
+  generated_at: string;
+  hours: number;
+  current_window: ProjectAnalysisWindow;
+  baseline_window: ProjectAnalysisWindow;
+  findings: ProjectFinding[];
+  coverage: ProjectAnalysisCoverage;
+  limitations: string[];
+  available_rules: string[];
+  executed_rules: string[];
+  bounds: ProjectAnalysisBounds;
+  narrative_status?: NarrativeStatus;
+  narrative?: TraceAnalysisNarrative | null;
+}
+
 /**
  * Typed error for authenticated user API calls.
  * Never includes Authorization headers or tokens.
@@ -363,6 +464,42 @@ export function analyzeUserProjectTrace({
       signal,
     },
   );
+}
+
+/**
+ * Run the deterministic project-window evidence analysis for one project.
+ *
+ * Explicit command (POST) with no server-side side effects: results are
+ * ephemeral and never persisted. The token is obtained fresh by the caller;
+ * there is no project API key, provider/model selection, or retry loop —
+ * reruns are user-triggered.
+ */
+export function analyzeUserProject({
+  accessToken,
+  projectRef,
+  hours,
+  rules,
+  includeNarrative,
+  signal,
+}: {
+  accessToken: string;
+  projectRef: string;
+  hours?: number;
+  rules?: string[];
+  /** When true, request an optional evidence-constrained explanation. */
+  includeNarrative?: boolean;
+  signal?: AbortSignal;
+}): Promise<ProjectAnalysis> {
+  const project = encodeURIComponent(projectRef);
+  const body: ProjectAnalysisRequest = {};
+  if (hours != null) body.hours = hours;
+  if (rules && rules.length > 0) body.rules = rules;
+  if (includeNarrative) body.include_narrative = true;
+  return userApiFetch<ProjectAnalysis>(`/v2/user/projects/${project}/analysis`, accessToken, {
+    method: "POST",
+    body,
+    signal,
+  });
 }
 
 export function fetchUserProjectDashboard(

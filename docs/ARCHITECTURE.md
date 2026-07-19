@@ -87,22 +87,31 @@ backend/app/
 ├── routers/          # health, projects, traces, dashboard, rag, ...
 ├── services/         # Business logic and aggregates
 ├── analyst/          # Deterministic single-trace evidence engine (pure; no LLM)
+├── project_analyst/  # Deterministic project-window evidence engine (bounded SQL)
 └── seed.py           # Demo seed data
 ```
 
 See [ANALYST_EVIDENCE_ENGINE.md](ANALYST_EVIDENCE_ENGINE.md) for ruleset
 `single-trace-v1` and its authenticated API
 (`POST /v2/user/projects/{project_ref}/analysis/traces/{trace_id}`, exposed via
-`routers/user_v2.py` → `services/trace_analysis_service.py` → `app/analyst`).
-Results are deterministic, synchronous, and never persisted.
+`routers/user_v2.py` → `services/trace_analysis_service.py` → `app/analyst`),
+and [PROJECT_INSIGHTS.md](PROJECT_INSIGHTS.md) for ruleset `project-window-v1`
+and its project-wide, time-windowed counterpart
+(`POST /v2/user/projects/{project_ref}/analysis`, exposed via
+`routers/user_v2.py` → `services/project_analysis_service.py` →
+`app/project_analyst`, backing the `/app/insights` page). Both are
+deterministic, synchronous, bounded, and never persisted; the project engine
+compares the selected window against the immediately preceding equal-length
+baseline window using project-bound SQL aggregates with capped example
+extraction.
 
 Optional narrative explanations are implemented in
 `backend/app/analyst_narrative/` behind explicit feature flags (see
-[ADR_005_OPTIONAL_ANALYST_NARRATIVE.md](ADR_005_OPTIONAL_ANALYST_NARRATIVE.md)).
-The provider receives only a sanitized evidence bundle and may not invent
-findings.
-The engine analyzes canonical OTel trace detail only; it is not yet exposed via
-an API or UI and does not call external LLM providers.
+[ADR_005_OPTIONAL_ANALYST_NARRATIVE.md](ADR_005_OPTIONAL_ANALYST_NARRATIVE.md))
+and are shared by both analysis routes. The provider receives only a
+sanitized, bounded evidence bundle (for project analysis: no trace IDs,
+project names, or identity) and may not invent findings, alter deterministic
+results, or create links.
 
 ### API surface (read + write)
 
@@ -115,6 +124,8 @@ an API or UI and does not call external LLM providers.
 | GET    | `/v1/traces`            | List traces                | Legacy compatibility |
 | GET    | `/v1/traces/{id}`       | Trace detail               | Legacy compatibility |
 | GET    | `/v2/user/projects/{ref}/dashboard` | Org-scoped OTel dashboard aggregates (WorkOS JWT) | **Canonical v2** |
+| POST   | `/v2/user/projects/{ref}/analysis` | Deterministic project-window analysis (WorkOS JWT) | **Canonical v2** |
+| POST   | `/v2/user/projects/{ref}/analysis/traces/{trace_id}` | Deterministic single-trace analysis (WorkOS JWT) | **Canonical v2** |
 | GET    | `/v1/dashboard/summary` | Dashboard aggregates       | Legacy compatibility |
 | GET    | `/v1/rag/metrics`       | RAG analytics              | Legacy compatibility |
 | GET    | `/v1/evaluations`       | Eval runs                  | Legacy compatibility |

@@ -16,6 +16,7 @@ import { Route as AppTracesRouteImport } from './routes/app.traces'
 import { Route as AppSettingsRouteImport } from './routes/app.settings'
 import { Route as AppRagAnalyticsRouteImport } from './routes/app.rag-analytics'
 import { Route as AppPromptsRouteImport } from './routes/app.prompts'
+import { Route as AppInsightsRouteImport } from './routes/app.insights'
 import { Route as AppExperimentsRouteImport } from './routes/app.experiments'
 import { Route as AppEvaluationsRouteImport } from './routes/app.evaluations'
 import { Route as AppDatasetsRouteImport } from './routes/app.datasets'
@@ -59,6 +60,11 @@ const AppRagAnalyticsRoute = AppRagAnalyticsRouteImport.update({
 const AppPromptsRoute = AppPromptsRouteImport.update({
   id: '/prompts',
   path: '/prompts',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppInsightsRoute = AppInsightsRouteImport.update({
+  id: '/insights',
+  path: '/insights',
   getParentRoute: () => AppRoute,
 } as any)
 const AppExperimentsRoute = AppExperimentsRouteImport.update({
@@ -114,6 +120,7 @@ export interface FileRoutesByFullPath {
   '/app/datasets': typeof AppDatasetsRoute
   '/app/evaluations': typeof AppEvaluationsRoute
   '/app/experiments': typeof AppExperimentsRoute
+  '/app/insights': typeof AppInsightsRoute
   '/app/prompts': typeof AppPromptsRoute
   '/app/rag-analytics': typeof AppRagAnalyticsRoute
   '/app/settings': typeof AppSettingsRoute
@@ -131,6 +138,7 @@ export interface FileRoutesByTo {
   '/app/datasets': typeof AppDatasetsRoute
   '/app/evaluations': typeof AppEvaluationsRoute
   '/app/experiments': typeof AppExperimentsRoute
+  '/app/insights': typeof AppInsightsRoute
   '/app/prompts': typeof AppPromptsRoute
   '/app/rag-analytics': typeof AppRagAnalyticsRoute
   '/app/settings': typeof AppSettingsRoute
@@ -150,6 +158,7 @@ export interface FileRoutesById {
   '/app/datasets': typeof AppDatasetsRoute
   '/app/evaluations': typeof AppEvaluationsRoute
   '/app/experiments': typeof AppExperimentsRoute
+  '/app/insights': typeof AppInsightsRoute
   '/app/prompts': typeof AppPromptsRoute
   '/app/rag-analytics': typeof AppRagAnalyticsRoute
   '/app/settings': typeof AppSettingsRoute
@@ -170,6 +179,7 @@ export interface FileRouteTypes {
     | '/app/datasets'
     | '/app/evaluations'
     | '/app/experiments'
+    | '/app/insights'
     | '/app/prompts'
     | '/app/rag-analytics'
     | '/app/settings'
@@ -187,6 +197,7 @@ export interface FileRouteTypes {
     | '/app/datasets'
     | '/app/evaluations'
     | '/app/experiments'
+    | '/app/insights'
     | '/app/prompts'
     | '/app/rag-analytics'
     | '/app/settings'
@@ -205,6 +216,7 @@ export interface FileRouteTypes {
     | '/app/datasets'
     | '/app/evaluations'
     | '/app/experiments'
+    | '/app/insights'
     | '/app/prompts'
     | '/app/rag-analytics'
     | '/app/settings'
@@ -275,6 +287,13 @@ declare module '@tanstack/react-router' {
       path: '/prompts'
       fullPath: '/app/prompts'
       preLoaderRoute: typeof AppPromptsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/insights': {
+      id: '/app/insights'
+      path: '/insights'
+      fullPath: '/app/insights'
+      preLoaderRoute: typeof AppInsightsRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/experiments': {
@@ -360,6 +379,7 @@ interface AppRouteChildren {
   AppDatasetsRoute: typeof AppDatasetsRoute
   AppEvaluationsRoute: typeof AppEvaluationsRoute
   AppExperimentsRoute: typeof AppExperimentsRoute
+  AppInsightsRoute: typeof AppInsightsRoute
   AppPromptsRoute: typeof AppPromptsRoute
   AppRagAnalyticsRoute: typeof AppRagAnalyticsRoute
   AppSettingsRoute: typeof AppSettingsRoute
@@ -372,6 +392,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppDatasetsRoute: AppDatasetsRoute,
   AppEvaluationsRoute: AppEvaluationsRoute,
   AppExperimentsRoute: AppExperimentsRoute,
+  AppInsightsRoute: AppInsightsRoute,
   AppPromptsRoute: AppPromptsRoute,
   AppRagAnalyticsRoute: AppRagAnalyticsRoute,
   AppSettingsRoute: AppSettingsRoute,

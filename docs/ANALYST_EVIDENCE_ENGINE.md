@@ -195,3 +195,16 @@ enabled with a configured provider/model/key. See
 Narrative statuses: `not_requested` | `disabled` | `complete` | `failed`.
 Provider failure never suppresses deterministic findings. Narrative is
 disabled by default and is not required for CI or local development.
+
+## Project-wide analysis (Checkpoint 11)
+
+A separate, project-window ruleset (**`project-window-v1`**, package
+`backend/app/project_analyst/`) compares a current time window against the
+immediately preceding equal-length window across all of a project's canonical
+OTel data, exposed at `POST /v2/user/projects/{project_ref}/analysis` and the
+`/app/insights` page. It reuses this engine's vocabulary
+(severity/confidence/category), redaction philosophy, and the optional
+narrative layer, but has its own bounded SQL evidence queries, thresholds,
+finding shape (entity + windows + supporting trace references), and evidence
+IDs (`pev_…`). Single-trace rule thresholds and semantics are unchanged. See
+[PROJECT_INSIGHTS.md](PROJECT_INSIGHTS.md).

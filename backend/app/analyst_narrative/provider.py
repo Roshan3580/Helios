@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
-from app.analyst_narrative.models import NarrativeEvidenceBundle, ProviderNarrative
+from app.analyst_narrative.models import AnyNarrativeEvidenceBundle, ProviderNarrative
 
 
 class NarrativeProviderError(Exception):
@@ -44,7 +44,7 @@ class NarrativeProvider(Protocol):
     async def generate(
         self,
         *,
-        bundle: NarrativeEvidenceBundle,
+        bundle: AnyNarrativeEvidenceBundle,
     ) -> ProviderNarrative:
         """Produce a structured narrative constrained to the evidence bundle."""
         ...

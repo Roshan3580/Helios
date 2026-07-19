@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import json
 
-from app.analyst_narrative.models import NarrativeEvidenceBundle, ProviderNarrative
+from app.analyst_narrative.models import AnyNarrativeEvidenceBundle, ProviderNarrative
 from app.analyst_narrative.provider import (
     NarrativeConfigurationError,
     NarrativeInvalidOutputError,
@@ -40,7 +40,7 @@ Rules:
 """
 
 
-def _bundle_user_payload(bundle: NarrativeEvidenceBundle) -> str:
+def _bundle_user_payload(bundle: AnyNarrativeEvidenceBundle) -> str:
     payload = {
         "role": "evidence_bundle",
         "note": (
@@ -81,7 +81,7 @@ class OpenAINarrativeProvider:
     async def generate(
         self,
         *,
-        bundle: NarrativeEvidenceBundle,
+        bundle: AnyNarrativeEvidenceBundle,
     ) -> ProviderNarrative:
         # At most one Helios-level retry for retryable provider conditions.
         try:
@@ -89,7 +89,7 @@ class OpenAINarrativeProvider:
         except (NarrativeRateLimitError, NarrativeUnavailableError):
             return await self._call_once(bundle)
 
-    async def _call_once(self, bundle: NarrativeEvidenceBundle) -> ProviderNarrative:
+    async def _call_once(self, bundle: AnyNarrativeEvidenceBundle) -> ProviderNarrative:
         try:
             from openai import (
                 APIStatusError,
