@@ -53,7 +53,9 @@ function DashboardPage() {
       ) : !projectLoading && !selectedProject ? (
         <StatePanel
           title="No project selected"
-          body="No projects are available in this organization. An administrator must link or create a project before the dashboard can load."
+          body="No projects are available in this organization yet. Create a project to load the dashboard."
+          actionLabel="Getting started"
+          actionHref="/app/getting-started"
         />
       ) : (
         <>
@@ -309,17 +311,26 @@ function StatePanel({
   body,
   actionLabel,
   onAction,
+  actionHref,
 }: {
   title: string;
   body: string;
   actionLabel?: string;
   onAction?: () => void;
+  actionHref?: "/app/getting-started";
 }) {
   return (
     <div className="border border-rule bg-card px-4 py-8">
       <h2 className="font-serif text-xl tracking-tight">{title}</h2>
       <p className="mt-2 max-w-xl text-[13px] leading-relaxed text-muted-foreground">{body}</p>
-      {actionLabel && onAction ? (
+      {actionLabel && actionHref ? (
+        <Link
+          to={actionHref}
+          className="mt-4 inline-block label-eyebrow border border-rule px-3 py-1.5 hover:bg-paper-2"
+        >
+          {actionLabel}
+        </Link>
+      ) : actionLabel && onAction ? (
         <button
           type="button"
           onClick={onAction}

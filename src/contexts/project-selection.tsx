@@ -18,6 +18,8 @@ export interface ProjectSelectionState {
   projects: UserProject[];
   selectedProject: UserProject | null;
   selectProject: (projectId: string) => void;
+  /** Alias for reload — refresh authorized project list from the API. */
+  refreshProjects: () => void;
   loading: boolean;
   error: string | null;
   errorStatus: number | null;
@@ -148,6 +150,7 @@ export function ProjectSelectionProvider({ children }: { children: ReactNode }) 
       projects,
       selectedProject,
       selectProject,
+      refreshProjects: reload,
       loading,
       error,
       errorStatus,

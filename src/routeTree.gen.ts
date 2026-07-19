@@ -17,11 +17,13 @@ import { Route as AppSettingsRouteImport } from './routes/app.settings'
 import { Route as AppRagAnalyticsRouteImport } from './routes/app.rag-analytics'
 import { Route as AppPromptsRouteImport } from './routes/app.prompts'
 import { Route as AppInsightsRouteImport } from './routes/app.insights'
+import { Route as AppGettingStartedRouteImport } from './routes/app.getting-started'
 import { Route as AppExperimentsRouteImport } from './routes/app.experiments'
 import { Route as AppEvaluationsRouteImport } from './routes/app.evaluations'
 import { Route as AppDatasetsRouteImport } from './routes/app.datasets'
 import { Route as AppDashboardRouteImport } from './routes/app.dashboard'
 import { Route as AppTracesIdRouteImport } from './routes/app.traces.$id'
+import { Route as AppSettingsApiKeysRouteImport } from './routes/app.settings.api-keys'
 import { Route as ApiAuthSignUpRouteImport } from './routes/api.auth.sign-up'
 import { Route as ApiAuthSignOutRouteImport } from './routes/api.auth.sign-out'
 import { Route as ApiAuthSignInRouteImport } from './routes/api.auth.sign-in'
@@ -67,6 +69,11 @@ const AppInsightsRoute = AppInsightsRouteImport.update({
   path: '/insights',
   getParentRoute: () => AppRoute,
 } as any)
+const AppGettingStartedRoute = AppGettingStartedRouteImport.update({
+  id: '/getting-started',
+  path: '/getting-started',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppExperimentsRoute = AppExperimentsRouteImport.update({
   id: '/experiments',
   path: '/experiments',
@@ -91,6 +98,11 @@ const AppTracesIdRoute = AppTracesIdRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => AppTracesRoute,
+} as any)
+const AppSettingsApiKeysRoute = AppSettingsApiKeysRouteImport.update({
+  id: '/api-keys',
+  path: '/api-keys',
+  getParentRoute: () => AppSettingsRoute,
 } as any)
 const ApiAuthSignUpRoute = ApiAuthSignUpRouteImport.update({
   id: '/api/auth/sign-up',
@@ -120,16 +132,18 @@ export interface FileRoutesByFullPath {
   '/app/datasets': typeof AppDatasetsRoute
   '/app/evaluations': typeof AppEvaluationsRoute
   '/app/experiments': typeof AppExperimentsRoute
+  '/app/getting-started': typeof AppGettingStartedRoute
   '/app/insights': typeof AppInsightsRoute
   '/app/prompts': typeof AppPromptsRoute
   '/app/rag-analytics': typeof AppRagAnalyticsRoute
-  '/app/settings': typeof AppSettingsRoute
+  '/app/settings': typeof AppSettingsRouteWithChildren
   '/app/traces': typeof AppTracesRouteWithChildren
   '/app/': typeof AppIndexRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/sign-in': typeof ApiAuthSignInRoute
   '/api/auth/sign-out': typeof ApiAuthSignOutRoute
   '/api/auth/sign-up': typeof ApiAuthSignUpRoute
+  '/app/settings/api-keys': typeof AppSettingsApiKeysRoute
   '/app/traces/$id': typeof AppTracesIdRoute
 }
 export interface FileRoutesByTo {
@@ -138,16 +152,18 @@ export interface FileRoutesByTo {
   '/app/datasets': typeof AppDatasetsRoute
   '/app/evaluations': typeof AppEvaluationsRoute
   '/app/experiments': typeof AppExperimentsRoute
+  '/app/getting-started': typeof AppGettingStartedRoute
   '/app/insights': typeof AppInsightsRoute
   '/app/prompts': typeof AppPromptsRoute
   '/app/rag-analytics': typeof AppRagAnalyticsRoute
-  '/app/settings': typeof AppSettingsRoute
+  '/app/settings': typeof AppSettingsRouteWithChildren
   '/app/traces': typeof AppTracesRouteWithChildren
   '/app': typeof AppIndexRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/sign-in': typeof ApiAuthSignInRoute
   '/api/auth/sign-out': typeof ApiAuthSignOutRoute
   '/api/auth/sign-up': typeof ApiAuthSignUpRoute
+  '/app/settings/api-keys': typeof AppSettingsApiKeysRoute
   '/app/traces/$id': typeof AppTracesIdRoute
 }
 export interface FileRoutesById {
@@ -158,16 +174,18 @@ export interface FileRoutesById {
   '/app/datasets': typeof AppDatasetsRoute
   '/app/evaluations': typeof AppEvaluationsRoute
   '/app/experiments': typeof AppExperimentsRoute
+  '/app/getting-started': typeof AppGettingStartedRoute
   '/app/insights': typeof AppInsightsRoute
   '/app/prompts': typeof AppPromptsRoute
   '/app/rag-analytics': typeof AppRagAnalyticsRoute
-  '/app/settings': typeof AppSettingsRoute
+  '/app/settings': typeof AppSettingsRouteWithChildren
   '/app/traces': typeof AppTracesRouteWithChildren
   '/app/': typeof AppIndexRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/sign-in': typeof ApiAuthSignInRoute
   '/api/auth/sign-out': typeof ApiAuthSignOutRoute
   '/api/auth/sign-up': typeof ApiAuthSignUpRoute
+  '/app/settings/api-keys': typeof AppSettingsApiKeysRoute
   '/app/traces/$id': typeof AppTracesIdRoute
 }
 export interface FileRouteTypes {
@@ -179,6 +197,7 @@ export interface FileRouteTypes {
     | '/app/datasets'
     | '/app/evaluations'
     | '/app/experiments'
+    | '/app/getting-started'
     | '/app/insights'
     | '/app/prompts'
     | '/app/rag-analytics'
@@ -189,6 +208,7 @@ export interface FileRouteTypes {
     | '/api/auth/sign-in'
     | '/api/auth/sign-out'
     | '/api/auth/sign-up'
+    | '/app/settings/api-keys'
     | '/app/traces/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -197,6 +217,7 @@ export interface FileRouteTypes {
     | '/app/datasets'
     | '/app/evaluations'
     | '/app/experiments'
+    | '/app/getting-started'
     | '/app/insights'
     | '/app/prompts'
     | '/app/rag-analytics'
@@ -207,6 +228,7 @@ export interface FileRouteTypes {
     | '/api/auth/sign-in'
     | '/api/auth/sign-out'
     | '/api/auth/sign-up'
+    | '/app/settings/api-keys'
     | '/app/traces/$id'
   id:
     | '__root__'
@@ -216,6 +238,7 @@ export interface FileRouteTypes {
     | '/app/datasets'
     | '/app/evaluations'
     | '/app/experiments'
+    | '/app/getting-started'
     | '/app/insights'
     | '/app/prompts'
     | '/app/rag-analytics'
@@ -226,6 +249,7 @@ export interface FileRouteTypes {
     | '/api/auth/sign-in'
     | '/api/auth/sign-out'
     | '/api/auth/sign-up'
+    | '/app/settings/api-keys'
     | '/app/traces/$id'
   fileRoutesById: FileRoutesById
 }
@@ -296,6 +320,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppInsightsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/getting-started': {
+      id: '/app/getting-started'
+      path: '/getting-started'
+      fullPath: '/app/getting-started'
+      preLoaderRoute: typeof AppGettingStartedRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/experiments': {
       id: '/app/experiments'
       path: '/experiments'
@@ -331,6 +362,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppTracesIdRouteImport
       parentRoute: typeof AppTracesRoute
     }
+    '/app/settings/api-keys': {
+      id: '/app/settings/api-keys'
+      path: '/api-keys'
+      fullPath: '/app/settings/api-keys'
+      preLoaderRoute: typeof AppSettingsApiKeysRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
     '/api/auth/sign-up': {
       id: '/api/auth/sign-up'
       path: '/api/auth/sign-up'
@@ -362,6 +400,18 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AppSettingsRouteChildren {
+  AppSettingsApiKeysRoute: typeof AppSettingsApiKeysRoute
+}
+
+const AppSettingsRouteChildren: AppSettingsRouteChildren = {
+  AppSettingsApiKeysRoute: AppSettingsApiKeysRoute,
+}
+
+const AppSettingsRouteWithChildren = AppSettingsRoute._addFileChildren(
+  AppSettingsRouteChildren,
+)
+
 interface AppTracesRouteChildren {
   AppTracesIdRoute: typeof AppTracesIdRoute
 }
@@ -379,10 +429,11 @@ interface AppRouteChildren {
   AppDatasetsRoute: typeof AppDatasetsRoute
   AppEvaluationsRoute: typeof AppEvaluationsRoute
   AppExperimentsRoute: typeof AppExperimentsRoute
+  AppGettingStartedRoute: typeof AppGettingStartedRoute
   AppInsightsRoute: typeof AppInsightsRoute
   AppPromptsRoute: typeof AppPromptsRoute
   AppRagAnalyticsRoute: typeof AppRagAnalyticsRoute
-  AppSettingsRoute: typeof AppSettingsRoute
+  AppSettingsRoute: typeof AppSettingsRouteWithChildren
   AppTracesRoute: typeof AppTracesRouteWithChildren
   AppIndexRoute: typeof AppIndexRoute
 }
@@ -392,10 +443,11 @@ const AppRouteChildren: AppRouteChildren = {
   AppDatasetsRoute: AppDatasetsRoute,
   AppEvaluationsRoute: AppEvaluationsRoute,
   AppExperimentsRoute: AppExperimentsRoute,
+  AppGettingStartedRoute: AppGettingStartedRoute,
   AppInsightsRoute: AppInsightsRoute,
   AppPromptsRoute: AppPromptsRoute,
   AppRagAnalyticsRoute: AppRagAnalyticsRoute,
-  AppSettingsRoute: AppSettingsRoute,
+  AppSettingsRoute: AppSettingsRouteWithChildren,
   AppTracesRoute: AppTracesRouteWithChildren,
   AppIndexRoute: AppIndexRoute,
 }

@@ -36,7 +36,8 @@ Mounted in the app shell (`ProjectSelectionProvider` + `ProjectSelector`):
 4. Validates the persisted ID against the current authorized list; discards it if unauthorized.
 5. Refetches when the active WorkOS organization changes.
 
-Empty state: an administrator must link/create a project for the organization.
+Empty state: create a project via `/app/getting-started` (self-serve) or the
+admin CLI. Zero-project Observe pages link to Getting started.
 
 ### Dashboard
 
@@ -150,7 +151,9 @@ when `VITE_HELIOS_DEMO_MODE` is not `"false"`:
 | `/app/prompts` | `GET /v1/prompts` |
 | `/app/datasets` | `GET /v1/datasets` |
 | `/app/experiments` | Static / demo UI |
-| `/app/settings` | Static mock UI |
+| `/app/settings` | Project settings hub (links to API keys + getting started) |
+| `/app/settings/api-keys` | `GET/POST /v2/user/projects/{ref}/api-keys`, revoke |
+| `/app/getting-started` | `POST /v2/user/projects`, key management, telemetry check |
 
 Public marketing pages may still show static demo traces outside `/app/*`. The
 legacy `src/lib/api/dashboard.ts` client remains for any deferred consumers but

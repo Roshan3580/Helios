@@ -13,6 +13,8 @@ import {
   Command,
   LogOut,
   ScanSearch,
+  Rocket,
+  KeyRound,
 } from "lucide-react";
 import { HeliosMark, StatusBadge } from "./primitives";
 import { ProjectSelector } from "./project-selector";
@@ -65,12 +67,14 @@ const NAV = [
   { to: "/app/evaluations", label: "Evaluations", icon: ClipboardCheck, group: "Improve" },
   { to: "/app/datasets", label: "Datasets", icon: Database, group: "Improve" },
   { to: "/app/experiments", label: "Experiments", icon: FlaskConical, group: "Improve" },
-  { to: "/app/settings", label: "Settings", icon: Settings, group: "Workspace" },
+  { to: "/app/getting-started", label: "Getting started", icon: Rocket, group: "Setup" },
+  { to: "/app/settings/api-keys", label: "API keys", icon: KeyRound, group: "Setup" },
+  { to: "/app/settings", label: "Project settings", icon: Settings, group: "Setup" },
 ] as const;
 
 function AppShellLayout() {
   const pathname = useRouterState({ select: (r) => r.location.pathname });
-  const groups = ["Observe", "Improve", "Workspace"] as const;
+  const groups = ["Observe", "Improve", "Setup"] as const;
   return (
     <div className="min-h-screen bg-paper text-foreground">
       <div className="flex">
@@ -89,7 +93,8 @@ function AppShellLayout() {
                 <div className="label-eyebrow px-2 mb-2">{g}</div>
                 <ul className="space-y-px">
                   {NAV.filter((n) => n.group === g).map((n) => {
-                    const active = pathname.startsWith(n.to);
+                    const active =
+                      n.to === "/app/settings" ? pathname === n.to : pathname.startsWith(n.to);
                     const Icon = n.icon;
                     return (
                       <li key={n.to}>
@@ -115,8 +120,14 @@ function AppShellLayout() {
           <div className="border-t border-rule p-3">
             <div className="border border-rule p-3 bg-paper-2/60">
               <div className="label-eyebrow">SDK</div>
-              <pre className="mt-2 font-mono text-[11px] leading-relaxed text-foreground">{`import helios
-helios.init("hel_••••")`}</pre>
+              <pre className="mt-2 font-mono text-[11px] leading-relaxed text-foreground">{`from helios_sdk import Helios
+Helios.configure(...)`}</pre>
+              <Link
+                to="/app/getting-started"
+                className="mt-2 inline-block text-[11px] underline underline-offset-2 text-muted-foreground hover:text-foreground"
+              >
+                Setup guide
+              </Link>
             </div>
           </div>
         </aside>

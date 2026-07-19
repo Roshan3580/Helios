@@ -1,5 +1,7 @@
-import { useProjectSelection } from "@/contexts/project-selection";
+import { Link } from "@tanstack/react-router";
+
 import { StatusBadge } from "@/components/helios/primitives";
+import { useProjectSelection } from "@/contexts/project-selection";
 
 export function ProjectSelector() {
   const { projects, selectedProject, selectProject, loading, error, errorStatus, reload } =
@@ -37,8 +39,14 @@ export function ProjectSelector() {
       <div className="border-b border-rule px-4 py-3">
         <div className="label-eyebrow">Project</div>
         <p className="mt-1 text-[12px] text-muted-foreground leading-snug">
-          No projects in this organization. An administrator must link or create a project.
+          No projects in this organization yet.
         </p>
+        <Link
+          to="/app/getting-started"
+          className="mt-2 inline-block label-eyebrow border border-rule px-2 py-1 hover:bg-paper-2"
+        >
+          Create a project
+        </Link>
       </div>
     );
   }

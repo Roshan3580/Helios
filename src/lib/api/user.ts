@@ -516,3 +516,84 @@ export function fetchUserProjectDashboard(
     accessToken,
   );
 }
+
+/** Known project API-key scopes (must match backend VALID_SCOPES). */
+export const PROJECT_API_KEY_SCOPES = ["traces:ingest", "traces:read"] as const;
+export type ProjectApiKeyScope = (typeof PROJECT_API_KEY_SCOPES)[number];
+
+export interface CreateUserProjectInput {
+  name: string;
+  slug: string;
+  environment?: "production" | "staging" | "development" | "test";
+}
+
+export interface ProjectApiKeyMetadata {
+  id: string;
+  name: string;
+  key_identifier: string;
+  scopes: string[];
+  created_at: string;
+  revoked_at: string | null;
+  status: "active" | "revoked";
+}
+
+export interface CreateProjectApiKeyInput {
+  name: string;
+  scopes: ProjectApiKeyScope[];
+}
+
+/**
+ * One-time creation payload. `plaintext_key` must stay in React memory only
+ * and must never be logged, persisted, or put in URLs.
+ */
+export interface CreatedProjectApiKey {
+  key: ProjectApiKeyMetadata;
+  plaintext_key: string;
+}
+
+export function createUserProject(
+  accessToken: string,
+  input: CreateUserProjectInput,
+): Promise<UserProject> {
+  return userApiFetch<UserProject>("/v2/user/projects", accessToken, {
+    method: "POST",
+    body: input,
+  });
+}
+
+export function fetchUserProjectApiKeys(
+  accessToken: string,
+  projectRef: string,
+): Promise<ProjectApiKeyMetadata[]> {
+  const encoded = encodeURIComponent(projectRef);
+  return userApiFetch<ProjectApiKeyMetadata[]>(
+    `/v2/user/projects/${encoded}/api-keys`,
+    accessToken,
+  );
+}
+
+export function createUserProjectApiKey(
+  accessToken: string,
+  projectRef: string,
+  input: CreateProjectApiKeyInput,
+): Promise<CreatedProjectApiKey> {
+  const encoded = encodeURIComponent(projectRef);
+  return userApiFetch<CreatedProjectApiKey>(`/v2/user/projects/${encoded}/api-keys`, accessToken, {
+    method: "POST",
+    body: input,
+  });
+}
+
+export function revokeUserProjectApiKey(
+  accessToken: string,
+  projectRef: string,
+  keyId: string,
+): Promise<ProjectApiKeyMetadata> {
+  const project = encodeURIComponent(projectRef);
+  const key = encodeURIComponent(keyId);
+  return userApiFetch<ProjectApiKeyMetadata>(
+    `/v2/user/projects/${project}/api-keys/${key}/revoke`,
+    accessToken,
+    { method: "POST" },
+  );
+}

@@ -70,6 +70,8 @@ src/
 
 - **Dashboard (`/app/dashboard`):** WorkOS JWT → `GET /v2/user/projects/.../dashboard`; real `otel_traces` / `otel_spans` aggregates; no demo fallback; no cost estimation.
 - **Traces (`/app/traces*`):** WorkOS JWT → `GET /v2/user/projects/.../traces*`; project selector in app shell; no demo fallback.
+- **Getting started (`/app/getting-started`):** create projects and mint project API keys under the active linked organization; one-time plaintext reveal; SDK/OTLP setup; explicit telemetry check.
+- **API keys (`/app/settings/api-keys`):** list/create/revoke redacted project keys for the selected project.
 - **Legacy analytics pages** (RAG, evals, prompts, datasets, experiments, settings): still use `VITE_HELIOS_DEMO_MODE` + unauthenticated `/v1/*` with optional demo fallback.
 - Machine ingestion/reads remain project API keys on `/v1/otlp/traces` and `/v2/traces*`.
 
@@ -124,6 +126,10 @@ results, or create links.
 | GET    | `/v1/traces`            | List traces                | Legacy compatibility |
 | GET    | `/v1/traces/{id}`       | Trace detail               | Legacy compatibility |
 | GET    | `/v2/user/projects/{ref}/dashboard` | Org-scoped OTel dashboard aggregates (WorkOS JWT) | **Canonical v2** |
+| POST   | `/v2/user/projects` | Create project in active linked org (WorkOS JWT) | **Canonical v2** |
+| GET    | `/v2/user/projects/{ref}/api-keys` | List redacted project API keys (WorkOS JWT) | **Canonical v2** |
+| POST   | `/v2/user/projects/{ref}/api-keys` | Create project API key; plaintext once (WorkOS JWT) | **Canonical v2** |
+| POST   | `/v2/user/projects/{ref}/api-keys/{id}/revoke` | Revoke project API key (WorkOS JWT) | **Canonical v2** |
 | POST   | `/v2/user/projects/{ref}/analysis` | Deterministic project-window analysis (WorkOS JWT) | **Canonical v2** |
 | POST   | `/v2/user/projects/{ref}/analysis/traces/{trace_id}` | Deterministic single-trace analysis (WorkOS JWT) | **Canonical v2** |
 | GET    | `/v1/dashboard/summary` | Dashboard aggregates       | Legacy compatibility |
@@ -145,7 +151,9 @@ Decision records: [ADR_001_OTLP_TRACE_FOUNDATION.md](ADR_001_OTLP_TRACE_FOUNDATI
   `traces:ingest`; reads need `traces:read`. Missing/invalid credentials → 401
   (`WWW-Authenticate: Bearer`); valid key without the scope → 403. Project keys
   are **secrets** — never commit them or put them in browser code. Keys are
-  managed by the admin CLI `python -m app.cli.api_keys`.
+  managed by the admin CLI `python -m app.cli.api_keys` or the self-serve
+  human routes under `/v2/user/projects/{ref}/api-keys` (see
+  [SELF_SERVICE_ONBOARDING.md](SELF_SERVICE_ONBOARDING.md)).
 - **Authentication (humans):** WorkOS AuthKit signs users in
   ([ADR_004_WORKOS_HUMAN_AUTH.md](ADR_004_WORKOS_HUMAN_AUTH.md)). The browser
   calls `GET /v2/user/me`, `GET /v2/user/projects`,

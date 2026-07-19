@@ -1,10 +1,16 @@
 """Human-authenticated (WorkOS JWT) routes for browsers.
 
 Machine routes (/v1/otlp/traces and API-key /v2/traces) are untouched; this
-family never calls the API-key dependency and never mints project keys. The
-organization comes exclusively from the verified JWT's org_id; projects are
-readable only when owned by that organization. Cross-organization lookups are
-404 (indistinguishable from missing), never 403, to avoid information leaks.
+family never calls the API-key dependency for authorization. Project API keys
+are minted only through the dedicated human create-key endpoint below, and
+the plaintext is returned exactly once. The organization comes exclusively
+from the verified JWT's org_id; projects are readable only when owned by that
+organization. Cross-organization lookups are 404 (indistinguishable from
+missing), never 403, to avoid information leaks.
+
+Any authenticated member of the active linked WorkOS organization currently
+has organization-wide access to that organization's projects and project
+API-key management. Finer-grained project roles are deferred.
 """
 
 import uuid
@@ -16,9 +22,16 @@ from sqlalchemy.orm import Session
 from app.analyst import AnalystValidationError
 from app.database import get_db
 from app.models import Project
+from app.models_identity import Organization
 from app.schemas_analysis import TraceAnalysisRead, TraceAnalysisRequest
 from app.schemas_dashboard import ProjectDashboardRead
 from app.schemas_project_analysis import ProjectAnalysisRead, ProjectAnalysisRequest
+from app.schemas_project_keys import (
+    CreatedProjectApiKeyRead,
+    CreateProjectApiKeyRequest,
+    CreateUserProjectRequest,
+    ProjectApiKeyMetadataRead,
+)
 from app.schemas_user import UserMeRead, UserOrganizationRead, UserProjectRead
 from app.schemas_v2 import OtelTraceDetailRead, OtelTraceSummaryRead
 from app.security.human_dependencies import require_human, require_org_member
@@ -28,6 +41,13 @@ from app.services import (
     otel_trace_service,
     project_analysis_service,
     trace_analysis_service,
+    user_api_key_service,
+    user_project_service,
+)
+from app.services.user_api_key_service import ApiKeyValidationError
+from app.services.user_project_service import (
+    ProjectConflictError,
+    ProjectValidationError,
 )
 
 router = APIRouter(prefix="/user", tags=["user-v2"])
@@ -62,6 +82,108 @@ def list_my_projects(
             .order_by(Project.slug)
         )
     )
+
+
+@router.post("/projects", response_model=UserProjectRead, status_code=201)
+def create_my_project(
+    body: CreateUserProjectRequest,
+    auth: HumanAuthContext = Depends(require_org_member),
+    db: Session = Depends(get_db),
+) -> Project:
+    """Create a project inside the active linked WorkOS organization.
+
+    Organization cannot be overridden by body or query parameters. Slug
+    uniqueness is currently global (see ``projects.slug`` UNIQUE).
+    """
+    organization = _require_organization(db, auth)
+    try:
+        project = user_project_service.create_project_for_organization(
+            db,
+            organization=organization,
+            name=body.name,
+            slug=body.slug,
+            environment=body.environment,
+        )
+    except ProjectValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except ProjectConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    db.commit()
+    db.refresh(project)
+    return project
+
+
+@router.get(
+    "/projects/{project_ref}/api-keys",
+    response_model=list[ProjectApiKeyMetadataRead],
+)
+def list_project_api_keys(
+    project_ref: str,
+    auth: HumanAuthContext = Depends(require_org_member),
+    db: Session = Depends(get_db),
+) -> list[ProjectApiKeyMetadataRead]:
+    """List redacted project API keys. Never includes plaintext or hash."""
+    project = _resolve_project(db, auth, project_ref)
+    keys = user_api_key_service.list_project_api_keys(db, project=project)
+    return [ProjectApiKeyMetadataRead.model_validate(key) for key in keys]
+
+
+@router.post(
+    "/projects/{project_ref}/api-keys",
+    response_model=CreatedProjectApiKeyRead,
+    status_code=201,
+)
+def create_project_api_key(
+    project_ref: str,
+    body: CreateProjectApiKeyRequest,
+    auth: HumanAuthContext = Depends(require_org_member),
+    db: Session = Depends(get_db),
+) -> CreatedProjectApiKeyRead:
+    """Create a project API key. Plaintext is returned exactly once."""
+    project = _resolve_project(db, auth, project_ref)
+    try:
+        created = user_api_key_service.create_project_api_key(
+            db, project=project, name=body.name, scopes=body.scopes
+        )
+    except ApiKeyValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    db.commit()
+    db.refresh(created.api_key)
+    return CreatedProjectApiKeyRead(
+        key=ProjectApiKeyMetadataRead.model_validate(created.api_key),
+        plaintext_key=created.token,
+    )
+
+
+@router.post(
+    "/projects/{project_ref}/api-keys/{key_id}/revoke",
+    response_model=ProjectApiKeyMetadataRead,
+)
+def revoke_project_api_key(
+    project_ref: str,
+    key_id: uuid.UUID,
+    auth: HumanAuthContext = Depends(require_org_member),
+    db: Session = Depends(get_db),
+) -> ProjectApiKeyMetadataRead:
+    """Revoke a project API key (idempotent). Historical row is retained."""
+    project = _resolve_project(db, auth, project_ref)
+    api_key = user_api_key_service.get_project_api_key(
+        db, project=project, key_id=key_id
+    )
+    if api_key is None:
+        raise HTTPException(status_code=404, detail="API key not found")
+    revoked = user_api_key_service.revoke_project_api_key(db, api_key=api_key)
+    db.commit()
+    db.refresh(revoked)
+    return ProjectApiKeyMetadataRead.model_validate(revoked)
+
+
+def _require_organization(db: Session, auth: HumanAuthContext) -> Organization:
+    org = db.get(Organization, uuid.UUID(auth.local_org_id))
+    if org is None:
+        # Should be unreachable after require_org_member; keep fail-closed.
+        raise HTTPException(status_code=403, detail="organization is not linked")
+    return org
 
 
 def _resolve_project(db: Session, auth: HumanAuthContext, project_ref: str) -> Project:
