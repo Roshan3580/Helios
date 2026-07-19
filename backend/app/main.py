@@ -1,7 +1,11 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
+from app.cors_policy import build_cors_kwargs
+from app.deployment_validation import sanitize_message
 from app.routers import (
     dashboard,
     datasets,
@@ -18,24 +22,27 @@ from app.routers import (
 )
 from app.routers.e2e import include_e2e_router
 
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    settings = get_settings()
+    issues = settings.deployment_issues()
+    if issues and settings.helios_environment in {"staging", "production"}:
+        details = "; ".join(f"{i.code}: {sanitize_message(i.message)}" for i in issues)
+        raise RuntimeError(f"Helios deployment contract failed: {details}")
+    yield
+
+
 settings = get_settings()
 
 app = FastAPI(
     title="Helios API",
     description="AI systems observability backend",
     version=settings.app_version,
+    lifespan=lifespan,
 )
 
-_cors: dict = {
-    "allow_origins": settings.cors_origin_list,
-    "allow_credentials": True,
-    "allow_methods": ["*"],
-    "allow_headers": ["*"],
-    # Ephemeral local/CI frontend ports (Vite) on loopback.
-    "allow_origin_regex": r"https?://(127\.0\.0\.1|localhost)(:\d+)?",
-}
-
-app.add_middleware(CORSMiddleware, **_cors)
+app.add_middleware(CORSMiddleware, **build_cors_kwargs(settings))
 
 app.include_router(health.router)
 app.include_router(projects.router, prefix="/v1")

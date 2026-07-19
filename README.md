@@ -211,18 +211,26 @@ See [examples/rag_support_bot/README.md](examples/rag_support_bot/README.md) and
 
 ## Deployment
 
-| Layer    | Platform        | URL                                                                            |
-| -------- | --------------- | ------------------------------------------------------------------------------ |
-| Frontend | Vercel          | [https://helios-alpha-nine.vercel.app/](https://helios-alpha-nine.vercel.app/) |
-| Backend  | Render          | FastAPI web service (see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md))             |
-| Database | Render Postgres | via `DATABASE_URL`                                                             |
+| Layer    | Platform        | Notes |
+| -------- | --------------- | ----- |
+| Frontend | Vercel (staging contract) | TanStack Start + Nitro; fixed hostname recommended |
+| Backend  | Render (staging contract) | FastAPI; `preDeployCommand` migrations; `/health/ready` |
+| Database | Render Postgres | via `DATABASE_URL` |
 
-Production frontend build settings:
+**Staging contract (Checkpoint 14):** [docs/STAGING_DEPLOYMENT.md](docs/STAGING_DEPLOYMENT.md),
+[docs/DEPLOYMENT_ENVIRONMENT_MATRIX.md](docs/DEPLOYMENT_ENVIRONMENT_MATRIX.md),
+`render.yaml`, `.env.staging.example`, `bun run check:deployment-contract`.
 
-- `VITE_API_BASE_URL`: Render backend URL
+Legacy portfolio notes remain in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). Do not
+treat hosted staging as complete until the manual checklist in
+[docs/RELEASE_READINESS.md](docs/RELEASE_READINESS.md) is finished.
+
+Frontend build settings for staging-shaped builds:
+
+- `VITE_API_BASE_URL`: HTTPS Render API URL (no trailing slash)
 - `VITE_HELIOS_DEMO_MODE=false`
-
-Full setup, env vars, seed commands, and CORS notes: **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
+- `VITE_HELIOS_ENVIRONMENT=staging`
+- `VITE_HELIOS_E2E_TEST_MODE=false`
 
 ---
 

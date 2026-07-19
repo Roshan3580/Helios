@@ -1,0 +1,58 @@
+# Helios staging Blueprint (placeholders only — no real credentials).
+# Does not deploy by itself. Operators apply this Blueprint in the Render
+# dashboard after replacing placeholder hostnames/env values.
+# See docs/STAGING_DEPLOYMENT.md.
+#
+# Official refs:
+# - https://render.com/docs/blueprint-spec
+# - https://render.com/docs/health-checks
+# - preDeployCommand runs after build, before start (migrations)
+
+databases:
+  - name: helios-staging-db
+    plan: basic-256mb
+    databaseName: helios_staging
+    user: helios_staging
+
+services:
+  - type: web
+    name: helios-api-staging
+    runtime: python
+    plan: starter
+    region: oregon
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    # Migrate once per deploy, not from each uvicorn worker.
+    preDeployCommand: alembic upgrade head
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /health/ready
+    autoDeploy: false
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.8"
+      - key: HELIOS_ENVIRONMENT
+        value: staging
+      - key: HELIOS_E2E_TEST_MODE
+        value: "false"
+      - key: HELIOS_DEMO_MODE
+        value: "false"
+      - key: HELIOS_ANALYST_NARRATIVE_ENABLED
+        value: "false"
+      - key: HELIOS_ANALYST_ALLOW_THIRD_PARTY
+        value: "false"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: helios-staging-db
+          property: connectionString
+      # Set in the Render dashboard (sync: false → prompted, never committed).
+      - key: CORS_ORIGINS
+        sync: false
+      - key: WORKOS_CLIENT_ID
+        sync: false
+      - key: WORKOS_ISSUER
+        sync: false
+      - key: WORKOS_JWKS_URL
+        sync: false
+      # Optional — leave unset while narrative remains disabled.
+      - key: OPENAI_API_KEY
+        sync: false

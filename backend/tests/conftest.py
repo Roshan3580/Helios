@@ -49,6 +49,8 @@ if "test" not in _database_name:
 
 # Must happen before any `app` import so settings/engine/Alembic all see it.
 os.environ["DATABASE_URL"] = _test_db_url
+# Unit/integration suite runs as HELIOS_ENVIRONMENT=test (not staging).
+os.environ["HELIOS_ENVIRONMENT"] = "test"
 
 # A prior browser E2E harness in the same shell may leave HELIOS_E2E_* /
 # loopback WorkOS overrides set. Strip them so the default TestClient app

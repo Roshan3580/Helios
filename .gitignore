@@ -26,6 +26,7 @@ coverage
 .env.*
 !.env.example
 !.env.e2e.example
+!.env.staging.example
 
 # Deploy targets
 .vercel

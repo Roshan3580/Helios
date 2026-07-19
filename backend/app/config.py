@@ -3,9 +3,14 @@ from functools import lru_cache
 from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.deployment_validation import validate_settings
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    # Deployment environment: local|test|e2e|staging|production
+    helios_environment: str = "local"
 
     database_url: str = "postgresql://helios:helios@localhost:5433/helios"
     backend_host: str = "0.0.0.0"
@@ -40,6 +45,11 @@ class Settings(BaseSettings):
     # /v2/e2e/* helpers that still require verified human JWTs and loopback JWKS.
     helios_e2e_test_mode: bool = False
 
+    @field_validator("helios_environment")
+    @classmethod
+    def _normalize_environment(cls, value: str) -> str:
+        return (value or "local").strip().lower()
+
     @field_validator("helios_analyst_provider")
     @classmethod
     def _normalize_provider(cls, value: str) -> str:
@@ -65,10 +75,26 @@ class Settings(BaseSettings):
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
+    def deployment_issues(self) -> list:
+        return validate_settings(
+            environment=self.helios_environment,
+            database_url=self.database_url,
+            cors_origins=self.cors_origin_list,
+            workos_issuer=self.workos_issuer_resolved,
+            workos_jwks_url=self.workos_jwks_url_resolved,
+            helios_e2e_test_mode=self.helios_e2e_test_mode,
+            narrative_enabled=self.helios_analyst_narrative_enabled,
+            allow_third_party=self.helios_analyst_allow_third_party,
+            analyst_provider=self.helios_analyst_provider,
+            openai_key_present=bool(self.openai_api_key.get_secret_value()),
+        )
+
     def __repr__(self) -> str:
         # Never include API-key material in settings representations.
         return (
-            "Settings(helios_analyst_narrative_enabled="
+            "Settings("
+            f"helios_environment={self.helios_environment!r}, "
+            "helios_analyst_narrative_enabled="
             f"{self.helios_analyst_narrative_enabled!r}, "
             f"helios_analyst_provider={self.helios_analyst_provider!r}, "
             f"helios_analyst_model={self.helios_analyst_model!r})"

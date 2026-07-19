@@ -2,10 +2,12 @@
 
 ## Environment
 
-| Variable                | Default                 | Description                                                                 |
-| ----------------------- | ----------------------- | --------------------------------------------------------------------------- |
-| `VITE_API_BASE_URL`     | `http://localhost:8000` | Helios FastAPI base URL                                                     |
-| `VITE_HELIOS_DEMO_MODE` | `true`                  | Affects **legacy** analytics pages only (RAG, evals, prompts, datasets)     |
+| Variable                    | Default                 | Description                                                                 |
+| --------------------------- | ----------------------- | --------------------------------------------------------------------------- |
+| `VITE_API_BASE_URL`         | `http://localhost:8000` | Helios FastAPI base URL (resolved via `src/lib/api/base-url.ts`)            |
+| `VITE_HELIOS_DEMO_MODE`     | `true`                  | Affects **legacy** analytics pages only (RAG, evals, prompts, datasets)     |
+| `VITE_HELIOS_ENVIRONMENT`   | `local`                 | `local\|staging\|production` — staging requires HTTPS API URL               |
+| `VITE_HELIOS_E2E_TEST_MODE` | unset/`false`           | Client E2E flag only; forbidden in staging                                  |
 
 WorkOS human authentication uses **server-only** env vars (`WORKOS_CLIENT_ID`,
 `WORKOS_API_KEY`, `WORKOS_COOKIE_PASSWORD`, `WORKOS_REDIRECT_URI`). Never put

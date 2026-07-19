@@ -88,14 +88,14 @@ log "starting FastAPI on :${BACKEND_PORT}"
   export DATABASE_URL WORKOS_CLIENT_ID="client_e2e_helios"
   export WORKOS_ISSUER="$ISSUER" WORKOS_JWKS_URL="$JWKS_URL"
   export HELIOS_E2E_TEST_MODE=true
+  export HELIOS_ENVIRONMENT=e2e
   export HELIOS_ANALYST_NARRATIVE_ENABLED=false HELIOS_ANALYST_ALLOW_THIRD_PARTY=false
   export OPENAI_API_KEY="" HELIOS_DEMO_MODE=false
   export CORS_ORIGINS="http://127.0.0.1:${FRONTEND_PORT},http://localhost:${FRONTEND_PORT}"
   exec "$PYTHON" -m uvicorn app.main:app --host 127.0.0.1 --port "$BACKEND_PORT"
 ) >"$TMP_DIR/backend.log" 2>&1 &
 BACKEND_PID=$!
-wait_http "http://127.0.0.1:${BACKEND_PORT}/health" "backend"
-
+wait_http "http://127.0.0.1:${BACKEND_PORT}/health/live" "backend"
 log "starting Vite on :${FRONTEND_PORT}"
 (
   export VITE_API_BASE_URL="http://127.0.0.1:${BACKEND_PORT}"

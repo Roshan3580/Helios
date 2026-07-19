@@ -309,6 +309,11 @@ flowchart LR
 
 Source: [diagrams/deployment.md](../diagrams/deployment.md)
 
+Staging deployment contract (Vercel + Render + WorkOS staging, no auto-deploy):
+[STAGING_DEPLOYMENT.md](STAGING_DEPLOYMENT.md). Health probes: `/health/live`,
+`/health/ready`. CORS is an exact allowlist from `CORS_ORIGINS` (loopback regex
+only for local/test/E2E).
+
 ---
 
 ## Tracing model

@@ -1,41 +1,45 @@
 # Release readiness
 
-Helios v2 Checkpoint 13 separates **automatically verified** gates from
-**manual staging** work that still requires humans and non-production hosted
-services.
+Helios v2 separates **automatically verified** gates from **manual staging**
+and **production** work.
 
 ## Verified automatically
 
 - [x] Frontend typecheck / lint / production build
-- [x] Backend PostgreSQL suite (includes project create, API keys, OTLP, analysis, insights, auth)
+- [x] Backend PostgreSQL suite
 - [x] Python SDK suite
-- [x] Browser onboarding (zero-project → create project)
-- [x] One-time project API key reveal + copy + dismiss
-- [x] OTLP ingestion with project key
-- [x] Machine reads with scoped keys
-- [x] Key revocation blocks machine auth
-- [x] Dashboard against live telemetry (no demo fallback in E2E)
-- [x] Traces list/detail
-- [x] Deterministic single-trace analysis
-- [x] Project insights (deterministic window analysis)
-- [x] Organization isolation (cross-org 404 / separate JWTs)
-- [x] No real OpenAI / provider call in CI or E2E harness
-- [x] Alembic head remains `004_human_identity` (no Checkpoint 13 migration)
+- [x] Chromium browser release gate (Checkpoint 13)
+- [x] Deployment contract checks (Checkpoint 14): staging config validation,
+      CORS policy, `/health/live` + `/health/ready`, migration-check CLI,
+      `render.yaml` placeholders, `.env.staging.example`, browser bundle secret scan
+- [x] Narrative disabled by default; no real OpenAI call in CI
+- [x] E2E seam forbidden under staging-shaped configuration
+- [x] Alembic head remains `004_human_identity`
 
 ## Still requires manual staging verification
 
-- [ ] Real WorkOS staging login
-- [ ] Callback and sign-out redirect URIs
-- [ ] Organization switching in AuthKit UI
-- [ ] Hosted HTTPS cookies
-- [ ] Real deployment environment variables
-- [ ] Vercel server/runtime behavior
-- [ ] Render/PostgreSQL connectivity
-- [ ] Production CORS
-- [ ] Production OTLP endpoint
-- [ ] Real OpenAI call if narrative will be enabled
-- [ ] Provider retention configuration
-- [ ] Responsive visual review beyond smoke
-- [ ] Supported browser review (Safari/Firefox)
+- [ ] Create Vercel staging project and fixed hostname
+- [ ] Create Render staging web service + PostgreSQL
+- [ ] Apply/configure WorkOS **staging** redirect/sign-in/sign-out URIs
+- [ ] Set real staging secrets in platform dashboards (never in git)
+- [ ] Run migrations via Render pre-deploy on a real database
+- [ ] Hosted `/health/live` and `/health/ready`
+- [ ] Hosted CORS between fixed frontend and API origins
+- [ ] HTTPS cookie / SameSite behavior with AuthKit
+- [ ] Real WorkOS staging login, org switching, sign-out
+- [ ] `scripts/smoke-staging.sh` against real staging URLs
+- [ ] Browser project/key/OTLP/Dashboard/Traces/Insights on staging
+- [ ] Vercel/Render runtime logs and cold-start behavior
+- [ ] Optional: enable narrative + real OpenAI only after explicit review
+- [ ] Broader browser/visual review
 
-Do not mark manual items complete from CI alone.
+## Still prohibited / not done
+
+- [ ] Production deploy
+- [ ] Production WorkOS environment
+- [ ] Automatic production promotion
+- [ ] Enabling E2E seam outside local/CI harness
+
+Do not mark manual staging or production items complete from CI alone.
+
+See [STAGING_DEPLOYMENT.md](./STAGING_DEPLOYMENT.md).

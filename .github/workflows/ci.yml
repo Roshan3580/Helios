@@ -112,3 +112,27 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 7
+
+  deployment-contract:
+    name: Deployment contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements*.txt
+      - name: Install frontend dependencies
+        run: bun install --frozen-lockfile
+      - name: Install backend dependencies
+        working-directory: backend
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -r requirements-dev.txt
+      - name: Validate deployment contract (no external deploy)
+        env:
+          BACKEND_VENV: ${{ github.workspace }}/backend/.venv
+        run: bash scripts/check-deployment-contract.sh

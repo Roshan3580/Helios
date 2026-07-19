@@ -52,7 +52,21 @@ export default defineConfig(({ mode }) => {
           },
         },
       }),
-      nitro({ preset: "vercel" }),
+      nitro({
+        preset: "vercel",
+        // Basic staging/production browser hardening. Strict CSP is deferred
+        // until AuthKit + Vercel domains are validated on a hosted staging deploy.
+        routeRules: {
+          "/**": {
+            headers: {
+              "X-Content-Type-Options": "nosniff",
+              "Referrer-Policy": "strict-origin-when-cross-origin",
+              "X-Frame-Options": "DENY",
+              "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+            },
+          },
+        },
+      }),
       viteReact(),
     ],
   };
