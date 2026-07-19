@@ -86,8 +86,13 @@ backend/app/
 ├── schemas.py        # Pydantic request/response schemas
 ├── routers/          # health, projects, traces, dashboard, rag, ...
 ├── services/         # Business logic and aggregates
+├── analyst/          # Deterministic single-trace evidence engine (no HTTP/LLM yet)
 └── seed.py           # Demo seed data
 ```
+
+See [ANALYST_EVIDENCE_ENGINE.md](ANALYST_EVIDENCE_ENGINE.md) for ruleset `single-trace-v1`.
+The engine analyzes canonical OTel trace detail only; it is not yet exposed via
+an API or UI and does not call external LLM providers.
 
 ### API surface (read + write)
 
