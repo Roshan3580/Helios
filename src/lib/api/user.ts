@@ -167,6 +167,50 @@ export interface UserDashboardParams {
   hours?: number;
 }
 
+/** One deterministic evidence-backed finding from the trace analysis API. */
+export interface AnalysisFinding {
+  evidence_id: string;
+  rule_id: string;
+  ruleset_version: string;
+  severity: "error" | "warning" | "info";
+  confidence: "low" | "medium" | "high";
+  category: string;
+  statement: string;
+  metric_name: string;
+  observed_value: OtelJsonValue;
+  baseline_value: OtelJsonValue | null;
+  span_ids: string[];
+  source_start_time: string | null;
+  source_end_time: string | null;
+  supporting_attributes: Record<string, OtelJsonValue>;
+  trace_ui_path: string;
+  span_ui_selectors: string[];
+}
+
+export interface AnalysisCoverage {
+  total_spans: number;
+  error_spans: number;
+  spans_with_model_data: number;
+  spans_with_token_data: number;
+  tool_like_spans: number;
+  model_like_spans: number;
+  orphan_spans: number;
+}
+
+/** Response of POST /v2/user/projects/{ref}/analysis/traces/{trace_id}. */
+export interface TraceAnalysis {
+  analysis_version: string;
+  mode: "deterministic";
+  project_id: string;
+  trace_id: string;
+  generated_at: string;
+  findings: AnalysisFinding[];
+  coverage: AnalysisCoverage;
+  limitations: string[];
+  available_rules: string[];
+  executed_rules: string[];
+}
+
 /**
  * Typed error for authenticated user API calls.
  * Never includes Authorization headers or tokens.
@@ -183,12 +227,22 @@ export class UserApiError extends Error {
   }
 }
 
-async function userApiFetch<T>(path: string, accessToken: string): Promise<T> {
+async function userApiFetch<T>(
+  path: string,
+  accessToken: string,
+  init?: { method?: "GET" | "POST"; body?: unknown; signal?: AbortSignal },
+): Promise<T> {
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+    Authorization: `Bearer ${accessToken}`,
+  };
+  const hasBody = init?.body !== undefined;
+  if (hasBody) headers["Content-Type"] = "application/json";
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      Accept: "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
+    method: init?.method ?? "GET",
+    headers,
+    body: hasBody ? JSON.stringify(init?.body) : undefined,
+    signal: init?.signal,
   });
   if (!response.ok) {
     let detail: string | undefined;
@@ -252,6 +306,40 @@ export function fetchUserProjectTraceDetail(
   const project = encodeURIComponent(projectRef);
   const trace = encodeURIComponent(traceId);
   return userApiFetch<OtelTraceDetail>(`/v2/user/projects/${project}/traces/${trace}`, accessToken);
+}
+
+/**
+ * Run the deterministic evidence analysis for one project-scoped trace.
+ *
+ * Explicit command (POST), but with no side effects on the server: results
+ * are ephemeral and never persisted. When `rules` is omitted, all default
+ * `single-trace-v1` rules run; the body stays empty so nothing undefined is
+ * serialized. No retry loop — reruns are user-triggered.
+ */
+export function analyzeUserProjectTrace({
+  accessToken,
+  projectRef,
+  traceId,
+  rules,
+  signal,
+}: {
+  accessToken: string;
+  projectRef: string;
+  traceId: string;
+  rules?: string[];
+  signal?: AbortSignal;
+}): Promise<TraceAnalysis> {
+  const project = encodeURIComponent(projectRef);
+  const trace = encodeURIComponent(traceId);
+  return userApiFetch<TraceAnalysis>(
+    `/v2/user/projects/${project}/analysis/traces/${trace}`,
+    accessToken,
+    {
+      method: "POST",
+      body: rules && rules.length > 0 ? { rules } : {},
+      signal,
+    },
+  );
 }
 
 export function fetchUserProjectDashboard(

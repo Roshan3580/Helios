@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 
 import { PageHeader } from "@/components/helios/app-shell";
 import { SpanInspector } from "@/components/helios/span-inspector";
+import { TraceAnalysisPanel } from "@/components/helios/trace-analysis-panel";
 import { Eyebrow, StatusBadge } from "@/components/helios/primitives";
 import { useProjectSelection } from "@/contexts/project-selection";
+import { useTraceAnalysis } from "@/hooks/use-trace-analysis";
 import { useTraceDetail } from "@/hooks/use-trace-detail";
 import type { OtelSpan } from "@/lib/api/user";
 import {
@@ -24,10 +26,28 @@ function TraceDetailPage() {
   const { id } = Route.useParams();
   const { selectedProject, loading: projectLoading, error: projectError } = useProjectSelection();
   const { trace, loading, error, errorStatus, reload } = useTraceDetail(id);
+  const analysisState = useTraceAnalysis(id);
 
   const rows = useMemo(() => (trace ? buildTimelineRows(trace.spans) : []), [trace]);
   const total = timelineTotalMs(rows);
   const [selectedSpanId, setSelectedSpanId] = useState<string | null>(null);
+  const spanRowRefs = useRef(new Map<string, HTMLButtonElement>());
+
+  const knownSpanIds = useMemo(
+    () => new Set(trace?.spans.map((span) => span.span_id) ?? []),
+    [trace],
+  );
+
+  // Finding-to-span navigation: validate against the loaded trace, select the
+  // span (updates the inspector + waterfall highlight), and scroll it into view.
+  const selectSpanFromFinding = useCallback(
+    (spanId: string) => {
+      if (!knownSpanIds.has(spanId)) return;
+      setSelectedSpanId(spanId);
+      spanRowRefs.current.get(spanId)?.scrollIntoView({ block: "nearest" });
+    },
+    [knownSpanIds],
+  );
 
   useEffect(() => {
     if (!trace) {
@@ -139,6 +159,16 @@ function TraceDetailPage() {
         <Meta label="Project" value={`${trace.project_slug} · ${selectedProject.environment}`} />
       </div>
 
+      <div className="mb-8">
+        <TraceAnalysisPanel
+          state={analysisState}
+          actionDisabled={loading || !trace}
+          knownSpanIds={knownSpanIds}
+          selectedSpanId={selectedSpanId}
+          onSelectSpan={selectSpanFromFinding}
+        />
+      </div>
+
       <div className="grid grid-cols-12 gap-6">
         <div className="col-span-12 lg:col-span-7 border border-rule bg-card min-w-0">
           <div className="border-b border-rule px-4 py-2.5">
@@ -161,6 +191,10 @@ function TraceDetailPage() {
                 return (
                   <button
                     key={row.span.span_id}
+                    ref={(element) => {
+                      if (element) spanRowRefs.current.set(row.span.span_id, element);
+                      else spanRowRefs.current.delete(row.span.span_id);
+                    }}
                     type="button"
                     role="option"
                     aria-selected={selected}

@@ -73,14 +73,42 @@ Optional list filters: `limit`, `service_name`, `has_errors`.
 
 Fabricated detail panels (fake inputs, RAG chunks, cost breakdowns) are removed from authenticated trace routes. There is **no** silent demo fallback on `/app/traces*` or `/app/dashboard`.
 
+### Deterministic trace analysis (Checkpoint 9)
+
+| Route | API |
+| ----- | --- |
+| `/app/traces/:id` (panel) | `POST /v2/user/projects/{project_id_or_slug}/analysis/traces/{trace_id}` |
+
+The trace-detail page includes a **Trace analysis** panel backed by the
+deterministic evidence engine (see
+[ANALYST_EVIDENCE_ENGINE.md](ANALYST_EVIDENCE_ENGINE.md)):
+
+- Explicit **Analyze trace** action (never auto-runs); **Run again** reruns it.
+- Request body is `{ "rules": null }`-shaped: omitted/null runs all default
+  `single-trace-v1` rules; the UI does not expose a rule picker yet, but the
+  API accepts a non-empty rule subset for future use. Empty lists and unknown
+  rule IDs return `422`.
+- Response is deterministic (`mode: "deterministic"`), ephemeral (never
+  persisted anywhere, including localStorage/sessionStorage), project-scoped,
+  and content-excluding: no prompts, completions, tool arguments/outputs,
+  documents, secrets, or cost/RAG/citation/hallucination/evaluation claims.
+- Findings link to real spans: activating a finding selects the cited span in
+  the waterfall and span inspector after validating it against the loaded
+  trace (`span:<span_id>` selectors parsed via `src/lib/analyst/span-selectors.ts`).
+- Telemetry coverage counts and mandatory analyst limitations are always
+  shown; zero findings does not claim the trace is healthy.
+- No external LLM provider is required or called. This is the evidence
+  foundation for a future optional narrative layer.
+
 ### Error handling (authenticated APIs)
 
 | Status | Behavior |
 | ------ | -------- |
 | `401` | Redirect to `/api/auth/sign-in` with a safe return path |
-| `403` | “You do not have access to this organization or project.” |
+| `403` | “You do not have access to this organization or project.” (analysis panel: “You do not have access to analyze this project.”) |
 | `404` (detail) | “This trace was not found in the selected project.” |
-| Network/5xx | Explicit error panel with Retry |
+| `422` (analysis) | Safe rule-validation message (contract mismatch; not expected in normal use) |
+| Network/5xx | Explicit error panel with Retry (analysis panel: “Trace analysis could not be completed.”) |
 
 ## Legacy analytics pages (not yet migrated)
 

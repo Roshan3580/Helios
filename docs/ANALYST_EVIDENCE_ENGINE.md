@@ -3,9 +3,10 @@
 Ruleset version: **`single-trace-v1`**
 
 Helios includes a pure, deterministic single-trace analyst engine that turns
-canonical OpenTelemetry trace detail into typed, evidence-backed findings.
-This document describes the engine only. There is **no** HTTP API, UI panel, or
-LLM narration in this checkpoint.
+canonical OpenTelemetry trace detail into typed, evidence-backed findings. It
+is exposed to authenticated users through a human-authenticated API route and
+the trace-detail UI (see below). There is **no** LLM narration: every result is
+computed by fixed rules over stored telemetry.
 
 ## Canonical evidence sources
 
@@ -116,13 +117,75 @@ The engine does **not** produce findings for:
 - evaluation regressions
 - prompt quality (content is not inspected)
 
+## Authenticated analysis API
+
+```http
+POST /v2/user/projects/{project_ref}/analysis/traces/{trace_id}
+Authorization: Bearer <WorkOS access token>
+Content-Type: application/json
+```
+
+- **Authentication:** WorkOS human JWT only (`require_org_member`); a project
+  API key is never accepted and never minted by this path.
+- **Authorization:** the project is resolved by UUID or slug strictly inside
+  the caller's linked organization; inaccessible projects, cross-organization
+  projects, and missing traces are all `404` (indistinguishable). Missing or
+  invalid JWT → `401`; unlinked organization → `403`.
+- **Execution:** synchronous and deterministic. Results are ephemeral — no
+  table, queue, worker, or cache stores them.
+
+### Request (`TraceAnalysisRequest`)
+
+```json
+{ "rules": null }
+```
+
+| `rules` value | Behavior |
+| ------------- | -------- |
+| omitted / `null` | run every default `single-trace-v1` rule |
+| non-empty list | run only those rules (duplicates deduplicated, first occurrence wins) |
+| `[]` | rejected with `422` |
+| unknown rule ID | rejected with `422` |
+| any other field | rejected with `422` (`extra="forbid"`) |
+
+Callers cannot override the project, trace, ruleset version, severity, or
+thresholds, and there is no `include_content` / prompt / instruction field.
+
+### Response (`TraceAnalysisRead`)
+
+Top level: `analysis_version` (`"single-trace-v1"`), `mode`
+(`"deterministic"`), `project_id`, `trace_id`, `generated_at`, `findings`,
+`coverage`, `limitations`, `available_rules`, `executed_rules`.
+
+Findings carry the engine's deterministic `evidence_id`, rule/severity/
+confidence/category, factual `statement`, `metric_name`,
+`observed_value`/`baseline_value`, cited `span_ids`, source timestamps,
+allowlisted `supporting_attributes`, `trace_ui_path`, and `span_ui_selectors`
+(`span:<span_id>`). The mandatory limitations are always returned, even with
+zero findings. Nothing beyond the engine's redaction layer is exposed.
+
+Layering: router (`routers/user_v2.py`) → application service
+(`services/trace_analysis_service.py`, no network/writes) → pure engine
+(`app/analyst`). `AnalystValidationError` maps to `422`.
+
+## Trace-detail UI
+
+`/app/traces/{trace_id}` includes a **Trace analysis** panel
+(`src/components/helios/trace-analysis-panel.tsx` +
+`src/hooks/use-trace-analysis.ts`):
+
+- analysis runs only when the user clicks **Analyze trace** (rerun via
+  **Run again**); nothing runs automatically on page load
+- results live only in React memory and are cleared when the project, trace,
+  or organization changes
+- activating a finding selects the first valid cited span in the existing
+  waterfall/span inspector (span IDs are validated against the loaded trace);
+  multi-span findings expose each cited span
+- coverage counts and the mandatory limitations are always displayed
+- zero findings shows truthful copy — the trace is not declared healthy
+
 ## Future boundary
 
-Later checkpoints may add:
-
-1. an authenticated HTTP route that loads one project-scoped trace detail and
-   calls `analyze_trace`
-2. optional LLM narration that may only explain existing evidence IDs
-
-Deterministic findings remain the source of truth when narration is disabled,
-unavailable, or fails.
+A later checkpoint may add optional LLM narration that may only explain
+existing evidence IDs. Deterministic findings remain the source of truth when
+narration is disabled, unavailable, or fails.

@@ -13,14 +13,20 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.analyst import AnalystValidationError
 from app.database import get_db
 from app.models import Project
+from app.schemas_analysis import TraceAnalysisRead, TraceAnalysisRequest
 from app.schemas_dashboard import ProjectDashboardRead
 from app.schemas_user import UserMeRead, UserOrganizationRead, UserProjectRead
 from app.schemas_v2 import OtelTraceDetailRead, OtelTraceSummaryRead
 from app.security.human_dependencies import require_human, require_org_member
 from app.security.workos_auth import HumanAuthContext
-from app.services import otel_dashboard_service, otel_trace_service
+from app.services import (
+    otel_dashboard_service,
+    otel_trace_service,
+    trace_analysis_service,
+)
 
 router = APIRouter(prefix="/user", tags=["user-v2"])
 
@@ -129,3 +135,34 @@ def get_project_trace(
     if not detail:
         raise HTTPException(status_code=404, detail=f"Trace '{trace_id}' not found")
     return detail
+
+
+@router.post(
+    "/projects/{project_ref}/analysis/traces/{trace_id}",
+    response_model=TraceAnalysisRead,
+)
+def analyze_project_trace(
+    project_ref: str,
+    trace_id: str,
+    request: TraceAnalysisRequest | None = None,
+    auth: HumanAuthContext = Depends(require_org_member),
+    db: Session = Depends(get_db),
+) -> TraceAnalysisRead:
+    """Run the deterministic evidence engine on one project-scoped trace.
+
+    Synchronous, ephemeral, and content-excluding: nothing is persisted, no
+    external service or LLM is called, and the response only carries what the
+    engine's redaction layer approved. The project/trace/ruleset cannot be
+    overridden through the body — only an optional rule-ID subset is accepted.
+    """
+    project = _resolve_project(db, auth, project_ref)
+    rules = request.rules if request is not None else None
+    try:
+        analysis = trace_analysis_service.analyze_project_trace(
+            db, project=project, trace_id=trace_id, rules=rules
+        )
+    except AnalystValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    if analysis is None:
+        raise HTTPException(status_code=404, detail=f"Trace '{trace_id}' not found")
+    return analysis
