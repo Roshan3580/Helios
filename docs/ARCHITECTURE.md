@@ -44,10 +44,12 @@ Source: [diagrams/component.md](../diagrams/component.md)
 
 ```
 src/
-├── routes/           # TanStack file routes (/app/*)
-├── components/helios/  # Product UI (app shell, primitives, demo data)
-├── lib/api/          # Backend client, types, mappers
-├── hooks/            # use-traces, use-dashboard-summary, etc.
+├── routes/             # TanStack file routes (/app/*)
+├── components/helios/  # Product UI (app shell, project selector, inspectors)
+├── contexts/           # ProjectSelectionProvider (authenticated app)
+├── lib/api/            # Legacy public client + authenticated /v2/user client
+├── lib/otel/           # Duration, status, timeline, JSON helpers
+├── hooks/              # use-traces (v2), use-dashboard-summary (legacy), etc.
 └── styles.css
 ```
 
@@ -57,8 +59,8 @@ src/
 | -------------------- | -------------------------------- |
 | `/`                  | Marketing landing page           |
 | `/app/dashboard`     | Overview metrics + recent traces |
-| `/app/traces`        | Trace list                       |
-| `/app/traces/:id`    | Trace detail + span timeline     |
+| `/app/traces`        | Authenticated OTel trace list    |
+| `/app/traces/:id`    | Authenticated OTel trace detail  |
 | `/app/rag-analytics` | RAG quality metrics              |
 | `/app/evaluations`   | Eval suites + comparison         |
 | `/app/prompts`       | Prompt versions                  |
@@ -66,9 +68,9 @@ src/
 
 ### Data layer
 
-- `VITE_HELIOS_DEMO_MODE=true` → static demo data
-- `VITE_HELIOS_DEMO_MODE=false` → fetch from `VITE_API_BASE_URL`
-- On API failure → demo fallback + subtle banner
+- **Traces (`/app/traces*`):** WorkOS JWT → `GET /v2/user/projects/.../traces*`; project selector in app shell; no demo fallback.
+- **Legacy analytics pages:** still use `VITE_HELIOS_DEMO_MODE` + unauthenticated `/v1/*` with optional demo fallback.
+- Machine ingestion/reads remain project API keys on `/v1/otlp/traces` and `/v2/traces*`.
 
 See [FRONTEND_BACKEND_INTEGRATION.md](FRONTEND_BACKEND_INTEGRATION.md).
 

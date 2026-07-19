@@ -1,62 +1,114 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useAccessToken } from "@workos/authkit-tanstack-react-start/client";
 
-import { IS_DEMO_MODE } from "@/lib/api/client";
-import { mapBackendTrace, type TraceListItem } from "@/lib/api/mappers";
-import { fetchTraces } from "@/lib/api/traces";
-import { TRACES } from "@/components/helios/demo-data";
+import { useProjectSelection } from "@/contexts/project-selection";
+import { redirectToSignIn } from "@/lib/auth/redirect-to-sign-in";
+import { fetchUserProjectTraces, UserApiError, type OtelTraceSummary } from "@/lib/api/user";
 
-import type { DataSource } from "@/hooks/data-source";
-
-export interface TracesLoadState {
-  traces: TraceListItem[];
-  source: DataSource;
-  loading: boolean;
-  error: string | null;
+export interface TraceListFilters {
+  serviceName: string;
+  errorsOnly: boolean;
+  limit: number;
 }
 
-const DEMO_TRACES: TraceListItem[] = TRACES.map((trace) => ({
-  id: trace.id,
-  app: trace.app,
-  query: trace.query,
-  model: trace.model,
-  lat: trace.lat,
-  cost: trace.cost,
-  tok: trace.tok,
-  status: trace.status,
-}));
+export interface TracesLoadState {
+  traces: OtelTraceSummary[];
+  loading: boolean;
+  error: string | null;
+  errorStatus: number | null;
+  reload: () => void;
+}
 
-export function useTraceList(): TracesLoadState {
-  const [state, setState] = useState<TracesLoadState>({
-    traces: IS_DEMO_MODE ? DEMO_TRACES : [],
-    source: IS_DEMO_MODE ? "demo" : "api",
-    loading: !IS_DEMO_MODE,
-    error: null,
-  });
+const DEFAULT_FILTERS: TraceListFilters = {
+  serviceName: "",
+  errorsOnly: false,
+  limit: 50,
+};
+
+/**
+ * Authenticated v2 trace list for the currently selected project.
+ * Never falls back to demo data.
+ */
+export function useTraceList(filters: TraceListFilters = DEFAULT_FILTERS): TracesLoadState {
+  const { getAccessToken } = useAccessToken();
+  const { selectedProject, loading: projectLoading, error: projectError } = useProjectSelection();
+  const [traces, setTraces] = useState<OtelTraceSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
+
+  const reload = useCallback(() => setReloadToken((value) => value + 1), []);
 
   useEffect(() => {
-    if (IS_DEMO_MODE) return;
+    if (projectLoading) {
+      setLoading(true);
+      return;
+    }
+    if (projectError) {
+      setTraces([]);
+      setLoading(false);
+      setError(projectError);
+      setErrorStatus(null);
+      return;
+    }
+    if (!selectedProject) {
+      setTraces([]);
+      setLoading(false);
+      setError(null);
+      setErrorStatus(null);
+      return;
+    }
 
     let cancelled = false;
 
     async function load() {
-      setState((prev) => ({ ...prev, loading: true, error: null }));
+      setLoading(true);
+      setError(null);
+      setErrorStatus(null);
       try {
-        const rows = await fetchTraces({ limit: 50 });
-        if (cancelled) return;
-        setState({
-          traces: rows.map(mapBackendTrace),
-          source: "api",
-          loading: false,
-          error: null,
+        const token = await getAccessToken();
+        if (!token) {
+          redirectToSignIn();
+          if (!cancelled) {
+            setTraces([]);
+            setLoading(false);
+            setError("Session expired. Redirecting to sign in…");
+            setErrorStatus(401);
+          }
+          return;
+        }
+        const rows = await fetchUserProjectTraces(token, selectedProject!.id, {
+          limit: filters.limit,
+          service_name: filters.serviceName.trim() || undefined,
+          has_errors: filters.errorsOnly ? true : undefined,
         });
-      } catch (error) {
         if (cancelled) return;
-        setState({
-          traces: DEMO_TRACES,
-          source: "fallback",
-          loading: false,
-          error: error instanceof Error ? error.message : "Failed to load traces",
-        });
+        setTraces(rows);
+        setLoading(false);
+      } catch (err) {
+        if (cancelled) return;
+        if (err instanceof UserApiError && err.status === 401) {
+          redirectToSignIn();
+          setTraces([]);
+          setLoading(false);
+          setError("Session expired. Redirecting to sign in…");
+          setErrorStatus(401);
+          return;
+        }
+        const status = err instanceof UserApiError ? err.status : null;
+        const message =
+          err instanceof UserApiError
+            ? err.status === 403
+              ? "You do not have access to this organization or project."
+              : err.message
+            : err instanceof Error
+              ? err.message
+              : "Failed to load traces";
+        setTraces([]);
+        setLoading(false);
+        setError(message);
+        setErrorStatus(status);
       }
     }
 
@@ -64,7 +116,16 @@ export function useTraceList(): TracesLoadState {
     return () => {
       cancelled = true;
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    projectLoading,
+    projectError,
+    selectedProject?.id,
+    filters.serviceName,
+    filters.errorsOnly,
+    filters.limit,
+    reloadToken,
+  ]);
 
-  return state;
+  return { traces, loading, error, errorStatus, reload };
 }

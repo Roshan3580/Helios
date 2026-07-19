@@ -120,8 +120,9 @@ API-key system are identity-provider-agnostic.
 - `/app/*` now requires WorkOS configuration at runtime; without it those
   routes fail with a clear configuration error (public marketing routes and
   the machine API are unaffected).
-- The trace UI still reads legacy/demo data; migrating it onto
-  `/v2/user/projects/*` is the next (frontend) checkpoint.
+- Trace list/detail now read `/v2/user/projects/*` with WorkOS JWTs (Checkpoint
+  6). Dashboard, RAG, evaluations, prompts, and datasets still use legacy `/v1`
+  and may retain demo fallback until a later migration.
 - An organization switcher is deferred: the session exposes only the active
   organization, and enumerating a user's organizations requires WorkOS API
   calls that belong with real org-management UX.

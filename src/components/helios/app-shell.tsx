@@ -14,6 +14,8 @@ import {
   LogOut,
 } from "lucide-react";
 import { HeliosMark, StatusBadge } from "./primitives";
+import { ProjectSelector } from "./project-selector";
+import { ProjectSelectionProvider } from "@/contexts/project-selection";
 import { useUserMe } from "@/hooks/use-user-me";
 import { cn } from "@/lib/utils";
 
@@ -64,7 +66,7 @@ const NAV = [
   { to: "/app/settings", label: "Settings", icon: Settings, group: "Workspace" },
 ] as const;
 
-export function AppShell() {
+function AppShellLayout() {
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   const groups = ["Observe", "Improve", "Workspace"] as const;
   return (
@@ -78,13 +80,7 @@ export function AppShell() {
             </Link>
             <span className="label-eyebrow">v1.0</span>
           </div>
-          <div className="border-b border-rule px-4 py-3">
-            <div className="label-eyebrow">Project</div>
-            <div className="mt-1 flex items-center justify-between">
-              <span className="font-mono text-[12px]">acme · production</span>
-              <StatusBadge tone="success">live</StatusBadge>
-            </div>
-          </div>
+          <ProjectSelector />
           <nav className="flex-1 overflow-y-auto py-2">
             {groups.map((g) => (
               <div key={g} className="px-2 py-3">
@@ -146,6 +142,14 @@ helios.init("hel_••••")`}</pre>
         </div>
       </div>
     </div>
+  );
+}
+
+export function AppShell() {
+  return (
+    <ProjectSelectionProvider>
+      <AppShellLayout />
+    </ProjectSelectionProvider>
   );
 }
 

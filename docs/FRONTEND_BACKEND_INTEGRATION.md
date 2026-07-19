@@ -2,36 +2,83 @@
 
 ## Environment
 
-| Variable                | Default                 | Description                        |
-| ----------------------- | ----------------------- | ---------------------------------- |
-| `VITE_API_BASE_URL`     | `http://localhost:8000` | Helios FastAPI base URL            |
-| `VITE_HELIOS_DEMO_MODE` | `true`                  | When `true`, uses static demo data |
+| Variable                | Default                 | Description                                                                 |
+| ----------------------- | ----------------------- | --------------------------------------------------------------------------- |
+| `VITE_API_BASE_URL`     | `http://localhost:8000` | Helios FastAPI base URL                                                     |
+| `VITE_HELIOS_DEMO_MODE` | `true`                  | Affects **legacy** analytics pages only (dashboard, RAG, evals, etc.)       |
 
-Set `VITE_HELIOS_DEMO_MODE=false` to load data from the backend. If the API is unreachable, pages fall back to local demo data and show a **Demo fallback · backend unavailable** notice.
+WorkOS human authentication uses **server-only** env vars (`WORKOS_CLIENT_ID`,
+`WORKOS_API_KEY`, `WORKOS_COOKIE_PASSWORD`, `WORKOS_REDIRECT_URI`). Never put
+those behind `VITE_*`. See [ADR 004](ADR_004_WORKOS_HUMAN_AUTH.md).
 
-## Wired pages
+## Credential boundary
 
-### Phase 2: Traces
+| Caller | Credential | Routes |
+| ------ | ---------- | ------ |
+| Browser (authenticated) | WorkOS access token (`Authorization: Bearer`) | `/v2/user/*` |
+| SDK / services | Project API key `hel_proj_*` | `/v1/otlp/traces`, `/v2/traces*` |
+| Legacy analytics (temporary) | None | `/v1/dashboard`, `/v1/rag`, … |
 
-| Route             | API endpoint                |
-| ----------------- | --------------------------- |
-| `/app/traces`     | `GET /v1/traces`            |
-| `/app/traces/:id` | `GET /v1/traces/{trace_id}` |
+The browser **never** sends project API keys. Tokens are obtained fresh via
+`useAccessToken().getAccessToken()` immediately before each authenticated
+request and are not written to localStorage, sessionStorage, query strings, or
+error messages.
 
-### Phase 3: Dashboard & analytics
+## Authenticated product pages (Checkpoint 6)
 
-| Route                | API endpoint                |
-| -------------------- | --------------------------- |
-| `/app/dashboard`     | `GET /v1/dashboard/summary` |
-|                      | `GET /v1/prompts` (failing) |
-| `/app/rag-analytics` | `GET /v1/rag/metrics`       |
-| `/app/evaluations`   | `GET /v1/evaluations`       |
-| `/app/prompts`       | `GET /v1/prompts`           |
-| `/app/datasets`      | `GET /v1/datasets`          |
+### Project selector
 
-All Phase 3 list endpoints accept optional `?project_slug=acme`.
+Mounted in the app shell (`ProjectSelectionProvider` + `ProjectSelector`):
 
-## Status mapping
+1. Loads `GET /v2/user/projects` with a WorkOS JWT.
+2. Selects the first authorized project by default.
+3. Persists **only** the selected project ID in `localStorage` (`helios.selectedProjectId`).
+4. Validates the persisted ID against the current authorized list; discards it if unauthorized.
+5. Refetches when the active WorkOS organization changes.
+
+Empty state: an administrator must link/create a project for the organization.
+
+### Traces
+
+| Route | API |
+| ----- | --- |
+| `/app/traces` | `GET /v2/user/projects/{project_id_or_slug}/traces` |
+| `/app/traces/:id` | `GET /v2/user/projects/{project_id_or_slug}/traces/{trace_id}` |
+
+Optional list filters: `limit`, `service_name`, `has_errors`.
+
+**Trace list columns:** Trace ID, Service, Root operation, Start time, Duration, Spans, Errors (environment shown in footer / project selector).
+
+**Trace detail:** real OTel summary fields (service, environment, root operation, start/end, duration, span/error counts) plus a waterfall timeline and span inspector for attributes, resource, scope, events, links, and dropped counts.
+
+Fabricated detail panels (fake inputs, RAG chunks, cost breakdowns) are removed from authenticated trace routes. There is **no** silent demo fallback on `/app/traces*`.
+
+### Error handling (authenticated APIs)
+
+| Status | Behavior |
+| ------ | -------- |
+| `401` | Redirect to `/api/auth/sign-in` with a safe return path |
+| `403` | “You do not have access to this organization or project.” |
+| `404` (detail) | “This trace was not found in the selected project.” |
+| Network/5xx | Explicit error panel with Retry |
+
+## Legacy analytics pages (not yet migrated)
+
+These still use the unauthenticated legacy client and may fall back to demo data
+when `VITE_HELIOS_DEMO_MODE` is not `"false"`:
+
+| Route | API |
+| ----- | --- |
+| `/app/dashboard` | `GET /v1/dashboard/summary`, `GET /v1/prompts` |
+| `/app/rag-analytics` | `GET /v1/rag/metrics` |
+| `/app/evaluations` | `GET /v1/evaluations` |
+| `/app/prompts` | `GET /v1/prompts` |
+| `/app/datasets` | `GET /v1/datasets` |
+
+Settings remains static mock UI. Public marketing pages may still show static
+demo traces outside `/app/*`.
+
+## Status mapping (legacy analytics only)
 
 | Backend   | Frontend  |
 | --------- | --------- |
@@ -39,38 +86,21 @@ All Phase 3 list endpoints accept optional `?project_slug=acme`.
 | `warning` | `warn`    |
 | `error`   | `error`   |
 
-RAG chunk status: `ok` → success badge, `drift` → warn, `low` → danger.
-
-## Demo fallback behavior
-
-| `VITE_HELIOS_DEMO_MODE` | Backend available | Result                      |
-| ----------------------- | ----------------- | --------------------------- |
-| `true`                  | any               | Static demo data, no banner |
-| `false`                 | yes               | Live API data, no banner    |
-| `false`                 | no                | Demo fallback + banner      |
+OTel trace UI uses OpenTelemetry status codes (`UNSET` / `OK` / `ERROR`) instead.
 
 ## Local verification
 
 ```bash
-# Terminal 1: backend
+# Backend (with WorkOS JWT verification configured — see ADR 004)
 docker compose -f docker-compose.dev.yml up -d postgres
 cd backend && source .venv/bin/activate
 export DATABASE_URL=postgresql://helios:helios@localhost:5433/helios
-export HELIOS_DEMO_MODE=true
 alembic upgrade head && uvicorn app.main:app --reload --port 8000
-curl -X POST http://localhost:8000/v1/demo/seed
 
-# Smoke test Phase 3 endpoints
-curl http://localhost:8000/v1/dashboard/summary?project_slug=acme
-curl http://localhost:8000/v1/rag/metrics?project_slug=acme
-curl http://localhost:8000/v1/evaluations?project_slug=acme
-curl http://localhost:8000/v1/prompts?project_slug=acme
-curl http://localhost:8000/v1/datasets?project_slug=acme
-
-# Terminal 2: frontend with live API
-cp .env.example .env
-# Set VITE_HELIOS_DEMO_MODE=false
+# Frontend (requires WORKOS_* server env for /app/*)
 bun dev
 ```
 
-Open `/app/dashboard`, `/app/rag-analytics`, `/app/evaluations`, `/app/prompts`, and `/app/datasets`: values should load from the API when demo mode is off.
+Sign in via WorkOS, select a project, and open `/app/traces`. Hosted WorkOS
+development credentials are required for a real browser login; CI builds without
+them.

@@ -1,138 +1,102 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useAccessToken } from "@workos/authkit-tanstack-react-start/client";
 
-import { IS_DEMO_MODE } from "@/lib/api/client";
-import { mapBackendTraceDetail, type TraceDetailItem } from "@/lib/api/mappers";
-import { fetchTraceDetail } from "@/lib/api/traces";
-import { TRACES } from "@/components/helios/demo-data";
-
-import type { DataSource } from "@/hooks/data-source";
-
-const DEMO_SPANS = [
-  {
-    id: "demo_input",
-    name: "user.query",
-    kind: "INPUT",
-    ms: 0,
-    dur: 6,
-    depth: 0,
-    status: "success" as const,
-  },
-  {
-    id: "demo_rag",
-    name: "retriever.pgvector",
-    kind: "RAG",
-    ms: 12,
-    dur: 184,
-    depth: 1,
-    status: "success" as const,
-  },
-  {
-    id: "demo_rerank",
-    name: "reranker.cohere",
-    kind: "RAG",
-    ms: 198,
-    dur: 142,
-    depth: 1,
-    status: "success" as const,
-  },
-  {
-    id: "demo_llm",
-    name: "llm.openai.gpt-4o",
-    kind: "LLM",
-    ms: 342,
-    dur: 812,
-    depth: 1,
-    status: "success" as const,
-  },
-  {
-    id: "demo_tool",
-    name: "tool.lookup_policy",
-    kind: "TOOL",
-    ms: 1160,
-    dur: 198,
-    depth: 2,
-    status: "error" as const,
-  },
-  {
-    id: "demo_output",
-    name: "llm.openai.finalize",
-    kind: "LLM",
-    ms: 1370,
-    dur: 52,
-    depth: 1,
-    status: "success" as const,
-  },
-];
-
-function toDemoDetail(trace: (typeof TRACES)[number]): TraceDetailItem {
-  return {
-    id: trace.id,
-    app: trace.app,
-    query: trace.query,
-    model: trace.model,
-    lat: trace.lat,
-    cost: trace.cost,
-    tok: trace.tok,
-    status: trace.status,
-    spans: DEMO_SPANS,
-  };
-}
+import { useProjectSelection } from "@/contexts/project-selection";
+import { redirectToSignIn } from "@/lib/auth/redirect-to-sign-in";
+import { fetchUserProjectTraceDetail, UserApiError, type OtelTraceDetail } from "@/lib/api/user";
 
 export interface TraceDetailLoadState {
-  trace: TraceDetailItem | null;
-  source: DataSource;
+  trace: OtelTraceDetail | null;
   loading: boolean;
   error: string | null;
+  errorStatus: number | null;
+  reload: () => void;
 }
 
+/**
+ * Authenticated v2 trace detail for the currently selected project.
+ * Never falls back to demo data or fabricated panels.
+ */
 export function useTraceDetail(traceId: string): TraceDetailLoadState {
-  const demoTrace = TRACES.find((trace) => trace.id === traceId);
+  const { getAccessToken } = useAccessToken();
+  const { selectedProject, loading: projectLoading, error: projectError } = useProjectSelection();
+  const [trace, setTrace] = useState<OtelTraceDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
 
-  const [state, setState] = useState<TraceDetailLoadState>(() => {
-    if (IS_DEMO_MODE) {
-      return {
-        trace: demoTrace ? toDemoDetail(demoTrace) : null,
-        source: "demo",
-        loading: false,
-        error: null,
-      };
-    }
-    return { trace: null, source: "api", loading: true, error: null };
-  });
+  const reload = useCallback(() => setReloadToken((value) => value + 1), []);
 
   useEffect(() => {
-    if (IS_DEMO_MODE) {
-      setState({
-        trace: demoTrace ? toDemoDetail(demoTrace) : null,
-        source: "demo",
-        loading: false,
-        error: null,
-      });
+    if (projectLoading) {
+      setLoading(true);
+      return;
+    }
+    if (projectError) {
+      setTrace(null);
+      setLoading(false);
+      setError(projectError);
+      setErrorStatus(null);
+      return;
+    }
+    if (!selectedProject) {
+      setTrace(null);
+      setLoading(false);
+      setError(null);
+      setErrorStatus(null);
       return;
     }
 
     let cancelled = false;
 
     async function load() {
-      setState((prev) => ({ ...prev, loading: true, error: null }));
+      setLoading(true);
+      setError(null);
+      setErrorStatus(null);
       try {
-        const detail = await fetchTraceDetail(traceId);
+        const token = await getAccessToken();
+        if (!token) {
+          redirectToSignIn();
+          if (!cancelled) {
+            setTrace(null);
+            setLoading(false);
+            setError("Session expired. Redirecting to sign in…");
+            setErrorStatus(401);
+          }
+          return;
+        }
+        const detail = await fetchUserProjectTraceDetail(token, selectedProject!.id, traceId);
         if (cancelled) return;
-        setState({
-          trace: mapBackendTraceDetail(detail),
-          source: "api",
-          loading: false,
-          error: null,
-        });
-      } catch (error) {
+        setTrace(detail);
+        setLoading(false);
+      } catch (err) {
         if (cancelled) return;
-        const fallback = demoTrace ? toDemoDetail(demoTrace) : null;
-        setState({
-          trace: fallback,
-          source: "fallback",
-          loading: false,
-          error: error instanceof Error ? error.message : "Failed to load trace",
-        });
+        if (err instanceof UserApiError && err.status === 401) {
+          redirectToSignIn();
+          setTrace(null);
+          setLoading(false);
+          setError("Session expired. Redirecting to sign in…");
+          setErrorStatus(401);
+          return;
+        }
+        const status = err instanceof UserApiError ? err.status : null;
+        let message: string;
+        if (err instanceof UserApiError) {
+          if (err.status === 403) {
+            message = "You do not have access to this organization or project.";
+          } else if (err.status === 404) {
+            message = "This trace was not found in the selected project.";
+          } else {
+            message = err.message;
+          }
+        } else {
+          message = err instanceof Error ? err.message : "Failed to load trace";
+        }
+        setTrace(null);
+        setLoading(false);
+        setError(message);
+        setErrorStatus(status);
       }
     }
 
@@ -140,12 +104,8 @@ export function useTraceDetail(traceId: string): TraceDetailLoadState {
     return () => {
       cancelled = true;
     };
-  }, [traceId, demoTrace]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectLoading, projectError, selectedProject?.id, traceId, reloadToken]);
 
-  return state;
-}
-
-export function timelineTotalMs(spans: TraceDetailItem["spans"]): number {
-  if (!spans.length) return 1;
-  return Math.max(...spans.map((span) => span.ms + span.dur), 1);
+  return { trace, loading, error, errorStatus, reload };
 }
