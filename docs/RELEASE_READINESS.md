@@ -20,10 +20,21 @@ and **production** work.
 - [x] E2E seam forbidden under staging-shaped configuration
 - [x] Alembic head remains `004_human_identity`
 
+## Hosted deployment status
+
+A hosted Vercel frontend and a hosted Render backend + PostgreSQL exist and
+**currently serve demo/sample data** (owner-confirmed, Checkpoint 17). The
+items below that concern *creating* the hosted infrastructure are therefore
+done; the items that concern *validating real authenticated behavior on
+staging* (WorkOS login, smoke tests, real-tenant browser flows) remain
+**pending** — the deployment has not yet been exercised with real WorkOS
+sign-in or real multi-tenant data. Do not treat hosted deployment as
+production-ready until those are verified.
+
 ## Still requires manual staging verification
 
-- [ ] Create Vercel staging project and fixed hostname
-- [ ] Create Render staging web service + PostgreSQL
+- [x] Create Vercel staging project and fixed hostname (hosted frontend live)
+- [x] Create Render staging web service + PostgreSQL (hosted backend live, demo data)
 - [ ] Apply/configure WorkOS **staging** redirect/sign-in/sign-out URIs
 - [ ] Set real staging secrets in platform dashboards (never in git)
 - [ ] Run migrations via Render pre-deploy on a real database

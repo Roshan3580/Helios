@@ -16,7 +16,7 @@ import {
   Rocket,
   KeyRound,
 } from "lucide-react";
-import { HeliosMark, StatusBadge } from "./primitives";
+import { HeliosMark } from "./primitives";
 import { ProjectSelector } from "./project-selector";
 import { ProjectSelectionProvider } from "@/contexts/project-selection";
 import { useUserMe } from "@/hooks/use-user-me";
@@ -58,15 +58,31 @@ function UserIdentity() {
   );
 }
 
+// `demo: true` marks legacy/preview surfaces that render seeded/sample data (or
+// call the unauthenticated legacy /v1 API), not the authenticated v2 telemetry
+// pipeline. They carry a visible "Demo" badge in the nav so a reviewer never
+// mistakes them for real project telemetry (see docs/RELEASE_CANDIDATE_AUDIT.md).
 const NAV = [
   { to: "/app/dashboard", label: "Dashboard", icon: LayoutDashboard, group: "Observe" },
   { to: "/app/traces", label: "Traces", icon: ListTree, group: "Observe" },
   { to: "/app/insights", label: "Insights", icon: ScanSearch, group: "Observe" },
-  { to: "/app/rag-analytics", label: "RAG Analytics", icon: Search, group: "Observe" },
-  { to: "/app/prompts", label: "Prompts", icon: FileCode2, group: "Improve" },
-  { to: "/app/evaluations", label: "Evaluations", icon: ClipboardCheck, group: "Improve" },
-  { to: "/app/datasets", label: "Datasets", icon: Database, group: "Improve" },
-  { to: "/app/experiments", label: "Experiments", icon: FlaskConical, group: "Improve" },
+  { to: "/app/rag-analytics", label: "RAG Analytics", icon: Search, group: "Improve", demo: true },
+  { to: "/app/prompts", label: "Prompts", icon: FileCode2, group: "Improve", demo: true },
+  {
+    to: "/app/evaluations",
+    label: "Evaluations",
+    icon: ClipboardCheck,
+    group: "Improve",
+    demo: true,
+  },
+  { to: "/app/datasets", label: "Datasets", icon: Database, group: "Improve", demo: true },
+  {
+    to: "/app/experiments",
+    label: "Experiments",
+    icon: FlaskConical,
+    group: "Improve",
+    demo: true,
+  },
   { to: "/app/getting-started", label: "Getting started", icon: Rocket, group: "Setup" },
   { to: "/app/settings/api-keys", label: "API keys", icon: KeyRound, group: "Setup" },
   { to: "/app/settings", label: "Project settings", icon: Settings, group: "Setup" },
@@ -108,7 +124,12 @@ function AppShellLayout() {
                           )}
                         >
                           <Icon className="size-3.5" strokeWidth={1.5} />
-                          {n.label}
+                          <span className="flex-1">{n.label}</span>
+                          {"demo" in n && n.demo && (
+                            <span className="label-eyebrow border border-rule px-1 py-0 text-[9px] text-muted-foreground">
+                              Demo
+                            </span>
+                          )}
                         </Link>
                       </li>
                     );
@@ -144,7 +165,6 @@ Helios.configure(...)`}</pre>
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <StatusBadge tone="success">ingest 1.2k/s</StatusBadge>
               <Bell className="size-4 text-muted-foreground" strokeWidth={1.5} />
               <UserIdentity />
             </div>

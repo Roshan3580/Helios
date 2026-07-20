@@ -348,12 +348,16 @@ Each span stores: `span_id`, `parent_span_id`, `name`, `span_type`, timing, toke
 | **PostgreSQL**                       | Relational trace/span trees, Alembic migrations, familiar ops story             |
 | **SDK instead of UI-only ingestion** | Proves external apps can emit observability data: core recruiting signal        |
 | **Demo fallback in frontend**        | UI stays usable without backend; live mode proves integration                   |
-| **Read APIs + seed data**            | Dashboard/RAG/evals work before workers exist                                   |
-| **No auth (yet)**                    | Keeps scope focused on ingestion + visualization                                |
+| **Read APIs + seed data**            | Legacy `/v1` dashboard/RAG/evals demo pages work before workers exist            |
+| **Two auth models**                  | WorkOS JWT for humans; `hel_proj_*` project keys for machines (both shipped)     |
 
-### Why not OpenTelemetry yet?
+### OpenTelemetry (shipped)
 
-OTel compatibility is planned. The current SDK is intentionally minimal to demonstrate `POST /v1/traces` end-to-end without exporter complexity.
+The canonical ingestion path is OTLP/HTTP protobuf on `POST /v1/otlp/traces`
+(see the API surface above). Both the Python SDK (`sdk/python`) and the
+Node.js/TypeScript SDK (`sdk/typescript`, repository artifact — not yet
+published to npm) export standard OpenTelemetry spans through it. The legacy
+`POST /v1/traces` JSON path remains only for backward compatibility.
 
 ### Why not direct UI ingestion?
 
@@ -364,8 +368,12 @@ Production LLM apps run outside the browser. The SDK + RAG demo shows Helios as 
 ## Future architecture (not implemented)
 
 - Redis + Celery/RQ for eval workers
-- API key auth and rate limiting
-- OpenTelemetry exporter → ingestion adapter
-- TypeScript SDK for Node/browser apps
+- Rate limiting on ingestion and read APIs
+- OTLP/gRPC and collector support
+- Per-project user membership / RBAC (today: organization-wide access)
+
+Shipped since the original plan: WorkOS human auth, `hel_proj_*` project-key
+machine auth, the canonical OTLP path, and the Python + TypeScript SDKs (the
+TypeScript SDK is Node-only; browser telemetry is explicitly unsupported).
 
 See [BACKEND_PLAN.md](BACKEND_PLAN.md).

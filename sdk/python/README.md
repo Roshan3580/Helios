@@ -74,8 +74,10 @@ never commit them or ship them to browser code.
 
 - Auto-instrumentation this release: **OpenAI** only, via the official
   `opentelemetry-instrumentation-openai-v2` (beta). Verified with `openai`
-  2.46.0 on Python ≥3.10. Other providers/frameworks and a TypeScript SDK are
-  future work and not yet supported.
+  2.46.0 on Python ≥3.10. Other providers/frameworks are future work.
+- A Node.js/TypeScript SDK also ships in this repository
+  (`sdk/typescript`, `@helios-ai/sdk` — repository artifact, not yet published
+  to npm); see [docs/TYPESCRIPT_SDK.md](../../docs/TYPESCRIPT_SDK.md).
 - The legacy `HeliosClient` (below) continues to target `/v1/traces`.
 
 ---

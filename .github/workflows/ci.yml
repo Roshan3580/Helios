@@ -4,10 +4,17 @@ on:
   push:
   pull_request:
 
+# Least-privilege default: CI only reads the repo. No job publishes, deploys,
+# or writes back to the repository, so the GITHUB_TOKEN needs read-only contents
+# (overrides a repo/org default that may grant read/write-all).
+permissions:
+  contents: read
+
 jobs:
   frontend:
     name: Frontend (typecheck, lint, build)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -23,6 +30,7 @@ jobs:
   backend-tests:
     name: Backend tests (Postgres)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:16-alpine
@@ -60,6 +68,7 @@ jobs:
   sdk-tests:
     name: Python SDK tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

@@ -170,6 +170,11 @@ test.describe("canonical release gate", () => {
     await expect(page.getByText(/using demo data|demo project selected/i)).toHaveCount(0);
     // Positive signal: real telemetry counts should be non-empty after ingest.
     await expect(page.getByText(/Traces|Error rate|Spans/i).first()).toBeVisible();
+    // Product boundary (Checkpoint 17): the header must not display a fabricated
+    // ingest-rate badge on canonical pages, and legacy/demo surfaces must be
+    // labeled "Demo" in the nav so they are not mistaken for real telemetry.
+    await expect(page.getByText(/ingest\s*1\.2k\/s/i)).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /RAG Analytics/i })).toContainText("Demo");
   });
 
   test("project insights with seeded windows", async ({

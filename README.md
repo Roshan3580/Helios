@@ -4,7 +4,7 @@ AI observability platform for tracing, evaluating, and debugging LLM application
 
 **Live Demo:** [https://helios-alpha-nine.vercel.app/](https://helios-alpha-nine.vercel.app/)
 
-Helios ships as a deployed full-stack system: a TanStack Start console on Vercel, a FastAPI backend on Render, PostgreSQL persistence, read APIs for dashboard and analytics views, and a Python SDK that ingests nested traces via `POST /v1/traces`.
+Helios ships as a deployed full-stack system: a TanStack Start console on Vercel, a FastAPI backend on Render, and PostgreSQL persistence. The canonical ingestion path is OpenTelemetry OTLP/HTTP protobuf on `POST /v1/otlp/traces`, with a Python SDK (`sdk/python`) and a Node.js/TypeScript SDK (`sdk/typescript`, repository artifact — not yet published to npm) exporting standard OTel spans through it. The hosted backend currently showcases demo/sample data; real multi-tenant onboarding and staging WorkOS login are not yet validated (see [docs/RELEASE_READINESS.md](docs/RELEASE_READINESS.md)).
 
 ## Demo
 
@@ -303,9 +303,11 @@ Full walkthrough: [docs/ADR_002_PROJECT_API_KEYS.md](docs/ADR_002_PROJECT_API_KE
 
 ## Future improvements
 
-- Browser/user authentication (sessions, OAuth) and rate limiting
-- Migrate the frontend and Python SDK onto the authenticated v2 path
-- TypeScript SDK and auto-instrumentation
+- Rate limiting on ingestion and read APIs (human WorkOS auth + `hel_proj_*` machine auth already shipped)
+- Authenticate or gate the legacy unauthenticated `/v1` demo surface before real multi-tenant onboarding
+- Migrate the remaining legacy `/v1` demo pages (RAG, evals, prompts, datasets, experiments) onto authenticated v2 data
+- Per-project user membership / RBAC (today: organization-wide access)
+- Publish the TypeScript SDK to npm (currently repository-artifact only, `UNLICENSED`)
 - Eval runner with background workers
 - Prompt, dataset, and eval creation workflows (create/run UI actions are placeholders today)
 - Production monitoring
