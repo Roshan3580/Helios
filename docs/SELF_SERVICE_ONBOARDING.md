@@ -137,6 +137,20 @@ helios = Helios.configure(api_key=…, service_name=…, endpoint=…)
 helios.instrument_openai()
 ```
 
+Node.js / TypeScript (repository artifact; `@helios-ai/sdk` is reserved for
+publication and **not yet on npm** — see
+[TYPESCRIPT_SDK.md](TYPESCRIPT_SDK.md)):
+
+```bash
+cd sdk/typescript && npm install && npm run build && npm pack
+npm install /path/to/helios-ai-sdk-0.1.0.tgz   # in your Node app
+```
+
+```ts
+import { Helios } from "@helios-ai/sdk";
+await Helios.configure({ apiKey: …, endpoint: …, serviceName: … });
+```
+
 Raw OTLP:
 
 ```http

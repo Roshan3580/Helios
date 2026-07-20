@@ -1,0 +1,12 @@
+{
+  "name": "helios-typescript-basic-example",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node main.mjs"
+  },
+  "dependencies": {
+    "@helios-ai/sdk": "file:../../sdk/typescript"
+  }
+}

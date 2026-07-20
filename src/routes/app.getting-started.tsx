@@ -237,6 +237,56 @@ PY`}</pre>
 
       <section className="mb-10 border border-rule">
         <div className="border-b border-rule px-4 py-3">
+          <h2 className="font-serif text-lg">Node.js / TypeScript SDK</h2>
+        </div>
+        <div className="space-y-3 px-4 py-4 text-[13px]">
+          <p className="text-muted-foreground">
+            Verified against the repository SDK (<span className="font-mono">@helios-ai/sdk</span>
+            ). Package name reserved for publication; not yet published — install it from the
+            repository artifact. Replace the placeholder with your one-time key (never commit it).
+          </p>
+          <pre className="overflow-x-auto border border-rule bg-paper-2 px-3 py-3 font-mono text-[11.5px] whitespace-pre-wrap">{`# build the packaged artifact once (from a Helios checkout)
+cd sdk/typescript && npm install && npm run build && npm pack
+
+# in your Node app (Node ^18.19.0 || >=20.6.0)
+npm install /path/to/helios-ai-sdk-0.1.0.tgz
+
+export HELIOS_API_KEY=<YOUR_HELIOS_PROJECT_KEY>
+export HELIOS_ENDPOINT=${endpointBase}
+export HELIOS_SERVICE_NAME=my-agent
+
+node --input-type=module - <<'JS'
+import { Helios, toolAttributes } from "@helios-ai/sdk";
+
+await Helios.configure({
+  apiKey: process.env.HELIOS_API_KEY,
+  endpoint: process.env.HELIOS_ENDPOINT,
+  serviceName: process.env.HELIOS_SERVICE_NAME,
+});
+
+await Helios.trace("my-agent", async () => {
+  await Helios.span(
+    "tool.lookup",
+    { spanType: "tool", attributes: toolAttributes({ toolName: "demo" }) },
+    async () => {},
+  );
+});
+
+await Helios.forceFlush();
+await Helios.shutdown();
+JS`}</pre>
+          <p className="text-muted-foreground">
+            Optional OpenAI auto-instrumentation:{" "}
+            <span className="font-mono">instrumentations: {"{ openai: true }"}</span> (content
+            capture stays off by default). See{" "}
+            <span className="font-mono">docs/TYPESCRIPT_SDK.md</span> and{" "}
+            <span className="font-mono">examples/typescript-basic</span>.
+          </p>
+        </div>
+      </section>
+
+      <section className="mb-10 border border-rule">
+        <div className="border-b border-rule px-4 py-3">
           <h2 className="font-serif text-lg">Raw OTLP HTTP</h2>
         </div>
         <div className="space-y-3 px-4 py-4 text-[13px]">

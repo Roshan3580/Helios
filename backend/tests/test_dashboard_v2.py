@@ -147,12 +147,16 @@ class TestDashboardAuthorization:
         )
         from sqlalchemy import select
 
+        # This test queries the HTTP API, whose 24h window is anchored to the
+        # real current time — shift traces relative to now, not the fixed NOW
+        # (which silently expires and made this test date-dependent).
+        recent = datetime.now(timezone.utc) - timedelta(hours=1)
         for proj in (mine, theirs):
             for tr in db_session.scalars(
                 select(OtelTrace).where(OtelTrace.project_id == proj.id)
             ):
-                tr.start_time = NOW - timedelta(hours=1)
-                tr.end_time = NOW - timedelta(hours=1) + timedelta(milliseconds=10)
+                tr.start_time = recent
+                tr.end_time = recent + timedelta(milliseconds=10)
             db_session.commit()
 
         # Path selects mine; query params naming another project must be ignored.

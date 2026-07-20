@@ -26,6 +26,11 @@ export default tseslint.config(
       ".venv-demo/**",
       "**/__pycache__/**",
       "**/*.egg-info/**",
+      // TypeScript SDK + Node examples: standalone npm package with its own
+      // typecheck/test/package gates (frontend browser rules do not apply)
+      "sdk/typescript/**",
+      "examples/typescript-basic/**",
+      "examples/typescript-openai/**",
     ],
   },
   {

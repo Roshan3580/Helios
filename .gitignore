@@ -66,3 +66,8 @@ examples/rag_support_bot/.venv/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# TypeScript SDK (sdk/typescript)
+sdk/typescript/dist-test/
+sdk/typescript/*.tgz
+!sdk/typescript/package-lock.json

@@ -158,6 +158,14 @@ when `VITE_HELIOS_DEMO_MODE` is not `"false"`:
 | `/app/settings/api-keys` | `GET/POST /v2/user/projects/{ref}/api-keys`, revoke |
 | `/app/getting-started` | `POST /v2/user/projects`, key management, telemetry check |
 
+`/app/getting-started` presents three verified setup paths side by side:
+**Python SDK**, **Node.js / TypeScript SDK**, and **Raw OTLP HTTP**. The Node
+instructions install `@helios-ai/sdk` from the repository artifact and state
+that the package name is reserved for publication but not yet on npm (see
+[TYPESCRIPT_SDK.md](TYPESCRIPT_SDK.md)); no false public `npm install` command
+is shown, no plaintext key persists after the one-time reveal, and the browser
+release gate asserts all three sections render.
+
 Public marketing pages may still show static demo traces outside `/app/*`. The
 legacy `src/lib/api/dashboard.ts` client remains for any deferred consumers but
 is **not** used by `/app/dashboard`.

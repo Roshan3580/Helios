@@ -8,6 +8,10 @@ and **production** work.
 - [x] Frontend typecheck / lint / production build
 - [x] Backend PostgreSQL suite
 - [x] Python SDK suite
+- [x] TypeScript SDK suite (Checkpoint 16): unit tests, dual-build package
+      verification (pack allowlist + ESM/CJS/TS consumers), real local
+      backend OTLP integration, artifact secret scan; package **not**
+      published to npm
 - [x] Chromium browser release gate (Checkpoint 13)
 - [x] Deployment contract checks (Checkpoint 14): staging config validation,
       CORS policy, `/health/live` + `/health/ready`, migration-check CLI,

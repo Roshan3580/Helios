@@ -123,6 +123,16 @@ test.describe("canonical release gate", () => {
     ingestTrace({ apiUrl: apiBase, keyFile, traceId });
 
     await page.goto("/app/getting-started");
+
+    // All three setup paths render, and the Node instructions are truthful
+    // about publication status (repository artifact install, no fake npm name).
+    await expect(page.getByRole("heading", { name: "Python SDK" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Node.js / TypeScript SDK" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Raw OTLP HTTP" })).toBeVisible();
+    await expect(page.getByText(/not yet published/i)).toBeVisible();
+    await expect(page.getByText("Helios.configure({")).toBeVisible();
+    await expect(page.getByText("helios-ai-sdk-0.1.0.tgz")).toBeVisible();
+
     await page.getByRole("button", { name: "Check for traces" }).click();
     await expect(page.getByText(/Telemetry received/i)).toBeVisible({ timeout: 30_000 });
     await page.getByRole("link", { name: "Open trace", exact: true }).click();

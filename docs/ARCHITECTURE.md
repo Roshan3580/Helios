@@ -1,6 +1,6 @@
 # Helios Architecture
 
-Helios is a full-stack observability platform: a React console, FastAPI backend, PostgreSQL storage, and a lightweight Python SDK for trace ingestion.
+Helios is a full-stack observability platform: a React console, FastAPI backend, PostgreSQL storage, and instrumentation SDKs for trace ingestion — Python (`sdk/python`, legacy `/v1/traces` plus canonical OTLP) and Node.js/TypeScript (`sdk/typescript`, canonical OTLP only; see [TYPESCRIPT_SDK.md](TYPESCRIPT_SDK.md)).
 
 ---
 
@@ -285,6 +285,13 @@ sequenceDiagram
 ```
 
 See [SDK_INGESTION.md](SDK_INGESTION.md) for install and demo steps.
+
+The canonical v2 write path is language-agnostic OTLP/HTTP protobuf on
+`POST /v1/otlp/traces` with a Bearer project key: the Python SDK
+(`Helios.configure`, `sdk/python`) and the Node.js/TypeScript SDK
+(`@helios-ai/sdk`, `sdk/typescript`, repository artifact — not yet published
+to npm) both export standard OpenTelemetry spans through it; see
+[TYPESCRIPT_SDK.md](TYPESCRIPT_SDK.md).
 
 ---
 
