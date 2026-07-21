@@ -81,7 +81,7 @@ export function ProjectApiKeysPanel({
 
       <section className="border border-rule">
         <div className="border-b border-rule px-4 py-3">
-          <h2 className="font-serif text-lg">Create key</h2>
+          <h2 className="font-serif text-lg">Create a project API key</h2>
         </div>
         <form onSubmit={onCreate} className="space-y-4 px-4 py-4" noValidate>
           <div>
@@ -139,7 +139,7 @@ export function ProjectApiKeysPanel({
 
       <section className="border border-rule">
         <div className="flex items-center justify-between border-b border-rule px-4 py-3">
-          <h2 className="font-serif text-lg">Project API keys</h2>
+          <h2 className="font-serif text-lg">Existing API keys</h2>
           <button
             type="button"
             onClick={state.reload}

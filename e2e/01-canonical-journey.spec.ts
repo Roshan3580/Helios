@@ -72,7 +72,13 @@ test.describe("canonical release gate", () => {
     void consoleGate;
     void apiBase;
     await page.goto("/app/settings/api-keys");
-    await expect(page.getByRole("heading", { name: "Project API keys" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Project API keys" })).toBeVisible();
+    // Regression guard: exactly one page-level heading, no duplicate accessible names.
+    await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+    await expect(
+      page.getByRole("heading", { level: 2, name: "Create a project API key" }),
+    ).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Existing API keys" })).toBeVisible();
 
     await page.getByLabel("Key name").fill("e2e-release-key");
     // scopes default to both ingest+read
