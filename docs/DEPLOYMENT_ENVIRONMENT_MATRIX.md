@@ -21,7 +21,7 @@ staging, and production. Placeholders only — never commit real secrets.
 | `DATABASE_URL` | Backend | Secret | Yes | Render internal URL | Not `helios_test` |
 | `CORS_ORIGINS` | Backend | Public list | Yes | Exact HTTPS origin | No `*`, no localhost |
 | `HELIOS_ENVIRONMENT` | Backend (+ docs) | Public | Yes | `staging` | Enum |
-| `HELIOS_DEMO_MODE` | Backend | Config | Yes | `false` | — |
+| `HELIOS_DEMO_MODE` | Backend | Config | Yes | `false` | Startup reject if true (mounts unauthenticated legacy `/v1` routers) |
 | `HELIOS_ANALYST_NARRATIVE_ENABLED` | Backend | Config | Default false | `false` | — |
 | `HELIOS_ANALYST_ALLOW_THIRD_PARTY` | Backend | Config | Default false | `false` | — |
 | `HELIOS_ANALYST_PROVIDER` | Backend | Config | If narrative | `openai` | Requires key if enabled |
@@ -35,6 +35,7 @@ staging, and production. Placeholders only — never commit real secrets.
 ## Forbidden in staging/production
 
 - Any `HELIOS_E2E_*` enablement or access token  
+- `HELIOS_DEMO_MODE=true` (mounts unauthenticated legacy `/v1` routers — Checkpoint 18)  
 - Wildcard CORS  
 - Loopback WorkOS issuer/JWKS  
 - Server secrets in `VITE_*`  

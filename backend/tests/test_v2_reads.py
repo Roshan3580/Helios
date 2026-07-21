@@ -23,6 +23,15 @@ from otlp_helpers import (
     post_otlp,
 )
 
+# test_legacy_tables_remain_usable below hits legacy /v1/traces, which is
+# mounted only under explicit demo mode; the rest of this module only uses
+# canonical /v2/traces, unaffected either way (see conftest.legacy_demo_client).
+
+
+@pytest.fixture()
+def client(legacy_demo_client):
+    return legacy_demo_client
+
 
 class TestMigrationAndSchema:
     def test_migration_head_creates_expected_tables(self, db_session):

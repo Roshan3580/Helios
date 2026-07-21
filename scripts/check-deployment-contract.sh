@@ -56,6 +56,7 @@ BACKEND_PY="${BACKEND_VENV:-$ROOT/backend/.venv}/bin/python"
   cd backend
   HELIOS_ENVIRONMENT=staging \
   HELIOS_E2E_TEST_MODE=false \
+  HELIOS_DEMO_MODE=false \
   HELIOS_ANALYST_NARRATIVE_ENABLED=false \
   HELIOS_ANALYST_ALLOW_THIRD_PARTY=false \
   DATABASE_URL='postgresql://helios_staging:placeholder@db.example/helios_staging' \
@@ -64,6 +65,25 @@ BACKEND_PY="${BACKEND_VENV:-$ROOT/backend/.venv}/bin/python"
   WORKOS_ISSUER='https://api.workos.com/user_management/client_staging_example' \
   WORKOS_JWKS_URL='https://api.workos.com/sso/jwks/client_staging_example' \
   "$BACKEND_PY" -m app.cli.deployment_check --config-only
+)
+
+echo "[deploy-contract] staging + HELIOS_DEMO_MODE=true must fail (L1 regression guard)"
+(
+  cd backend
+  if HELIOS_ENVIRONMENT=staging \
+    HELIOS_E2E_TEST_MODE=false \
+    HELIOS_DEMO_MODE=true \
+    HELIOS_ANALYST_NARRATIVE_ENABLED=false \
+    HELIOS_ANALYST_ALLOW_THIRD_PARTY=false \
+    DATABASE_URL='postgresql://helios_staging:placeholder@db.example/helios_staging' \
+    CORS_ORIGINS='https://helios-staging.example.vercel.app' \
+    WORKOS_CLIENT_ID='client_staging_example' \
+    WORKOS_ISSUER='https://api.workos.com/user_management/client_staging_example' \
+    WORKOS_JWKS_URL='https://api.workos.com/sso/jwks/client_staging_example' \
+    "$BACKEND_PY" -m app.cli.deployment_check --config-only >/dev/null 2>&1; then
+    echo "expected HELIOS_DEMO_MODE=true to fail staging config check" >&2
+    exit 1
+  fi
 )
 
 echo "[deploy-contract] frontend staging-shaped build + bundle scan"

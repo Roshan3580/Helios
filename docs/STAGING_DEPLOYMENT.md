@@ -60,6 +60,18 @@ redirect URIs remain stable.
 `HELIOS_E2E_TEST_MODE` and `VITE_HELIOS_E2E_TEST_MODE` must be `false` in staging.
 `/api/e2e/session` and `/v2/e2e/*` must remain unavailable.
 
+## Legacy/demo API prohibition (Checkpoint 18)
+
+`HELIOS_DEMO_MODE` must be `false` in staging (same mechanism and same
+`app.main.lifespan` startup check as the E2E prohibition above). When true,
+the backend mounts eight unauthenticated legacy routers (`/v1/projects`,
+`/v1/traces`, `/v1/dashboard`, `/v1/rag`, `/v1/evaluations`, `/v1/prompts`,
+`/v1/datasets`, `/v1/demo/seed`) — this was release-candidate finding L1.
+`python -m app.cli.deployment_check --config-only` fails with
+`demo_mode_forbidden` if staging sets it true. Canonical `POST /v1/otlp/traces`
+and all `/v2/*` routes are mounted unconditionally and are never affected by
+this flag.
+
 ## Deploy order (manual)
 
 1. Create staging PostgreSQL  

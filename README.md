@@ -28,16 +28,16 @@ Helios ships as a deployed full-stack system: a TanStack Start console on Vercel
 - **OpenTelemetry ingestion (v2, canonical):** OTLP/HTTP protobuf at `POST /v1/otlp/traces`, project-key-authenticated reads at `GET /v2/traces` (`Authorization: Bearer <project-api-key>`) — see [docs/ADR_001_OTLP_TRACE_FOUNDATION.md](docs/ADR_001_OTLP_TRACE_FOUNDATION.md), [docs/ADR_002_PROJECT_API_KEYS.md](docs/ADR_002_PROJECT_API_KEYS.md), and [examples/otel_quickstart](examples/otel_quickstart/)
 - **Python instrumentation SDK (v2):** `Helios.configure(...)` exports standard OpenTelemetry spans to the canonical path with automatic OpenAI tracing and manual agent/retrieval/tool span helpers — see [sdk/python/README.md](sdk/python/README.md), [docs/ADR_003_PYTHON_OTEL_SDK.md](docs/ADR_003_PYTHON_OTEL_SDK.md), and [examples/python_sdk_quickstart](examples/python_sdk_quickstart/)
 - **TypeScript instrumentation SDK (v2, Node):** `@helios-ai/sdk` (dual ESM/CommonJS, OTel JS 2.x, OTLP/HTTP protobuf) with typed workflow/retrieval/tool/LLM helpers, GenAI attribute builders, and optional official Node/OpenAI auto-instrumentation (content capture off by default); installed from the repository artifact — the package name is reserved for publication and **not yet published to npm** — see [docs/TYPESCRIPT_SDK.md](docs/TYPESCRIPT_SDK.md), [sdk/typescript/README.md](sdk/typescript/README.md), [examples/typescript-basic](examples/typescript-basic/), and [examples/typescript-openai](examples/typescript-openai/)
-- **Trace ingestion (v1, legacy):** accept nested span trees from the Python SDK at `POST /v1/traces`
+- **Trace ingestion (v1, legacy, demo-mode-gated):** accept nested span trees from the Python SDK at `POST /v1/traces` — mounted only when `HELIOS_DEMO_MODE=true` (never in staging/production)
 - **Trace and span inspection:** list, filter, and open trace detail with nested span timelines
 - **Deterministic trace evidence analysis:** an authenticated `Analyze trace` action on `/app/traces/{id}` runs a fixed rule set (`single-trace-v1`) over stored OTel telemetry via `POST /v2/user/projects/{project}/analysis/traces/{trace_id}` — evidence-backed findings with span navigation, coverage, and explicit limitations; no persistence, no content exposure — see [docs/ANALYST_EVIDENCE_ENGINE.md](docs/ANALYST_EVIDENCE_ENGINE.md)
 - **Optional analyst narrative:** when explicitly enabled and requested, a provider may explain existing evidence IDs only (never invent findings); disabled by default and requires dual opt-in flags — see [docs/ADR_005_OPTIONAL_ANALYST_NARRATIVE.md](docs/ADR_005_OPTIONAL_ANALYST_NARRATIVE.md)
 - **Project insights (window comparison):** an explicit `Analyze project` action on `/app/insights` compares the selected 24h/7d/30d window against the immediately preceding equal-length window (ruleset `project-window-v1`) via `POST /v2/user/projects/{project}/analysis` — bounded, deterministic cross-trace findings (error-rate/latency/token regressions, outliers, error clusters, instrumentation gaps, error concentration) with real supporting-trace links, coverage, caps metadata, and explicit limitations; synchronous and ephemeral, no persistence or background monitoring — see [docs/PROJECT_INSIGHTS.md](docs/PROJECT_INSIGHTS.md)
 - **Self-serve onboarding:** authenticated members of a linked WorkOS organization can create projects and mint/revoke project API keys in the console (`/app/getting-started`, `/app/settings/api-keys`) without the admin CLI — plaintext keys are shown once; only hashes are stored — see [docs/SELF_SERVICE_ONBOARDING.md](docs/SELF_SERVICE_ONBOARDING.md)
-- **Dashboard summaries:** aggregate latency, cost, token usage, and recent traces via `GET /v1/dashboard/summary`
-- **RAG analytics:** chunk hit rates, citation coverage, and quality signals via `GET /v1/rag/metrics`
-- **Evaluations:** eval run summaries and model comparison tables via `GET /v1/evaluations`
-- **Prompt and dataset tracking:** prompt version metrics and dataset summaries derived from eval runs
+- **Dashboard summaries (legacy, demo-mode-gated):** aggregate latency, cost, token usage, and recent traces via `GET /v1/dashboard/summary`
+- **RAG analytics (legacy, demo-mode-gated):** chunk hit rates, citation coverage, and quality signals via `GET /v1/rag/metrics`
+- **Evaluations (legacy, demo-mode-gated):** eval run summaries and model comparison tables via `GET /v1/evaluations`
+- **Prompt and dataset tracking (legacy, demo-mode-gated):** prompt version metrics and dataset summaries derived from eval runs
 - **SDK-based external submission:** the deterministic RAG support bot under `examples/rag_support_bot` submits real traces into the same backend the UI reads
 
 ---
@@ -107,6 +107,7 @@ Open http://localhost:5173
 docker compose -f docker-compose.dev.yml up -d postgres
 cd backend && source .venv/bin/activate
 export DATABASE_URL=postgresql://helios:helios@localhost:5433/helios
+export HELIOS_DEMO_MODE=true   # mounts /v1/demo/seed and the other legacy pages; default is false
 alembic upgrade head
 uvicorn app.main:app --reload --port 8000
 curl -X POST http://localhost:8000/v1/demo/seed
@@ -255,7 +256,11 @@ Notes:
 - The full key is displayed **only once** at creation and cannot be retrieved later.
 - Keys are currently managed through this administrative CLI only.
 - **Rate limiting is not implemented yet.**
-- Legacy `/v1/traces` remains a temporary **unsecured** compatibility route.
+- Legacy `/v1/traces` and the other legacy/demo routes (below) remain
+  unauthenticated, but are mounted only when the backend explicitly sets
+  `HELIOS_DEMO_MODE=true` — never in staging/production, where startup
+  validation rejects it. See
+  [docs/DEPLOYMENT_ENVIRONMENT_MATRIX.md](docs/DEPLOYMENT_ENVIRONMENT_MATRIX.md).
 
 ## Human authentication (WorkOS AuthKit)
 
@@ -304,8 +309,7 @@ Full walkthrough: [docs/ADR_002_PROJECT_API_KEYS.md](docs/ADR_002_PROJECT_API_KE
 ## Future improvements
 
 - Rate limiting on ingestion and read APIs (human WorkOS auth + `hel_proj_*` machine auth already shipped)
-- Authenticate or gate the legacy unauthenticated `/v1` demo surface before real multi-tenant onboarding
-- Migrate the remaining legacy `/v1` demo pages (RAG, evals, prompts, datasets, experiments) onto authenticated v2 data
+- Migrate the remaining legacy `/v1` demo pages (RAG, evals, prompts, datasets, experiments) onto authenticated v2 data (the unauthenticated `/v1` demo surface itself is now gated behind explicit `HELIOS_DEMO_MODE`, forbidden in staging/production — Checkpoint 18)
 - Per-project user membership / RBAC (today: organization-wide access)
 - Publish the TypeScript SDK to npm (currently repository-artifact only, `UNLICENSED`)
 - Eval runner with background workers

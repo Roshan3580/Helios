@@ -72,7 +72,7 @@ src/
 - **Traces (`/app/traces*`):** WorkOS JWT → `GET /v2/user/projects/.../traces*`; project selector in app shell; no demo fallback.
 - **Getting started (`/app/getting-started`):** create projects and mint project API keys under the active linked organization; one-time plaintext reveal; SDK/OTLP setup; explicit telemetry check.
 - **API keys (`/app/settings/api-keys`):** list/create/revoke redacted project keys for the selected project.
-- **Legacy analytics pages** (RAG, evals, prompts, datasets, experiments, settings): still use `VITE_HELIOS_DEMO_MODE` + unauthenticated `/v1/*` with optional demo fallback.
+- **Legacy analytics pages** (RAG, evals, prompts, datasets, experiments, settings): still use `VITE_HELIOS_DEMO_MODE` + unauthenticated `/v1/*` with optional demo fallback. The backend `/v1/*` legacy routers themselves are mounted only under explicit `HELIOS_DEMO_MODE=true` — absent (404) otherwise, and forbidden in staging/production.
 - Machine ingestion/reads remain project API keys on `/v1/otlp/traces` and `/v2/traces*`.
 
 See [FRONTEND_BACKEND_INTEGRATION.md](FRONTEND_BACKEND_INTEGRATION.md).
@@ -122,9 +122,9 @@ results, or create links.
 | POST   | `/v1/otlp/traces`       | OTLP/HTTP protobuf ingest (Bearer key, `traces:ingest`) | **Canonical v2** |
 | GET    | `/v2/traces`            | List OTel traces (Bearer key, `traces:read`) | **Canonical v2** |
 | GET    | `/v2/traces/{trace_id}` | OTel trace detail (Bearer key, `traces:read`) | **Canonical v2** |
-| POST   | `/v1/traces`            | Ingest trace + spans (SDK) | Legacy compatibility |
-| GET    | `/v1/traces`            | List traces                | Legacy compatibility |
-| GET    | `/v1/traces/{id}`       | Trace detail               | Legacy compatibility |
+| POST   | `/v1/traces`            | Ingest trace + spans (SDK) | Legacy compatibility (demo-mode-gated) |
+| GET    | `/v1/traces`            | List traces                | Legacy compatibility (demo-mode-gated) |
+| GET    | `/v1/traces/{id}`       | Trace detail               | Legacy compatibility (demo-mode-gated) |
 | GET    | `/v2/user/projects/{ref}/dashboard` | Org-scoped OTel dashboard aggregates (WorkOS JWT) | **Canonical v2** |
 | POST   | `/v2/user/projects` | Create project in active linked org (WorkOS JWT) | **Canonical v2** |
 | GET    | `/v2/user/projects/{ref}/api-keys` | List redacted project API keys (WorkOS JWT) | **Canonical v2** |
@@ -132,12 +132,17 @@ results, or create links.
 | POST   | `/v2/user/projects/{ref}/api-keys/{id}/revoke` | Revoke project API key (WorkOS JWT) | **Canonical v2** |
 | POST   | `/v2/user/projects/{ref}/analysis` | Deterministic project-window analysis (WorkOS JWT) | **Canonical v2** |
 | POST   | `/v2/user/projects/{ref}/analysis/traces/{trace_id}` | Deterministic single-trace analysis (WorkOS JWT) | **Canonical v2** |
-| GET    | `/v1/dashboard/summary` | Dashboard aggregates       | Legacy compatibility |
-| GET    | `/v1/rag/metrics`       | RAG analytics              | Legacy compatibility |
-| GET    | `/v1/evaluations`       | Eval runs                  | Legacy compatibility |
-| GET    | `/v1/prompts`           | Prompt versions            | Legacy compatibility |
-| GET    | `/v1/datasets`          | Dataset summaries          | Legacy compatibility |
-| POST   | `/v1/demo/seed`         | Seed sample data           | Legacy compatibility |
+| GET    | `/v1/dashboard/summary` | Dashboard aggregates       | Legacy compatibility (demo-mode-gated) |
+| GET    | `/v1/rag/metrics`       | RAG analytics              | Legacy compatibility (demo-mode-gated) |
+| GET    | `/v1/evaluations`       | Eval runs                  | Legacy compatibility (demo-mode-gated) |
+| GET    | `/v1/prompts`           | Prompt versions            | Legacy compatibility (demo-mode-gated) |
+| GET    | `/v1/datasets`          | Dataset summaries          | Legacy compatibility (demo-mode-gated) |
+| POST   | `/v1/demo/seed`         | Seed sample data           | Legacy compatibility (demo-mode-gated) |
+
+All eight rows marked "demo-mode-gated" are mounted only when
+`HELIOS_DEMO_MODE=true` (default `false`; forbidden in staging/production —
+see [DEPLOYMENT_ENVIRONMENT_MATRIX.md](DEPLOYMENT_ENVIRONMENT_MATRIX.md)). All
+other rows (canonical v2, including `/v1/otlp/traces`) are always mounted.
 
 ### Canonical v2: OpenTelemetry path
 
@@ -196,6 +201,7 @@ pytest
 # 2. Local dev backend (applies migrations 001-003 to the dev database)
 docker compose -f docker-compose.dev.yml up -d postgres
 export DATABASE_URL=postgresql://helios:helios@localhost:5433/helios
+export HELIOS_DEMO_MODE=true   # mounts legacy /v1/* pages for step 8 below; default is false
 alembic upgrade head
 uvicorn app.main:app --reload --port 8000
 
@@ -222,7 +228,8 @@ python -m app.cli.api_keys create --project-slug otel-quickstart --name read \
 python -m app.cli.api_keys list --project-slug otel-quickstart
 python -m app.cli.api_keys revoke --key-prefix <prefix>
 
-# 8. Legacy v1 demo still works unchanged (no auth)
+# 8. Legacy v1 demo still works unchanged (no auth; requires HELIOS_DEMO_MODE=true
+#    from step 2 — the legacy routers 404 otherwise)
 python examples/rag_support_bot/run_demo.py --api-url http://localhost:8000
 ```
 
@@ -348,7 +355,7 @@ Each span stores: `span_id`, `parent_span_id`, `name`, `span_type`, timing, toke
 | **PostgreSQL**                       | Relational trace/span trees, Alembic migrations, familiar ops story             |
 | **SDK instead of UI-only ingestion** | Proves external apps can emit observability data: core recruiting signal        |
 | **Demo fallback in frontend**        | UI stays usable without backend; live mode proves integration                   |
-| **Read APIs + seed data**            | Legacy `/v1` dashboard/RAG/evals demo pages work before workers exist            |
+| **Read APIs + seed data**            | Legacy `/v1` dashboard/RAG/evals demo pages work before workers exist; the routers are mounted only under explicit `HELIOS_DEMO_MODE=true` (never staging/production) |
 | **Two auth models**                  | WorkOS JWT for humans; `hel_proj_*` project keys for machines (both shipped)     |
 
 ### OpenTelemetry (shipped)
@@ -357,7 +364,8 @@ The canonical ingestion path is OTLP/HTTP protobuf on `POST /v1/otlp/traces`
 (see the API surface above). Both the Python SDK (`sdk/python`) and the
 Node.js/TypeScript SDK (`sdk/typescript`, repository artifact — not yet
 published to npm) export standard OpenTelemetry spans through it. The legacy
-`POST /v1/traces` JSON path remains only for backward compatibility.
+`POST /v1/traces` JSON path remains only for backward compatibility, mounted
+only under explicit `HELIOS_DEMO_MODE=true` (never staging/production).
 
 ### Why not direct UI ingestion?
 

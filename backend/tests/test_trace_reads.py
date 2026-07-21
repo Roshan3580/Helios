@@ -1,8 +1,19 @@
-"""Tests for GET /v1/traces and GET /v1/traces/{trace_id}."""
+"""Tests for GET /v1/traces and GET /v1/traces/{trace_id}.
+
+Legacy /v1 routes are mounted only under explicit demo mode, so this module
+overrides `client` to use the demo-enabled app (see conftest.legacy_demo_client).
+"""
 
 from datetime import datetime
 
+import pytest
+
 from helpers import make_trace_payload
+
+
+@pytest.fixture()
+def client(legacy_demo_client):
+    return legacy_demo_client
 
 
 def test_list_returns_ingested_trace(client):

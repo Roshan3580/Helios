@@ -51,6 +51,11 @@ if "test" not in _database_name:
 os.environ["DATABASE_URL"] = _test_db_url
 # Unit/integration suite runs as HELIOS_ENVIRONMENT=test (not staging).
 os.environ["HELIOS_ENVIRONMENT"] = "test"
+# Force the safe default (legacy/demo routers absent) on the shared `app`
+# singleton, regardless of a developer .env that sets HELIOS_DEMO_MODE=true
+# for local demo workflows. Tests that need legacy routes use the
+# `legacy_demo_client` fixture below, which builds an independent app.
+os.environ["HELIOS_DEMO_MODE"] = "false"
 
 # A prior browser E2E harness in the same shell may leave HELIOS_E2E_* /
 # loopback WorkOS overrides set. Strip them so the default TestClient app
@@ -72,8 +77,9 @@ from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy import create_engine, text  # noqa: E402
 from sqlalchemy.orm import sessionmaker  # noqa: E402
 
+from app.config import get_settings  # noqa: E402
 from app.database import get_db  # noqa: E402
-from app.main import app  # noqa: E402
+from app.main import app, create_app  # noqa: E402
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 
@@ -129,6 +135,26 @@ def client():
             yield test_client
     finally:
         app.dependency_overrides.pop(get_db, None)
+
+
+@pytest.fixture()
+def legacy_demo_client(monkeypatch):
+    """TestClient with legacy/demo routers explicitly enabled.
+
+    Use only for tests that exercise the legacy /v1 surface (projects,
+    traces, dashboard, rag, evaluations, prompts, datasets, demo seed)
+    directly. The default `client` fixture reflects the safe production
+    default (HELIOS_DEMO_MODE=false, legacy routers absent).
+    """
+    monkeypatch.setenv("HELIOS_DEMO_MODE", "true")
+    get_settings.cache_clear()
+    demo_app = create_app()
+    demo_app.dependency_overrides[get_db] = _override_get_db
+    try:
+        with TestClient(demo_app) as test_client:
+            yield test_client
+    finally:
+        get_settings.cache_clear()
 
 
 @pytest.fixture()

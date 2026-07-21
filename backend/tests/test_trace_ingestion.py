@@ -1,8 +1,19 @@
-"""Tests for POST /v1/traces — the v1 ingestion contract."""
+"""Tests for POST /v1/traces — the v1 ingestion contract.
+
+Legacy /v1 routes are mounted only under explicit demo mode, so this module
+overrides `client` to use the demo-enabled app (see conftest.legacy_demo_client).
+"""
+
+import pytest
 
 from app.models import Project, Span, Trace
 
 from helpers import make_trace_payload
+
+
+@pytest.fixture()
+def client(legacy_demo_client):
+    return legacy_demo_client
 
 
 def test_ingest_valid_trace_returns_201_with_detail(client):

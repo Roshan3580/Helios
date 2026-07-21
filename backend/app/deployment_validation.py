@@ -55,6 +55,7 @@ def validate_settings(
     workos_issuer: str,
     workos_jwks_url: str,
     helios_e2e_test_mode: bool,
+    helios_demo_mode: bool,
     narrative_enabled: bool,
     allow_third_party: bool,
     analyst_provider: str,
@@ -81,6 +82,15 @@ def validate_settings(
                 ValidationIssue(
                     "e2e_forbidden",
                     "HELIOS_E2E_TEST_MODE must be false in staging/production",
+                )
+            )
+
+        if helios_demo_mode:
+            issues.append(
+                ValidationIssue(
+                    "demo_mode_forbidden",
+                    "HELIOS_DEMO_MODE must be false in staging/production; "
+                    "legacy/demo APIs cannot run there",
                 )
             )
 

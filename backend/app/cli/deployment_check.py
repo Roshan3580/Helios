@@ -47,6 +47,7 @@ def run_config_check() -> int:
         workos_issuer=settings.workos_issuer_resolved,
         workos_jwks_url=settings.workos_jwks_url_resolved,
         helios_e2e_test_mode=settings.helios_e2e_test_mode,
+        helios_demo_mode=settings.helios_demo_mode,
         narrative_enabled=settings.helios_analyst_narrative_enabled,
         allow_third_party=settings.helios_analyst_allow_third_party,
         analyst_provider=settings.helios_analyst_provider,

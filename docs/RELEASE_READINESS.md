@@ -18,6 +18,9 @@ and **production** work.
       `render.yaml` placeholders, `.env.staging.example`, browser bundle secret scan
 - [x] Narrative disabled by default; no real OpenAI call in CI
 - [x] E2E seam forbidden under staging-shaped configuration
+- [x] Legacy/demo API surface (Checkpoint 18): mounted only under explicit
+      `HELIOS_DEMO_MODE=true`; forbidden under staging-shaped configuration
+      (same mechanism as the E2E seam); canonical OTLP and `/v2/*` unaffected
 - [x] Alembic head remains `004_human_identity`
 
 ## Hosted deployment status

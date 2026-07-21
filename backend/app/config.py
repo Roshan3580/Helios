@@ -16,7 +16,10 @@ class Settings(BaseSettings):
     backend_host: str = "0.0.0.0"
     backend_port: int = 8000
     cors_origins: str = "http://localhost:5173,http://localhost:3000"
-    helios_demo_mode: bool = True
+    # Safe by default: legacy/demo routers are mounted only when this is
+    # explicitly true (see app.main.create_app). Forbidden in staging/
+    # production (see deployment_validation.validate_settings).
+    helios_demo_mode: bool = False
     app_version: str = "0.1.0"
 
     # WorkOS human authentication (access-token verification only; the WorkOS
@@ -83,6 +86,7 @@ class Settings(BaseSettings):
             workos_issuer=self.workos_issuer_resolved,
             workos_jwks_url=self.workos_jwks_url_resolved,
             helios_e2e_test_mode=self.helios_e2e_test_mode,
+            helios_demo_mode=self.helios_demo_mode,
             narrative_enabled=self.helios_analyst_narrative_enabled,
             allow_third_party=self.helios_analyst_allow_third_party,
             analyst_provider=self.helios_analyst_provider,

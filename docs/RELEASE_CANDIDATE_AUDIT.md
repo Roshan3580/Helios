@@ -33,19 +33,21 @@ bundle, or SDK artifact; narrative is disabled by default behind dual opt-in,
 cannot invent evidence, and its provider bundles exclude content, identity, and
 credentials.
 
-The material release-relevant issues are **not in the v2 path**. They are: (1)
+The material release-relevant issues were **not in the v2 path**. They were: (1)
 the legacy unauthenticated `/v1` surface, (2) a product-boundary problem where
 demo pages were indistinguishable from real telemetry, and (3) several
-documentation contradictions. (2) and (3) are fixed in this checkpoint; (1) is
-documented as the top open item because the backend is a **live hosted demo**
-and altering its routing/startup validation would risk breaking it — its
-exposure is not realized today (demo-only data).
+documentation contradictions. (2) and (3) were fixed in Checkpoint 17; (1) is
+fixed in Checkpoint 18 — legacy/demo routers are now mounted only under
+explicit `HELIOS_DEMO_MODE=true`, which is itself forbidden in staging/
+production by startup validation. The hosted demo (which intentionally serves
+demo-only data) continues to run by explicitly setting `HELIOS_DEMO_MODE=true`
+in its own environment classification; this is unaffected by the fix.
 
 ## Findings
 
 | ID | Severity | Subsystem | Finding | Resolution |
 | -- | -------- | --------- | ------- | ---------- |
-| L1 | HIGH | Legacy API / isolation | Legacy `/v1` routers are mounted unauthenticated over the shared `projects` table: `GET /v1/projects` enumerates every organization's projects; `/v1/traces` allows unauthenticated read/write of the legacy trace store; `/v1/dashboard/summary`,`/v1/rag`,`/v1/evaluations`,`/v1/prompts`,`/v1/datasets` are unauthenticated legacy reads; `POST /v1/demo/seed` is gated only by `helios_demo_mode` (defaults `True`, not checked by deployment validation). | **Documented (not code-changed).** Not exploitable today: the hosted backend serves demo-only data and there are no real tenants. Modifying backend routing or startup validation risks breaking the live demo. Must be closed before real multi-tenant onboarding / before `helios_demo_mode` is disabled — see "Open before real tenants" below. |
+| L1 | HIGH → fixed (Checkpoint 18) | Legacy API / isolation | Legacy `/v1` routers were mounted unauthenticated over the shared `projects` table regardless of configuration: `GET /v1/projects` enumerated every organization's projects; `/v1/traces` allowed unauthenticated read/write of the legacy trace store; `/v1/dashboard/summary`,`/v1/rag`,`/v1/evaluations`,`/v1/prompts`,`/v1/datasets` were unauthenticated legacy reads; `POST /v1/demo/seed` was gated only by an in-handler check (`helios_demo_mode`, defaulted `True`, not checked by deployment validation). | **Fixed.** `app.main.create_app()` now mounts the eight legacy/demo routers only when `HELIOS_DEMO_MODE` is explicitly `true` — never per-endpoint authentication, the security boundary is not mounting them at all. The default changed to `false`. `deployment_validation.validate_settings` now rejects `HELIOS_DEMO_MODE=true` in staging/production (new `demo_mode_forbidden` issue), enforced at ASGI startup (`app.main.lifespan`) and by `python -m app.cli.deployment_check --config-only` — failing before any traffic is served, not first at `/health/ready`. Canonical `POST /v1/otlp/traces` and all `/v2/*` routes are mounted unconditionally and are unaffected. See `backend/tests/test_legacy_demo_gating.py` for route-mounting/OpenAPI/canonical-preservation regression coverage. |
 | P1 | HIGH → fixed | Frontend product boundary | Five legacy/demo surfaces (RAG Analytics, Prompts, Evaluations, Datasets, Experiments) appeared in primary nav with no label; RAG Analytics sat in the `Observe` group beside real telemetry; demo data rendered with no on-screen notice in the default (demo-on) build; the app shell showed a fabricated `ingest 1.2k/s` badge on every canonical page. | **Fixed.** Demo surfaces moved out of `Observe`, labeled with a visible `Demo` badge; `DataSourceNotice` now renders for `demo` (not only `fallback`); Experiments gained a top-of-page demo notice; the fabricated ingest badge was removed. E2E asserts the badge is gone and the legacy nav is labeled. |
 | D1 | HIGH → fixed | Documentation | README/RELEASE_READINESS/render.yaml disagreed on whether the backend is deployed. | **Fixed after owner confirmation** that the Render backend + Postgres are hosted and currently serve demo data. README keeps the deployment claim (now pointing at the canonical OTLP path and both SDKs, and noting the hosted backend showcases demo data); RELEASE_READINESS records hosted infrastructure as done while real WorkOS staging login / real-tenant validation remain pending. |
 | D2 | MEDIUM → fixed | Documentation | `ARCHITECTURE.md` "Design tradeoffs" / "Future architecture" claimed auth, OpenTelemetry, and the TypeScript SDK were unbuilt, and listed a "browser" TS SDK (contradicting the rest of the doc and `TYPESCRIPT_SDK.md` which marks browser unsupported). | **Fixed.** Sections rewritten to reflect shipped auth (WorkOS + project keys), shipped OTLP path, shipped Python + Node SDKs (Node-only, browser unsupported). |
@@ -102,20 +104,58 @@ Documentation:
   exist.
 - `docs/RELEASE_CANDIDATE_AUDIT.md` — this document.
 
+## Fixed in Checkpoint 18
+
+Code / config:
+
+- `backend/app/main.py` — introduced `create_app()` (factory instead of a
+  module-level singleton with unconditional `include_router` calls); legacy/
+  demo routers (`projects`, `traces`, `dashboard`, `rag`, `evaluations`,
+  `prompts`, `datasets`, `demo`) are mounted only when `settings.helios_demo_mode`
+  is true. Canonical `otlp`, `traces_v2`, `user_v2`, and `health` are always
+  mounted, independent of the flag.
+- `backend/app/config.py` — `helios_demo_mode` default changed `True` → `False`.
+- `backend/app/deployment_validation.py` — `validate_settings` gained a
+  `helios_demo_mode` parameter; staging/production with it `true` now produces
+  a `demo_mode_forbidden` issue, enforced at ASGI startup (`app.main.lifespan`)
+  and by `python -m app.cli.deployment_check --config-only` — the same
+  mechanism already used for `HELIOS_E2E_TEST_MODE`.
+- `backend/app/cli/deployment_check.py` — passes `helios_demo_mode` through to
+  `validate_settings`.
+- `backend/tests/test_legacy_demo_gating.py` (new) — route-mounting, OpenAPI
+  presence/absence, canonical-OTLP-preservation, canonical-`/v2`-preservation,
+  and unsafe-environment-startup regression coverage.
+- `backend/tests/conftest.py` — the shared `client` fixture's app now resolves
+  `HELIOS_DEMO_MODE=false` deterministically (forced before import, matching
+  the existing pattern for `DATABASE_URL`/`HELIOS_ENVIRONMENT`); added
+  `legacy_demo_client` for the few tests that exercise the legacy surface
+  directly.
+- `scripts/check-deployment-contract.sh` — added an explicit
+  `HELIOS_DEMO_MODE=false` to the staging-shaped config check and a regression
+  guard asserting `HELIOS_DEMO_MODE=true` fails that same check.
+- `.env.example`, `.env.staging.example` — comments clarify the flag's effect
+  and its staging/production prohibition.
+
+Documentation: this document (L1 marked fixed), `README.md`,
+`docs/ARCHITECTURE.md`, `docs/RELEASE_READINESS.md`,
+`docs/DEPLOYMENT_ENVIRONMENT_MATRIX.md`, `docs/STAGING_DEPLOYMENT.md`.
+
+CI: `.github/workflows/ci.yml` already had `timeout-minutes` on all six jobs
+(Frontend 15, Backend tests 20, Python SDK tests 15, TypeScript SDK 25,
+Browser E2E 30, Deployment contract 20) prior to this checkpoint — a prior
+verification report's claim that three jobs lacked timeouts was itself
+inaccurate; no CI change was needed or made.
+
 ## Open release blockers
 
 None that block opening a release-candidate PR of the v2 platform.
 
 ## Open before real multi-tenant / production use (must-fix)
 
-1. **Authenticate or gate the legacy `/v1` surface** (finding L1). Before real
-   tenants exist or `helios_demo_mode` is disabled, `/v1/projects` and the
-   legacy trace/dashboard endpoints must not be reachable unauthenticated. A
-   bounded approach: mount the legacy `/v1` routers only when `helios_demo_mode`
-   is on, and reject `helios_demo_mode=True` in staging/production via
-   `deployment_validation`. Deferred here to avoid disturbing the live demo.
-2. **Validate real WorkOS staging login and real-tenant browser flows** on the
-   hosted deployment (currently demo-data only).
+1. **Validate real WorkOS staging login and real-tenant browser flows** on the
+   hosted deployment (currently demo-data only). This is now the primary
+   remaining item; finding L1 (legacy `/v1` surface) is closed as of
+   Checkpoint 18.
 
 ## Accepted limitations
 
@@ -125,11 +165,12 @@ None that block opening a release-candidate PR of the v2 platform.
 - **Global project-slug uniqueness** (documented; v2 relies on it today).
 - **Narrative disabled by default**; requires dual opt-in; no real OpenAI call.
 - **TypeScript SDK not published** to npm and **`UNLICENSED`** (publication
-  blocker); Python SDK likewise repository-artifact only, now marked
+  blocker); Python SDK likewise repository-artifact only, marked
   `Private :: Do Not Upload`.
 - **Browser telemetry unsupported** (server SDKs only).
-- **Legacy/demo pages retained** but now labeled `Demo` and moved out of the
-  telemetry-focused nav group.
+- **Legacy/demo pages retained** but labeled `Demo`, moved out of the
+  telemetry-focused nav group, and now served only when the backend
+  explicitly opts into `HELIOS_DEMO_MODE=true`.
 - **No real OpenAI / external provider call** in tests or CI.
 - **Chromium-only** automated browser testing.
 
@@ -140,11 +181,11 @@ None that block opening a release-candidate PR of the v2 platform.
 The canonical v2 platform is correctly isolated, defensively authenticated,
 privacy-safe, transactionally sound, and covered by cross-project/cross-org
 regression tests; documentation contradictions and the misleading product
-boundary are fixed; CI is hardened. The branch can open a release-candidate PR
-toward `main`.
+boundary are fixed; CI is hardened; the legacy `/v1` surface (finding L1) is
+now gated behind explicit demo mode and forbidden in staging/production. The
+branch can open a release-candidate PR toward `main`.
 
-It is **not** "ready to merge" for real production/multi-tenant use until the
-two must-fix items above are closed: gating the legacy `/v1` surface and
-validating real WorkOS staging login. Consistent with the project's own
-readiness gate, production release is not recommended without hosted staging and
-real WorkOS validation.
+It is **not** "ready to merge" for real production/multi-tenant use until
+hosted staging and real WorkOS login/real-tenant browser flows are validated.
+Consistent with the project's own readiness gate, production release is not
+recommended without that validation.
