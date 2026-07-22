@@ -189,3 +189,51 @@ It is **not** "ready to merge" for real production/multi-tenant use until
 hosted staging and real WorkOS login/real-tenant browser flows are validated.
 Consistent with the project's own readiness gate, production release is not
 recommended without that validation.
+
+## Fixed in Checkpoint 22
+
+Checkpoint 21 (H1/H3) updated `render.yaml`'s `preDeployCommand` to
+`python -m app.cli.deployment_check --config-only && alembic upgrade head`,
+but `scripts/check-deployment-contract.sh`'s `render.yaml` structural check
+(both the PyYAML and no-PyYAML code paths) still asserted the old exact
+value `preDeployCommand: alembic upgrade head`. This made the deployment
+contract job fail in CI regardless of PyYAML availability — reproduced
+locally in an isolated interpreter with no PyYAML and, separately, in the
+existing backend `.venv` where PyYAML *is* present (transitively, via
+`uvicorn[standard]`), confirming the defect was in the stale assertion, not
+environment drift. Checkpoint 21's local report of "Deployment contract: OK"
+did not actually exercise this path correctly and was inaccurate.
+
+Fixed by consolidating both parsing paths onto one shared ordering check
+(`check_ordering`) that verifies, from either PyYAML-parsed or
+regex-extracted `preDeployCommand` text: the config-only command precedes
+`alembic upgrade head`, they are joined with fail-fast `&&` (not `;`), and
+no `downgrade` command is present. The script now also runs a self-contained
+fixture pass (valid case + five deliberately invalid cases: reversed order,
+missing config command, missing migration command, `;`-joined, downgrade
+present) before checking the real `render.yaml`, so both code paths are
+provably fail-closed rather than merely passing on today's file.
+
+Verified: `bash scripts/check-deployment-contract.sh` passes end-to-end
+locally (PyYAML present); the same check block re-run in an isolated
+venv without PyYAML also passes, printing
+`render.yaml structural OK (stdlib fallback; PyYAML unavailable)`; a
+deliberately reversed-order `render.yaml` was injected and confirmed to
+fail with `config validation must run before migration`, then reverted.
+
+Also reconciled the Checkpoint 21 backend test-count discrepancy (report
+said 463; a prior GitHub Actions summary quoted 460). The 460 figure came
+from misreading the *previous* commit's (`140a2fb`) CI run instead of the
+run for the H1/H3 commit itself. The H1/H3 commit added exactly 3 new test
+functions (`test_unknown_environment_prod_is_fatal`,
+`test_unknown_environment_with_demo_mode_fails_closed`,
+`test_unknown_environment_production_variant_fails`) and removed one
+assertion line from an existing test (no test-count change from that edit).
+Both `pytest --collect-only` and a full local run confirm **463 passed**,
+matching the correctly-attributed CI run for this commit. No test
+collection defect exists; no additional tests were needed.
+
+H1 and H3 remain fixed; this checkpoint made no changes to
+`deployment_validation.py`, `text_normalization.py`, `rules.py`, or any
+auth/isolation code. Hosted staging and real WorkOS login validation
+remain incomplete, as stated above.

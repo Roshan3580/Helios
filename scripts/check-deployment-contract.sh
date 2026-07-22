@@ -13,27 +13,95 @@ bash -n scripts/scan-browser-bundle.sh
 
 echo "[deploy-contract] render.yaml parse"
 python3 - <<'PY'
-import sys
+import re
 from pathlib import Path
+
+CONFIG_CMD = "python -m app.cli.deployment_check --config-only"
+MIGRATE_CMD = "alembic upgrade head"
+START_CMD = "uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1"
+
+
+def check_ordering(pre_deploy: str) -> None:
+    """Fail-closed contract shared by the PyYAML and stdlib-fallback paths.
+
+    Both paths must reject the same defects: config validation running
+    after (or missing from) the migration step, `;` instead of `&&`
+    (which drops fail-fast semantics), and any downgrade command.
+    """
+    config_idx = pre_deploy.find(CONFIG_CMD)
+    migrate_idx = pre_deploy.find(MIGRATE_CMD)
+    assert config_idx != -1, "preDeployCommand missing config-only validation"
+    assert migrate_idx != -1, "preDeployCommand missing alembic upgrade head"
+    assert config_idx < migrate_idx, "config validation must run before migration"
+    connector = pre_deploy[config_idx:migrate_idx]
+    assert "&&" in connector, "config validation and migration must be fail-fast (&&)"
+    assert ";" not in connector, "commands must not be joined with ';'"
+    assert "downgrade" not in pre_deploy, "no downgrade command allowed in preDeployCommand"
+
+
+def check_valid_fixture() -> None:
+    check_ordering(f"{CONFIG_CMD} && {MIGRATE_CMD}")
+
+    def must_fail(pre_deploy: str, label: str) -> None:
+        try:
+            check_ordering(pre_deploy)
+        except AssertionError:
+            return
+        raise AssertionError(f"expected failure for case: {label}")
+
+    must_fail(f"{MIGRATE_CMD} && {CONFIG_CMD}", "config runs after migration")
+    must_fail(MIGRATE_CMD, "missing config-only validation entirely")
+    must_fail(CONFIG_CMD, "missing migration command entirely")
+    must_fail(f"{CONFIG_CMD} ; {MIGRATE_CMD}", "';' instead of '&&' loses fail-fast behavior")
+    must_fail(f"{CONFIG_CMD} && alembic downgrade base && {MIGRATE_CMD}", "downgrade command present")
+
+
+check_valid_fixture()
+
+text = Path("render.yaml").read_text()
+
 try:
     import yaml
 except ImportError:
-    # Minimal structural check without PyYAML.
-    text = Path("render.yaml").read_text()
+    yaml = None
+
+if yaml is not None:
+    data = yaml.safe_load(text)
+    service = data["services"][0]
+    assert service["name"] == "helios-api-staging"
+    assert service["rootDir"] == "backend"
+    assert service["healthCheckPath"] == "/health/ready"
+    assert service["startCommand"] == START_CMD
+    pre_deploy = service["preDeployCommand"]
+    mode = "PyYAML"
+else:
     assert "helios-api-staging" in text
-    assert "preDeployCommand: alembic upgrade head" in text
+    assert "rootDir: backend" in text
     assert "healthCheckPath: /health/ready" in text
-    assert "HELIOS_E2E_TEST_MODE" in text
-    assert "sk_" not in text
-    assert "hel_proj_" not in text
-    print("render.yaml structural OK (no PyYAML)")
-    sys.exit(0)
-data = yaml.safe_load(Path("render.yaml").read_text())
-assert data["services"][0]["healthCheckPath"] == "/health/ready"
-assert data["services"][0]["preDeployCommand"] == "alembic upgrade head"
-blob = Path("render.yaml").read_text()
-assert "sk_test" not in blob and "sk_live" not in blob
-print("render.yaml OK")
+    assert f"startCommand: {START_CMD}" in text
+    match = re.search(r"preDeployCommand:\s*(.+)", text)
+    assert match, "preDeployCommand not found in render.yaml"
+    pre_deploy = match.group(1).strip()
+    mode = "stdlib fallback; PyYAML unavailable"
+
+check_ordering(pre_deploy)
+
+assert "HELIOS_E2E_TEST_MODE" in text
+assert "sk_test" not in text and "sk_live" not in text
+assert "hel_proj_" not in text
+
+assert re.search(r'HELIOS_DEMO_MODE\s*\n\s*value:\s*"false"', text), \
+    "staging HELIOS_DEMO_MODE must default to false"
+assert re.search(r'HELIOS_E2E_TEST_MODE\s*\n\s*value:\s*"false"', text), \
+    "staging HELIOS_E2E_TEST_MODE must default to false"
+assert re.search(r'HELIOS_ANALYST_NARRATIVE_ENABLED\s*\n\s*value:\s*"false"', text), \
+    "staging HELIOS_ANALYST_NARRATIVE_ENABLED must default to false"
+
+for secret_key in ("CORS_ORIGINS", "WORKOS_CLIENT_ID", "WORKOS_ISSUER", "WORKOS_JWKS_URL"):
+    assert re.search(rf"{secret_key}\s*\n\s*sync:\s*false", text), \
+        f"{secret_key} must remain dashboard-managed (sync: false)"
+
+print(f"render.yaml structural OK ({mode})")
 PY
 
 echo "[deploy-contract] staging env example placeholders"
