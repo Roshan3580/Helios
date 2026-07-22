@@ -1,4 +1,5 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
+import { useHeliosAuth as useAuth } from "@/lib/auth/helios-auth";
 import {
   LayoutDashboard,
   ListTree,
@@ -10,24 +11,86 @@ import {
   Settings,
   Bell,
   Command,
+  LogOut,
+  ScanSearch,
+  Rocket,
+  KeyRound,
 } from "lucide-react";
-import { HeliosMark, StatusBadge } from "./primitives";
+import { HeliosMark } from "./primitives";
+import { ProjectSelector } from "./project-selector";
+import { ProjectSelectionProvider } from "@/contexts/project-selection";
+import { useUserMe } from "@/hooks/use-user-me";
 import { cn } from "@/lib/utils";
 
+function UserIdentity() {
+  const { user, loading, signOut } = useAuth();
+  const { me } = useUserMe();
+
+  if (loading || !user) {
+    return <div className="size-7 border border-rule bg-paper-2" aria-hidden />;
+  }
+
+  const label =
+    user.firstName || user.lastName
+      ? [user.firstName, user.lastName].filter(Boolean).join(" ")
+      : user.email;
+  const orgLabel = me?.organization.linked
+    ? me.organization.name
+    : me?.organization.workos_org_id
+      ? "org not linked"
+      : null;
+
+  return (
+    <div className="flex items-center gap-3">
+      <div className="text-right leading-tight hidden sm:block">
+        <div className="font-mono text-[11px]">{label}</div>
+        {orgLabel && <div className="label-eyebrow">{orgLabel}</div>}
+      </div>
+      <button
+        type="button"
+        onClick={() => void signOut({ returnTo: "/" })}
+        title="Sign out"
+        className="flex size-7 items-center justify-center border border-rule bg-paper-2 hover:bg-paper text-muted-foreground hover:text-foreground"
+      >
+        <LogOut className="size-3.5" strokeWidth={1.5} />
+      </button>
+    </div>
+  );
+}
+
+// `demo: true` marks legacy/preview surfaces that render seeded/sample data (or
+// call the unauthenticated legacy /v1 API), not the authenticated v2 telemetry
+// pipeline. They carry a visible "Demo" badge in the nav so a reviewer never
+// mistakes them for real project telemetry (see docs/RELEASE_CANDIDATE_AUDIT.md).
 const NAV = [
   { to: "/app/dashboard", label: "Dashboard", icon: LayoutDashboard, group: "Observe" },
   { to: "/app/traces", label: "Traces", icon: ListTree, group: "Observe" },
-  { to: "/app/rag-analytics", label: "RAG Analytics", icon: Search, group: "Observe" },
-  { to: "/app/prompts", label: "Prompts", icon: FileCode2, group: "Improve" },
-  { to: "/app/evaluations", label: "Evaluations", icon: ClipboardCheck, group: "Improve" },
-  { to: "/app/datasets", label: "Datasets", icon: Database, group: "Improve" },
-  { to: "/app/experiments", label: "Experiments", icon: FlaskConical, group: "Improve" },
-  { to: "/app/settings", label: "Settings", icon: Settings, group: "Workspace" },
+  { to: "/app/insights", label: "Insights", icon: ScanSearch, group: "Observe" },
+  { to: "/app/rag-analytics", label: "RAG Analytics", icon: Search, group: "Improve", demo: true },
+  { to: "/app/prompts", label: "Prompts", icon: FileCode2, group: "Improve", demo: true },
+  {
+    to: "/app/evaluations",
+    label: "Evaluations",
+    icon: ClipboardCheck,
+    group: "Improve",
+    demo: true,
+  },
+  { to: "/app/datasets", label: "Datasets", icon: Database, group: "Improve", demo: true },
+  {
+    to: "/app/experiments",
+    label: "Experiments",
+    icon: FlaskConical,
+    group: "Improve",
+    demo: true,
+  },
+  { to: "/app/getting-started", label: "Getting started", icon: Rocket, group: "Setup" },
+  { to: "/app/settings/api-keys", label: "API keys", icon: KeyRound, group: "Setup" },
+  { to: "/app/settings", label: "Project settings", icon: Settings, group: "Setup" },
 ] as const;
 
-export function AppShell() {
+function AppShellLayout() {
   const pathname = useRouterState({ select: (r) => r.location.pathname });
-  const groups = ["Observe", "Improve", "Workspace"] as const;
+  const groups = ["Observe", "Improve", "Setup"] as const;
   return (
     <div className="min-h-screen bg-paper text-foreground">
       <div className="flex">
@@ -39,20 +102,15 @@ export function AppShell() {
             </Link>
             <span className="label-eyebrow">v1.0</span>
           </div>
-          <div className="border-b border-rule px-4 py-3">
-            <div className="label-eyebrow">Project</div>
-            <div className="mt-1 flex items-center justify-between">
-              <span className="font-mono text-[12px]">acme · production</span>
-              <StatusBadge tone="success">live</StatusBadge>
-            </div>
-          </div>
+          <ProjectSelector />
           <nav className="flex-1 overflow-y-auto py-2">
             {groups.map((g) => (
               <div key={g} className="px-2 py-3">
                 <div className="label-eyebrow px-2 mb-2">{g}</div>
                 <ul className="space-y-px">
                   {NAV.filter((n) => n.group === g).map((n) => {
-                    const active = pathname.startsWith(n.to);
+                    const active =
+                      n.to === "/app/settings" ? pathname === n.to : pathname.startsWith(n.to);
                     const Icon = n.icon;
                     return (
                       <li key={n.to}>
@@ -66,7 +124,12 @@ export function AppShell() {
                           )}
                         >
                           <Icon className="size-3.5" strokeWidth={1.5} />
-                          {n.label}
+                          <span className="flex-1">{n.label}</span>
+                          {"demo" in n && n.demo && (
+                            <span className="label-eyebrow border border-rule px-1 py-0 text-[9px] text-muted-foreground">
+                              Demo
+                            </span>
+                          )}
                         </Link>
                       </li>
                     );
@@ -78,8 +141,14 @@ export function AppShell() {
           <div className="border-t border-rule p-3">
             <div className="border border-rule p-3 bg-paper-2/60">
               <div className="label-eyebrow">SDK</div>
-              <pre className="mt-2 font-mono text-[11px] leading-relaxed text-foreground">{`import helios
-helios.init("hel_••••")`}</pre>
+              <pre className="mt-2 font-mono text-[11px] leading-relaxed text-foreground">{`from helios_sdk import Helios
+Helios.configure(...)`}</pre>
+              <Link
+                to="/app/getting-started"
+                className="mt-2 inline-block text-[11px] underline underline-offset-2 text-muted-foreground hover:text-foreground"
+              >
+                Setup guide
+              </Link>
             </div>
           </div>
         </aside>
@@ -96,11 +165,8 @@ helios.init("hel_••••")`}</pre>
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <StatusBadge tone="success">ingest 1.2k/s</StatusBadge>
               <Bell className="size-4 text-muted-foreground" strokeWidth={1.5} />
-              <div className="size-7 border border-rule bg-paper-2 font-mono text-[11px] flex items-center justify-center">
-                MM
-              </div>
+              <UserIdentity />
             </div>
           </header>
           <main className="px-6 py-8">
@@ -109,6 +175,14 @@ helios.init("hel_••••")`}</pre>
         </div>
       </div>
     </div>
+  );
+}
+
+export function AppShell() {
+  return (
+    <ProjectSelectionProvider>
+      <AppShellLayout />
+    </ProjectSelectionProvider>
   );
 }
 

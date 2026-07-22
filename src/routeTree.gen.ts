@@ -16,11 +16,19 @@ import { Route as AppTracesRouteImport } from './routes/app.traces'
 import { Route as AppSettingsRouteImport } from './routes/app.settings'
 import { Route as AppRagAnalyticsRouteImport } from './routes/app.rag-analytics'
 import { Route as AppPromptsRouteImport } from './routes/app.prompts'
+import { Route as AppInsightsRouteImport } from './routes/app.insights'
+import { Route as AppGettingStartedRouteImport } from './routes/app.getting-started'
 import { Route as AppExperimentsRouteImport } from './routes/app.experiments'
 import { Route as AppEvaluationsRouteImport } from './routes/app.evaluations'
 import { Route as AppDatasetsRouteImport } from './routes/app.datasets'
 import { Route as AppDashboardRouteImport } from './routes/app.dashboard'
 import { Route as AppTracesIdRouteImport } from './routes/app.traces.$id'
+import { Route as AppSettingsApiKeysRouteImport } from './routes/app.settings.api-keys'
+import { Route as ApiE2eSessionRouteImport } from './routes/api.e2e.session'
+import { Route as ApiAuthSignUpRouteImport } from './routes/api.auth.sign-up'
+import { Route as ApiAuthSignOutRouteImport } from './routes/api.auth.sign-out'
+import { Route as ApiAuthSignInRouteImport } from './routes/api.auth.sign-in'
+import { Route as ApiAuthCallbackRouteImport } from './routes/api.auth.callback'
 
 const AppRoute = AppRouteImport.update({
   id: '/app',
@@ -57,6 +65,16 @@ const AppPromptsRoute = AppPromptsRouteImport.update({
   path: '/prompts',
   getParentRoute: () => AppRoute,
 } as any)
+const AppInsightsRoute = AppInsightsRouteImport.update({
+  id: '/insights',
+  path: '/insights',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppGettingStartedRoute = AppGettingStartedRouteImport.update({
+  id: '/getting-started',
+  path: '/getting-started',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppExperimentsRoute = AppExperimentsRouteImport.update({
   id: '/experiments',
   path: '/experiments',
@@ -82,6 +100,36 @@ const AppTracesIdRoute = AppTracesIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AppTracesRoute,
 } as any)
+const AppSettingsApiKeysRoute = AppSettingsApiKeysRouteImport.update({
+  id: '/api-keys',
+  path: '/api-keys',
+  getParentRoute: () => AppSettingsRoute,
+} as any)
+const ApiE2eSessionRoute = ApiE2eSessionRouteImport.update({
+  id: '/api/e2e/session',
+  path: '/api/e2e/session',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthSignUpRoute = ApiAuthSignUpRouteImport.update({
+  id: '/api/auth/sign-up',
+  path: '/api/auth/sign-up',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthSignOutRoute = ApiAuthSignOutRouteImport.update({
+  id: '/api/auth/sign-out',
+  path: '/api/auth/sign-out',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthSignInRoute = ApiAuthSignInRouteImport.update({
+  id: '/api/auth/sign-in',
+  path: '/api/auth/sign-in',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthCallbackRoute = ApiAuthCallbackRouteImport.update({
+  id: '/api/auth/callback',
+  path: '/api/auth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -90,11 +138,19 @@ export interface FileRoutesByFullPath {
   '/app/datasets': typeof AppDatasetsRoute
   '/app/evaluations': typeof AppEvaluationsRoute
   '/app/experiments': typeof AppExperimentsRoute
+  '/app/getting-started': typeof AppGettingStartedRoute
+  '/app/insights': typeof AppInsightsRoute
   '/app/prompts': typeof AppPromptsRoute
   '/app/rag-analytics': typeof AppRagAnalyticsRoute
-  '/app/settings': typeof AppSettingsRoute
+  '/app/settings': typeof AppSettingsRouteWithChildren
   '/app/traces': typeof AppTracesRouteWithChildren
   '/app/': typeof AppIndexRoute
+  '/api/auth/callback': typeof ApiAuthCallbackRoute
+  '/api/auth/sign-in': typeof ApiAuthSignInRoute
+  '/api/auth/sign-out': typeof ApiAuthSignOutRoute
+  '/api/auth/sign-up': typeof ApiAuthSignUpRoute
+  '/api/e2e/session': typeof ApiE2eSessionRoute
+  '/app/settings/api-keys': typeof AppSettingsApiKeysRoute
   '/app/traces/$id': typeof AppTracesIdRoute
 }
 export interface FileRoutesByTo {
@@ -103,11 +159,19 @@ export interface FileRoutesByTo {
   '/app/datasets': typeof AppDatasetsRoute
   '/app/evaluations': typeof AppEvaluationsRoute
   '/app/experiments': typeof AppExperimentsRoute
+  '/app/getting-started': typeof AppGettingStartedRoute
+  '/app/insights': typeof AppInsightsRoute
   '/app/prompts': typeof AppPromptsRoute
   '/app/rag-analytics': typeof AppRagAnalyticsRoute
-  '/app/settings': typeof AppSettingsRoute
+  '/app/settings': typeof AppSettingsRouteWithChildren
   '/app/traces': typeof AppTracesRouteWithChildren
   '/app': typeof AppIndexRoute
+  '/api/auth/callback': typeof ApiAuthCallbackRoute
+  '/api/auth/sign-in': typeof ApiAuthSignInRoute
+  '/api/auth/sign-out': typeof ApiAuthSignOutRoute
+  '/api/auth/sign-up': typeof ApiAuthSignUpRoute
+  '/api/e2e/session': typeof ApiE2eSessionRoute
+  '/app/settings/api-keys': typeof AppSettingsApiKeysRoute
   '/app/traces/$id': typeof AppTracesIdRoute
 }
 export interface FileRoutesById {
@@ -118,11 +182,19 @@ export interface FileRoutesById {
   '/app/datasets': typeof AppDatasetsRoute
   '/app/evaluations': typeof AppEvaluationsRoute
   '/app/experiments': typeof AppExperimentsRoute
+  '/app/getting-started': typeof AppGettingStartedRoute
+  '/app/insights': typeof AppInsightsRoute
   '/app/prompts': typeof AppPromptsRoute
   '/app/rag-analytics': typeof AppRagAnalyticsRoute
-  '/app/settings': typeof AppSettingsRoute
+  '/app/settings': typeof AppSettingsRouteWithChildren
   '/app/traces': typeof AppTracesRouteWithChildren
   '/app/': typeof AppIndexRoute
+  '/api/auth/callback': typeof ApiAuthCallbackRoute
+  '/api/auth/sign-in': typeof ApiAuthSignInRoute
+  '/api/auth/sign-out': typeof ApiAuthSignOutRoute
+  '/api/auth/sign-up': typeof ApiAuthSignUpRoute
+  '/api/e2e/session': typeof ApiE2eSessionRoute
+  '/app/settings/api-keys': typeof AppSettingsApiKeysRoute
   '/app/traces/$id': typeof AppTracesIdRoute
 }
 export interface FileRouteTypes {
@@ -134,11 +206,19 @@ export interface FileRouteTypes {
     | '/app/datasets'
     | '/app/evaluations'
     | '/app/experiments'
+    | '/app/getting-started'
+    | '/app/insights'
     | '/app/prompts'
     | '/app/rag-analytics'
     | '/app/settings'
     | '/app/traces'
     | '/app/'
+    | '/api/auth/callback'
+    | '/api/auth/sign-in'
+    | '/api/auth/sign-out'
+    | '/api/auth/sign-up'
+    | '/api/e2e/session'
+    | '/app/settings/api-keys'
     | '/app/traces/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -147,11 +227,19 @@ export interface FileRouteTypes {
     | '/app/datasets'
     | '/app/evaluations'
     | '/app/experiments'
+    | '/app/getting-started'
+    | '/app/insights'
     | '/app/prompts'
     | '/app/rag-analytics'
     | '/app/settings'
     | '/app/traces'
     | '/app'
+    | '/api/auth/callback'
+    | '/api/auth/sign-in'
+    | '/api/auth/sign-out'
+    | '/api/auth/sign-up'
+    | '/api/e2e/session'
+    | '/app/settings/api-keys'
     | '/app/traces/$id'
   id:
     | '__root__'
@@ -161,17 +249,30 @@ export interface FileRouteTypes {
     | '/app/datasets'
     | '/app/evaluations'
     | '/app/experiments'
+    | '/app/getting-started'
+    | '/app/insights'
     | '/app/prompts'
     | '/app/rag-analytics'
     | '/app/settings'
     | '/app/traces'
     | '/app/'
+    | '/api/auth/callback'
+    | '/api/auth/sign-in'
+    | '/api/auth/sign-out'
+    | '/api/auth/sign-up'
+    | '/api/e2e/session'
+    | '/app/settings/api-keys'
     | '/app/traces/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
+  ApiAuthCallbackRoute: typeof ApiAuthCallbackRoute
+  ApiAuthSignInRoute: typeof ApiAuthSignInRoute
+  ApiAuthSignOutRoute: typeof ApiAuthSignOutRoute
+  ApiAuthSignUpRoute: typeof ApiAuthSignUpRoute
+  ApiE2eSessionRoute: typeof ApiE2eSessionRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -225,6 +326,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPromptsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/insights': {
+      id: '/app/insights'
+      path: '/insights'
+      fullPath: '/app/insights'
+      preLoaderRoute: typeof AppInsightsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/getting-started': {
+      id: '/app/getting-started'
+      path: '/getting-started'
+      fullPath: '/app/getting-started'
+      preLoaderRoute: typeof AppGettingStartedRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/experiments': {
       id: '/app/experiments'
       path: '/experiments'
@@ -260,8 +375,62 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppTracesIdRouteImport
       parentRoute: typeof AppTracesRoute
     }
+    '/app/settings/api-keys': {
+      id: '/app/settings/api-keys'
+      path: '/api-keys'
+      fullPath: '/app/settings/api-keys'
+      preLoaderRoute: typeof AppSettingsApiKeysRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
+    '/api/e2e/session': {
+      id: '/api/e2e/session'
+      path: '/api/e2e/session'
+      fullPath: '/api/e2e/session'
+      preLoaderRoute: typeof ApiE2eSessionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/sign-up': {
+      id: '/api/auth/sign-up'
+      path: '/api/auth/sign-up'
+      fullPath: '/api/auth/sign-up'
+      preLoaderRoute: typeof ApiAuthSignUpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/sign-out': {
+      id: '/api/auth/sign-out'
+      path: '/api/auth/sign-out'
+      fullPath: '/api/auth/sign-out'
+      preLoaderRoute: typeof ApiAuthSignOutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/sign-in': {
+      id: '/api/auth/sign-in'
+      path: '/api/auth/sign-in'
+      fullPath: '/api/auth/sign-in'
+      preLoaderRoute: typeof ApiAuthSignInRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/callback': {
+      id: '/api/auth/callback'
+      path: '/api/auth/callback'
+      fullPath: '/api/auth/callback'
+      preLoaderRoute: typeof ApiAuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
+
+interface AppSettingsRouteChildren {
+  AppSettingsApiKeysRoute: typeof AppSettingsApiKeysRoute
+}
+
+const AppSettingsRouteChildren: AppSettingsRouteChildren = {
+  AppSettingsApiKeysRoute: AppSettingsApiKeysRoute,
+}
+
+const AppSettingsRouteWithChildren = AppSettingsRoute._addFileChildren(
+  AppSettingsRouteChildren,
+)
 
 interface AppTracesRouteChildren {
   AppTracesIdRoute: typeof AppTracesIdRoute
@@ -280,9 +449,11 @@ interface AppRouteChildren {
   AppDatasetsRoute: typeof AppDatasetsRoute
   AppEvaluationsRoute: typeof AppEvaluationsRoute
   AppExperimentsRoute: typeof AppExperimentsRoute
+  AppGettingStartedRoute: typeof AppGettingStartedRoute
+  AppInsightsRoute: typeof AppInsightsRoute
   AppPromptsRoute: typeof AppPromptsRoute
   AppRagAnalyticsRoute: typeof AppRagAnalyticsRoute
-  AppSettingsRoute: typeof AppSettingsRoute
+  AppSettingsRoute: typeof AppSettingsRouteWithChildren
   AppTracesRoute: typeof AppTracesRouteWithChildren
   AppIndexRoute: typeof AppIndexRoute
 }
@@ -292,9 +463,11 @@ const AppRouteChildren: AppRouteChildren = {
   AppDatasetsRoute: AppDatasetsRoute,
   AppEvaluationsRoute: AppEvaluationsRoute,
   AppExperimentsRoute: AppExperimentsRoute,
+  AppGettingStartedRoute: AppGettingStartedRoute,
+  AppInsightsRoute: AppInsightsRoute,
   AppPromptsRoute: AppPromptsRoute,
   AppRagAnalyticsRoute: AppRagAnalyticsRoute,
-  AppSettingsRoute: AppSettingsRoute,
+  AppSettingsRoute: AppSettingsRouteWithChildren,
   AppTracesRoute: AppTracesRouteWithChildren,
   AppIndexRoute: AppIndexRoute,
 }
@@ -304,6 +477,11 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
+  ApiAuthCallbackRoute: ApiAuthCallbackRoute,
+  ApiAuthSignInRoute: ApiAuthSignInRoute,
+  ApiAuthSignOutRoute: ApiAuthSignOutRoute,
+  ApiAuthSignUpRoute: ApiAuthSignUpRoute,
+  ApiE2eSessionRoute: ApiE2eSessionRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -10,7 +10,13 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "test:e2e": "bash scripts/run-e2e.sh",
+    "test:e2e:headed": "bash scripts/run-e2e.sh --headed",
+    "test:e2e:debug": "bash scripts/run-e2e.sh -- --debug",
+    "test:e2e:report": "playwright show-report",
+    "test:unit": "bun test src/lib/api/base-url.test.ts src/lib/deploy/staging-guards.test.ts",
+    "check:deployment-contract": "bash scripts/check-deployment-contract.sh"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -42,9 +48,10 @@
     "@radix-ui/react-tooltip": "^1.2.8",
     "@tailwindcss/vite": "^4.2.1",
     "@tanstack/react-query": "^5.83.0",
-    "@tanstack/react-router": "^1.168.25",
-    "@tanstack/react-start": "^1.167.50",
-    "@tanstack/router-plugin": "^1.167.28",
+    "@tanstack/react-router": "^1.170.18",
+    "@tanstack/react-start": "^1.168.25",
+    "@tanstack/router-plugin": "^1.168.20",
+    "@workos/authkit-tanstack-react-start": "^0.11.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -69,6 +76,7 @@
   "devDependencies": {
     "@eslint/js": "^9.32.0",
     "@lovable.dev/vite-tanstack-config": "2.5.3",
+    "@playwright/test": "1.57.0",
     "@types/node": "^22.16.5",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",

@@ -4,19 +4,59 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "helios-sdk"
-version = "0.1.0"
-description = "Lightweight Python client for submitting traces to Helios"
+version = "0.2.0"
+description = "Python client and OpenTelemetry instrumentation SDK for Helios"
 readme = "README.md"
 requires-python = ">=3.10"
+authors = [{ name = "Helios" }]
+keywords = ["opentelemetry", "observability", "tracing", "llm", "helios"]
+# Not published to any package index. Distributed only as a repository artifact
+# (editable/local install), matching the TypeScript SDK's UNLICENSED posture.
+# "Private :: Do Not Upload" makes PyPI reject an accidental `twine upload`.
+classifiers = [
+  "Private :: Do Not Upload",
+  "License :: Other/Proprietary License",
+  "Programming Language :: Python :: 3",
+  "Intended Audience :: Developers",
+  "Topic :: System :: Monitoring",
+]
+# Base install keeps the legacy HeliosClient (/v1/traces) dependency-light.
+# The v2 OTLP runtime lives behind the [otel] extra; OpenAI auto-instrumentation
+# behind [openai]. Legacy users are never forced to install OpenTelemetry or OpenAI.
 dependencies = [
   "httpx>=0.27",
 ]
 
+# NOTE: [project.urls] is a sub-table and must follow every top-level [project]
+# key (including `dependencies`); otherwise those keys are absorbed into it.
+[project.urls]
+Repository = "https://github.com/Roshan3580/Helios"
+Documentation = "https://github.com/Roshan3580/Helios/blob/main/docs/ARCHITECTURE.md"
+
 [project.optional-dependencies]
+# v2 OTLP runtime: standard OpenTelemetry API/SDK + HTTP protobuf exporter.
+otel = [
+  "opentelemetry-api>=1.30,<2",
+  "opentelemetry-sdk>=1.30,<2",
+  "opentelemetry-exporter-otlp-proto-http>=1.30,<2",
+]
+# Automatic OpenAI instrumentation (official OTel GenAI instrumentor).
+openai = [
+  "opentelemetry-instrumentation-openai-v2>=2.0b0,<3",
+  "openai>=1.26,<3",
+]
 dev = [
   "pytest>=8.0",
+  "opentelemetry-api>=1.30,<2",
+  "opentelemetry-sdk>=1.30,<2",
+  "opentelemetry-exporter-otlp-proto-http>=1.30,<2",
+  "opentelemetry-instrumentation-openai-v2>=2.0b0,<3",
+  "openai>=1.26,<3",
 ]
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["helios_sdk*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

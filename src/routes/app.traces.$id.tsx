@@ -1,25 +1,122 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
+
 import { PageHeader } from "@/components/helios/app-shell";
-import { DataSourceNotice } from "@/components/helios/data-source-notice";
-import { StatusBadge, Eyebrow } from "@/components/helios/primitives";
-import { statusTone } from "@/components/helios/demo-data";
-import { timelineTotalMs, useTraceDetail } from "@/hooks/use-trace-detail";
+import { SpanInspector } from "@/components/helios/span-inspector";
+import { TraceAnalysisPanel } from "@/components/helios/trace-analysis-panel";
+import { Eyebrow, StatusBadge } from "@/components/helios/primitives";
+import { useProjectSelection } from "@/contexts/project-selection";
+import { useTraceAnalysis } from "@/hooks/use-trace-analysis";
+import { useTraceDetail } from "@/hooks/use-trace-detail";
+import type { OtelSpan } from "@/lib/api/user";
+import {
+  formatDurationMs,
+  formatTimestamp,
+  isOtelErrorStatus,
+  otelSpanKindLabel,
+  otelStatusLabel,
+  otelStatusTone,
+} from "@/lib/otel/format";
+import { buildTimelineRows, timelineTotalMs } from "@/lib/otel/timeline";
+import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/app/traces/$id")({ component: TraceDetail });
+export const Route = createFileRoute("/app/traces/$id")({ component: TraceDetailPage });
 
-function TraceDetail() {
+function TraceDetailPage() {
   const { id } = Route.useParams();
-  const { trace, source, loading } = useTraceDetail(id);
+  const { selectedProject, loading: projectLoading, error: projectError } = useProjectSelection();
+  const { trace, loading, error, errorStatus, reload } = useTraceDetail(id);
+  const analysisState = useTraceAnalysis(id);
 
-  if (loading) {
+  const rows = useMemo(() => (trace ? buildTimelineRows(trace.spans) : []), [trace]);
+  const total = timelineTotalMs(rows);
+  const [selectedSpanId, setSelectedSpanId] = useState<string | null>(null);
+  const spanRowRefs = useRef(new Map<string, HTMLButtonElement>());
+
+  const knownSpanIds = useMemo(
+    () => new Set(trace?.spans.map((span) => span.span_id) ?? []),
+    [trace],
+  );
+
+  // Finding-to-span navigation: validate against the loaded trace, select the
+  // span (updates the inspector + waterfall highlight), and scroll it into view.
+  const selectSpanFromFinding = useCallback(
+    (spanId: string) => {
+      if (!knownSpanIds.has(spanId)) return;
+      setSelectedSpanId(spanId);
+      spanRowRefs.current.get(spanId)?.scrollIntoView({ block: "nearest" });
+    },
+    [knownSpanIds],
+  );
+
+  useEffect(() => {
+    if (!trace) {
+      setSelectedSpanId(null);
+      return;
+    }
+    const preferred =
+      (trace.root_span_id && trace.spans.find((span) => span.span_id === trace.root_span_id)) ||
+      rows[0]?.span ||
+      null;
+    setSelectedSpanId(preferred?.span_id ?? null);
+  }, [trace, rows]);
+
+  const selectedSpan: OtelSpan | null =
+    trace?.spans.find((span) => span.span_id === selectedSpanId) ?? null;
+
+  if (projectLoading || loading) {
     return (
       <div>
-        <Link to="/app/traces" className="label-eyebrow hover:text-foreground">
-          ← All traces
-        </Link>
-        <div className="mt-8 px-4 py-8 text-center">
+        <BackLink />
+        <div className="mt-8 px-4 py-8 text-center" aria-busy="true">
           <Eyebrow>Loading trace…</Eyebrow>
         </div>
+      </div>
+    );
+  }
+
+  if (projectError) {
+    return (
+      <div>
+        <BackLink />
+        <StatePanel
+          title="Project unavailable"
+          body={projectError}
+          actionLabel="Retry"
+          onAction={reload}
+        />
+      </div>
+    );
+  }
+
+  if (!selectedProject) {
+    return (
+      <div>
+        <BackLink />
+        <StatePanel
+          title="No project selected"
+          body="Select a project in the sidebar before opening a trace."
+        />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div>
+        <BackLink />
+        <StatePanel
+          title={
+            errorStatus === 403
+              ? "Access denied"
+              : errorStatus === 404
+                ? "Trace not found"
+                : "Could not load trace"
+          }
+          body={error}
+          actionLabel="Retry"
+          onAction={reload}
+        />
       </div>
     );
   }
@@ -27,146 +124,185 @@ function TraceDetail() {
   if (!trace) {
     return (
       <div>
-        <Link to="/app/traces" className="label-eyebrow hover:text-foreground">
-          ← All traces
-        </Link>
-        <div className="mt-8 border border-rule bg-card px-6 py-10 text-center">
-          <Eyebrow>Trace not found</Eyebrow>
-          <p className="mt-3 text-sm text-muted-foreground">
-            No trace matching <span className="font-mono">{id}</span> was found.
-          </p>
-        </div>
+        <BackLink />
+        <StatePanel
+          title="Trace not found"
+          body="This trace was not found in the selected project."
+        />
       </div>
     );
   }
 
-  const spans = trace.spans;
-  const total = timelineTotalMs(spans);
-
   return (
     <div>
-      <Link to="/app/traces" className="label-eyebrow hover:text-foreground">
-        ← All traces
-      </Link>
-      <DataSourceNotice source={source} />
+      <BackLink />
       <PageHeader
-        eyebrow={`Trace · ${trace.app}`}
-        title={trace.id}
-        description={trace.query}
-        actions={<StatusBadge tone={statusTone(trace.status)}>{trace.status}</StatusBadge>}
+        eyebrow={`Trace · ${trace.service_name}`}
+        title={trace.trace_id}
+        description={trace.root_span_name ?? "Root operation not recorded"}
+        actions={
+          <StatusBadge tone={trace.error_count > 0 ? "danger" : "success"}>
+            {trace.error_count > 0 ? `${trace.error_count} errors` : "ok"}
+          </StatusBadge>
+        }
       />
 
-      <div className="grid grid-cols-4 gap-px bg-rule mb-8">
-        <Cell l="Latency" v={`${trace.lat} ms`} />
-        <Cell l="Tokens" v={trace.tok.toLocaleString()} />
-        <Cell l="Cost" v={`$${trace.cost.toFixed(3)}`} />
-        <Cell l="Model" v={trace.model} />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-rule mb-8">
+        <Cell label="Service" value={trace.service_name} />
+        <Cell label="Environment" value={trace.environment ?? "—"} />
+        <Cell label="Duration" value={formatDurationMs(trace.duration_ms)} />
+        <Cell label="Spans" value={String(trace.span_count)} />
+      </div>
+      <div className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-3 text-[12.5px]">
+        <Meta label="Start" value={formatTimestamp(trace.start_time)} />
+        <Meta label="End" value={formatTimestamp(trace.end_time)} />
+        <Meta label="Project" value={`${trace.project_slug} · ${selectedProject.environment}`} />
+      </div>
+
+      <div className="mb-8">
+        <TraceAnalysisPanel
+          state={analysisState}
+          actionDisabled={loading || !trace}
+          knownSpanIds={knownSpanIds}
+          selectedSpanId={selectedSpanId}
+          onSelectSpan={selectSpanFromFinding}
+        />
       </div>
 
       <div className="grid grid-cols-12 gap-6">
-        <div className="col-span-12 lg:col-span-7 border border-rule bg-card">
+        <div className="col-span-12 lg:col-span-7 border border-rule bg-card min-w-0">
           <div className="border-b border-rule px-4 py-2.5">
-            <Eyebrow>Timeline · {spans.length} spans</Eyebrow>
+            <Eyebrow>Timeline · {rows.length} spans</Eyebrow>
           </div>
-          <div className="divide-y divide-rule">
-            {spans.map((s) => {
-              const left = (s.ms / total) * 100;
-              const width = Math.max((s.dur / total) * 100, 1);
-              return (
-                <div key={s.id} className="grid grid-cols-12 items-center gap-3 px-4 py-3">
-                  <div
-                    className="col-span-4 flex items-center gap-3"
-                    style={{ paddingLeft: s.depth * 14 }}
-                  >
-                    <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground w-10">
-                      {s.kind}
-                    </span>
-                    <span className="font-mono text-[12.5px]">{s.name}</span>
-                  </div>
-                  <div className="col-span-7 relative h-4">
-                    <div className="absolute inset-x-0 top-1/2 border-b border-dashed border-rule" />
-                    <div
-                      className="absolute top-0.5 h-3 bg-ink/85 border border-ink/70"
-                      style={{ left: `${left}%`, width: `${width}%` }}
-                    />
-                  </div>
-                  <div className="col-span-1 text-right font-mono text-[11px] text-muted-foreground">
-                    {s.dur}ms
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-        <div className="col-span-12 lg:col-span-5 space-y-6">
-          <SpanCard title="Inputs">
-            <pre className="font-mono text-[12px] whitespace-pre-wrap">{`{
-  "query": "${trace.query}",
-  "user": "u_8821",
-  "session": "sess_1140a"
-}`}</pre>
-          </SpanCard>
-          <SpanCard title="Retrieved chunks">
-            <ul className="divide-y divide-rule">
-              {[
-                "policy-q3.md#§4.2",
-                "policy-q3.md#§5.1",
-                "finance-handbook.md#§3",
-                "changelog/2025-q3.md",
-              ].map((c, i) => (
-                <li key={c} className="flex items-center justify-between px-1 py-2">
-                  <span className="font-mono text-[12px]">{c}</span>
-                  <span className="font-mono text-[11px] text-muted-foreground">
-                    score {0.92 - i * 0.04}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </SpanCard>
-          <SpanCard title="Final answer">
-            <p className="text-[13px] leading-relaxed">
-              {spans.find((span) => span.outputPreview)?.outputPreview ??
-                "The Q3 revenue policy updates the recognition threshold for annual contracts from net-45 to net-30, and clarifies treatment of usage-based add-ons. See §4.2 for the recognition table and §5.1 for the transition rules."}
-            </p>
-          </SpanCard>
-          <SpanCard title="Cost breakdown">
-            <div className="grid grid-cols-2 gap-2 font-mono text-[12px]">
-              <div>prompt</div>
-              <div className="text-right">
-                {(trace.promptTokens ?? 0).toLocaleString()} tok · ${(trace.cost * 0.6).toFixed(3)}
-              </div>
-              <div>completion</div>
-              <div className="text-right">
-                {(trace.completionTokens ?? 0).toLocaleString()} tok · $
-                {(trace.cost * 0.35).toFixed(3)}
-              </div>
-              <div>reranker</div>
-              <div className="text-right">${(trace.cost * 0.05).toFixed(3)}</div>
-              <div className="border-t border-rule pt-2">total</div>
-              <div className="text-right border-t border-rule pt-2">${trace.cost.toFixed(3)}</div>
+          {rows.length === 0 ? (
+            <div className="px-4 py-8 text-center">
+              <Eyebrow>No spans recorded</Eyebrow>
             </div>
-          </SpanCard>
+          ) : (
+            <div className="divide-y divide-rule" role="listbox" aria-label="Trace timeline">
+              {rows.map((row) => {
+                const left = (row.offsetMs / total) * 100;
+                const width = Math.max(
+                  (row.durationMs / total) * 100,
+                  row.durationMs === 0 ? 0.4 : 1,
+                );
+                const selected = row.span.span_id === selectedSpanId;
+                const errored = isOtelErrorStatus(row.span.status_code);
+                return (
+                  <button
+                    key={row.span.span_id}
+                    ref={(element) => {
+                      if (element) spanRowRefs.current.set(row.span.span_id, element);
+                      else spanRowRefs.current.delete(row.span.span_id);
+                    }}
+                    type="button"
+                    role="option"
+                    aria-selected={selected}
+                    onClick={() => setSelectedSpanId(row.span.span_id)}
+                    className={cn(
+                      "grid w-full grid-cols-12 items-center gap-3 px-4 py-3 text-left hover:bg-paper-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ink",
+                      selected && "bg-paper-2",
+                    )}
+                  >
+                    <div
+                      className="col-span-4 flex items-center gap-2 min-w-0"
+                      style={{ paddingLeft: row.depth * 14 }}
+                    >
+                      <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground w-14 shrink-0">
+                        {otelSpanKindLabel(row.span.kind)}
+                      </span>
+                      <span className="font-mono text-[12.5px] truncate">{row.span.name}</span>
+                    </div>
+                    <div className="col-span-6 relative h-4">
+                      <div className="absolute inset-x-0 top-1/2 border-b border-dashed border-rule" />
+                      <div
+                        className={cn(
+                          "absolute top-0.5 h-3 border",
+                          errored
+                            ? "bg-[color-mix(in_oklab,var(--accent-danger)_70%,var(--ink))] border-[color:var(--accent-danger)]"
+                            : "bg-ink/85 border-ink/70",
+                        )}
+                        style={{ left: `${left}%`, width: `${width}%` }}
+                      />
+                    </div>
+                    <div className="col-span-2 flex items-center justify-end gap-2">
+                      {errored ? (
+                        <StatusBadge tone={otelStatusTone(row.span.status_code)}>
+                          {otelStatusLabel(row.span.status_code)}
+                        </StatusBadge>
+                      ) : null}
+                      <span className="font-mono text-[11px] text-muted-foreground">
+                        {formatDurationMs(row.durationMs)}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+        <div className="col-span-12 lg:col-span-5 min-w-0">
+          <SpanInspector span={selectedSpan} />
         </div>
       </div>
     </div>
   );
 }
 
-function Cell({ l, v }: { l: string; v: string }) {
+function BackLink() {
   return (
-    <div className="bg-paper p-4">
-      <div className="label-eyebrow">{l}</div>
-      <div className="mt-2 font-serif text-2xl tracking-tight">{v}</div>
+    <Link to="/app/traces" className="label-eyebrow hover:text-foreground">
+      ← All traces
+    </Link>
+  );
+}
+
+function Cell({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-paper p-4 min-w-0">
+      <div className="label-eyebrow">{label}</div>
+      <div className="mt-2 font-serif text-2xl tracking-tight truncate" title={value}>
+        {value}
+      </div>
     </div>
   );
 }
-function SpanCard({ title, children }: { title: string; children: React.ReactNode }) {
+
+function Meta({ label, value }: { label: string; value: string }) {
   return (
-    <div className="border border-rule bg-card">
-      <div className="border-b border-rule px-4 py-2.5">
-        <Eyebrow>{title}</Eyebrow>
+    <div className="border border-rule bg-card px-3 py-2 min-w-0">
+      <div className="label-eyebrow">{label}</div>
+      <div className="mt-1 font-mono text-[12px] truncate" title={value}>
+        {value}
       </div>
-      <div className="p-4">{children}</div>
+    </div>
+  );
+}
+
+function StatePanel({
+  title,
+  body,
+  actionLabel,
+  onAction,
+}: {
+  title: string;
+  body: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
+  return (
+    <div className="mt-8 border border-rule bg-card px-6 py-10 text-center" role="alert">
+      <Eyebrow>{title}</Eyebrow>
+      <p className="mt-3 text-sm text-muted-foreground max-w-lg mx-auto">{body}</p>
+      {actionLabel && onAction ? (
+        <button
+          type="button"
+          onClick={onAction}
+          className="mt-4 label-eyebrow border border-rule px-3 py-1.5 hover:bg-paper-2"
+        >
+          {actionLabel}
+        </button>
+      ) : null}
     </div>
   );
 }

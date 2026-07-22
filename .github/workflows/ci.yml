@@ -1,0 +1,220 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+# Least-privilege default: CI only reads the repo. No job publishes, deploys,
+# or writes back to the repository, so the GITHUB_TOKEN needs read-only contents
+# (overrides a repo/org default that may grant read/write-all).
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    name: Frontend (typecheck, lint, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Typecheck
+        run: bun run typecheck
+      - name: Lint
+        run: bun run lint
+      - name: Build
+        run: bun run build
+
+  backend-tests:
+    name: Backend tests (Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: helios_test
+          POSTGRES_PASSWORD: helios_test
+          POSTGRES_DB: helios_test
+        ports:
+          - 5434:5432
+        options: >-
+          --health-cmd "pg_isready -U helios_test -d helios_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      HELIOS_TEST_DATABASE_URL: postgresql://helios_test:helios_test@localhost:5434/helios_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements*.txt
+      - name: Install dependencies
+        working-directory: backend
+        run: pip install -r requirements-dev.txt
+      - name: Install SDK (for the end-to-end OTLP export test)
+        # The e2e test (backend/tests/test_sdk_e2e.py) runs in this Postgres job
+        # rather than a separate job, reusing the DB service and migrations.
+        run: pip install -e "sdk/python[otel,openai]"
+      - name: Run tests (applies Alembic migrations to the test database)
+        working-directory: backend
+        run: pytest -v
+
+  sdk-tests:
+    name: Python SDK tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: sdk/python/pyproject.toml
+      - name: Install SDK with test dependencies
+        working-directory: sdk/python
+        run: pip install -e ".[dev]"
+      - name: Run tests
+        working-directory: sdk/python
+        run: pytest -v
+
+  typescript-sdk:
+    name: TypeScript SDK
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: helios_test
+          POSTGRES_PASSWORD: helios_test
+          POSTGRES_DB: helios_test
+        ports:
+          - 5434:5432
+        options: >-
+          --health-cmd "pg_isready -U helios_test -d helios_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      HELIOS_TEST_DATABASE_URL: postgresql://helios_test:helios_test@localhost:5434/helios_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          # Matches the package engines range (^18.19.0 || >=20.6.0).
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: sdk/typescript/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements*.txt
+      - name: Install SDK dependencies
+        working-directory: sdk/typescript
+        run: npm ci
+      - name: Typecheck
+        working-directory: sdk/typescript
+        run: npm run typecheck
+      - name: Unit tests (node --test; local fake servers only)
+        working-directory: sdk/typescript
+        run: npm test
+      - name: Build (dual ESM/CommonJS)
+        working-directory: sdk/typescript
+        run: npm run build
+      - name: Package verification (pack, allowlist, secret scan, ESM/CJS/TS consumers)
+        working-directory: sdk/typescript
+        run: bash scripts/verify-package.sh
+      - name: Install backend (for the real OTLP integration)
+        working-directory: backend
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -r requirements-dev.txt
+      - name: Real local backend OTLP integration (packed artifact)
+        working-directory: sdk/typescript
+        env:
+          BACKEND_VENV: ${{ github.workspace }}/backend/.venv
+        run: bash scripts/run-backend-integration.sh
+      - name: Secret scan (source + tests + examples)
+        run: |
+          set -euo pipefail
+          # Generated-looking Helios keys (docs placeholders use short fake segments).
+          if grep -rInE 'hel_proj_[0-9a-f]{16}_[A-Za-z0-9_-]{40,}' \
+              sdk/typescript/src sdk/typescript/test sdk/typescript/fixtures \
+              sdk/typescript/scripts examples/typescript-basic examples/typescript-openai; then
+            echo "generated-looking Helios key found" >&2; exit 1
+          fi
+          if grep -rInE 'sk-(proj-)?[A-Za-z0-9]{24,}' \
+              sdk/typescript/src sdk/typescript/test sdk/typescript/fixtures \
+              sdk/typescript/scripts examples/typescript-basic examples/typescript-openai; then
+            echo "OpenAI-style key found" >&2; exit 1
+          fi
+
+  browser-e2e:
+    name: Browser E2E (Chromium)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements*.txt
+            sdk/python/pyproject.toml
+      - name: Install frontend dependencies
+        run: bun install --frozen-lockfile
+      - name: Install Playwright Chromium
+        run: bunx playwright install chromium --with-deps
+      - name: Install backend dependencies
+        working-directory: backend
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -r requirements-dev.txt
+          .venv/bin/pip install -e "../sdk/python[otel]"
+      - name: Run browser E2E harness
+        env:
+          CI: "true"
+          BACKEND_VENV: ${{ github.workspace }}/backend/.venv
+        run: bash scripts/run-e2e.sh
+      - name: Upload Playwright artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-failure-artifacts
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
+  deployment-contract:
+    name: Deployment contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements*.txt
+      - name: Install frontend dependencies
+        run: bun install --frozen-lockfile
+      - name: Install backend dependencies
+        working-directory: backend
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -r requirements-dev.txt
+      - name: Validate deployment contract (no external deploy)
+        env:
+          BACKEND_VENV: ${{ github.workspace }}/backend/.venv
+        run: bash scripts/check-deployment-contract.sh

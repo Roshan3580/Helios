@@ -1,0 +1,21 @@
+# Isolated PostgreSQL for the backend test suite.
+# Deliberately distinct from docker-compose.dev.yml: different container name,
+# database/user names containing "test", port 5434, and tmpfs storage so no
+# data survives the container.
+services:
+  postgres-test:
+    image: postgres:16-alpine
+    container_name: helios-test-postgres
+    environment:
+      POSTGRES_USER: helios_test
+      POSTGRES_PASSWORD: helios_test
+      POSTGRES_DB: helios_test
+    ports:
+      - "5434:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U helios_test -d helios_test"]
+      interval: 2s
+      timeout: 5s
+      retries: 15

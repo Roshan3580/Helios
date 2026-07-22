@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/helios/app-shell";
+import { DataSourceNotice } from "@/components/helios/data-source-notice";
 import { DemoOnlyAction } from "@/components/helios/demo-only-action";
 import { Eyebrow, StatusBadge } from "@/components/helios/primitives";
 
@@ -38,6 +39,7 @@ function ExperimentsPage() {
         description="A/B prompts, models, and retrieval configs against live traffic."
         actions={<DemoOnlyAction>New experiment</DemoOnlyAction>}
       />
+      <DataSourceNotice source="demo" />
       <div className="border border-rule bg-card">
         <div className="grid grid-cols-12 border-b border-rule px-4 py-2.5 label-eyebrow">
           <div className="col-span-5">Experiment</div>

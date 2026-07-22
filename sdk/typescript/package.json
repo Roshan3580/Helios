@@ -1,0 +1,70 @@
+{
+  "name": "@helios-ai/sdk",
+  "version": "0.1.0",
+  "description": "Helios OpenTelemetry SDK for Node.js: canonical OTLP/HTTP protobuf trace export with project API-key authentication. Package name reserved for publication; NOT yet published to npm.",
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/roshanraj/helios-observatory.git",
+    "directory": "sdk/typescript"
+  },
+  "keywords": ["helios", "opentelemetry", "tracing", "observability", "llm"],
+  "type": "module",
+  "engines": {
+    "node": "^18.19.0 || >=20.6.0"
+  },
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/cjs/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.ts",
+        "default": "./dist/cjs/index.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true});require('node:fs').rmSync('dist-test',{recursive:true,force:true})\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "npm run clean && tsc -p tsconfig.build-esm.json && tsc -p tsconfig.build-cjs.json && node scripts/finalize-build.mjs",
+    "build:test": "node -e \"require('node:fs').rmSync('dist-test',{recursive:true,force:true})\" && tsc -p tsconfig.test.json && node -e \"require('node:fs').writeFileSync('dist-test/package.json', JSON.stringify({type:'commonjs'}))\"",
+    "test": "npm run build:test && node --test dist-test/test",
+    "verify:package": "npm run build && bash scripts/verify-package.sh",
+    "integration:backend": "bash scripts/run-backend-integration.sh"
+  },
+  "dependencies": {
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/context-async-hooks": "^2.9.0",
+    "@opentelemetry/core": "^2.9.0",
+    "@opentelemetry/exporter-trace-otlp-proto": "^0.220.0",
+    "@opentelemetry/instrumentation": "^0.220.0",
+    "@opentelemetry/resources": "^2.9.0",
+    "@opentelemetry/sdk-trace-node": "^2.9.0"
+  },
+  "peerDependencies": {
+    "@opentelemetry/auto-instrumentations-node": ">=0.78.0 <1",
+    "@opentelemetry/instrumentation-openai": ">=0.18.0 <1"
+  },
+  "peerDependenciesMeta": {
+    "@opentelemetry/auto-instrumentations-node": { "optional": true },
+    "@opentelemetry/instrumentation-openai": { "optional": true }
+  },
+  "devDependencies": {
+    "@opentelemetry/auto-instrumentations-node": "^0.78.0",
+    "@opentelemetry/instrumentation-openai": "^0.18.0",
+    "@types/node": "^20.19.0",
+    "openai": "^6.48.0",
+    "typescript": "^5.9.0"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "helios-typescript-openai-example",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node main.cjs"
+  },
+  "dependencies": {
+    "@helios-ai/sdk": "file:../../sdk/typescript",
+    "@opentelemetry/instrumentation-openai": "^0.18.0",
+    "openai": "^6.48.0"
+  }
+}

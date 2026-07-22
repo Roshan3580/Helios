@@ -1,8 +1,9 @@
 import { ApiError } from "./types";
+import { getConfiguredApiBaseUrl } from "./base-url";
 
 const DEFAULT_TIMEOUT_MS = 8_000;
 
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+export const API_BASE_URL = getConfiguredApiBaseUrl();
 
 /** When not explicitly `"false"`, demo mode stays enabled (default). */
 export const IS_DEMO_MODE = import.meta.env.VITE_HELIOS_DEMO_MODE !== "false";

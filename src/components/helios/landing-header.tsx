@@ -1,4 +1,3 @@
-import { Link } from "@tanstack/react-router";
 import { Wordmark, ButtonLink } from "./primitives";
 
 const NAV = [
@@ -26,12 +25,13 @@ export function LandingHeader() {
           ))}
         </nav>
         <div className="flex items-center gap-2">
-          <Link
-            to="/app/dashboard"
+          {/* Real AuthKit sign-in via the server route (full document request). */}
+          <a
+            href="/api/auth/sign-in"
             className="label-eyebrow hidden sm:inline hover:text-foreground"
           >
             Sign in
-          </Link>
+          </a>
           <ButtonLink to="/app/dashboard">Open App →</ButtonLink>
         </div>
       </div>

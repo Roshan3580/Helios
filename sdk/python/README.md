@@ -1,17 +1,88 @@
 # Helios Python SDK
 
-Lightweight client for submitting observability traces to a Helios backend via `POST /v1/traces`.
+One distribution, two APIs:
 
-This is a **demo/portfolio SDK**: not a full OpenTelemetry integration and not production-hardened (no auth yet).
+- **v2 `Helios` runtime (recommended)** — exports standard OpenTelemetry spans
+  through authenticated OTLP/HTTP protobuf to `/v1/otlp/traces`, with automatic
+  OpenAI instrumentation. Requires the `[otel]` extra (`[openai]` for OpenAI).
+- **Legacy `HeliosClient`** — submits a custom JSON trace to `/v1/traces`.
+  Dependency-light; kept for backward compatibility.
 
-## Install (local editable)
+## Install
 
 ```bash
-cd sdk/python
-python -m venv .venv
-source .venv/bin/activate
-pip install -e .
+# v2 runtime + OpenAI auto-instrumentation
+pip install -e "sdk/python[otel,openai]"
+
+# legacy client only (no OpenTelemetry)
+pip install -e "sdk/python"
 ```
+
+## v2 quick start
+
+```python
+import os
+from helios_sdk import Helios
+
+helios = Helios.configure(
+    api_key=os.environ["HELIOS_API_KEY"],   # project API key (a secret)
+    service_name="my-agent",
+    # endpoint defaults to http://localhost:8000
+)
+
+helios.instrument_openai()  # prompt/response content is NOT captured by default
+
+# Manual spans for custom workflow boundaries:
+with helios.agent("my-agent"):
+    with helios.retrieval("kb.search") as span:
+        span.set_attribute("retrieval.top_k", 5)
+    with helios.tool("lookup_policy") as span:
+        span.set_attribute("tool.name", "policy-engine")
+
+@helios.trace("answer-question")           # sync or async functions
+def answer_question(q): ...
+
+helios.force_flush()   # before a short-lived process exits
+helios.shutdown()      # idempotent; also runs at process exit
+```
+
+### Environment variables (precedence: explicit arg > Helios env > OTel env > default)
+
+| Variable | Purpose | Default |
+| --- | --- | --- |
+| `HELIOS_API_KEY` | project API key (bearer) | required |
+| `HELIOS_ENDPOINT` | backend base URL | `http://localhost:8000` |
+| `HELIOS_SERVICE_NAME` | `service.name` | required unless `OTEL_SERVICE_NAME` set |
+| `HELIOS_ENVIRONMENT` | deployment environment | unset |
+| `HELIOS_CAPTURE_CONTENT` | capture prompt/response content | `false` |
+
+### Privacy
+
+Prompt and completion content are **disabled by default**. Enabling capture
+(`HELIOS_CAPTURE_CONTENT=true` or `instrument_openai(capture_content=True)`) may
+send sensitive data to Helios; you are responsible for consent, redaction, and
+data-handling. Helios never logs prompts/responses. **API keys are secrets** —
+never commit them or ship them to browser code.
+
+### Lifecycle
+
+- `force_flush()` — force-export buffered spans (call before a short-lived or
+  serverless process returns).
+- `shutdown()` — flush and stop telemetry; idempotent; also registered at exit.
+
+### Compatibility
+
+- Auto-instrumentation this release: **OpenAI** only, via the official
+  `opentelemetry-instrumentation-openai-v2` (beta). Verified with `openai`
+  2.46.0 on Python ≥3.10. Other providers/frameworks are future work.
+- A Node.js/TypeScript SDK also ships in this repository
+  (`sdk/typescript`, `@helios-ai/sdk` — repository artifact, not yet published
+  to npm); see [docs/TYPESCRIPT_SDK.md](../../docs/TYPESCRIPT_SDK.md).
+- The legacy `HeliosClient` (below) continues to target `/v1/traces`.
+
+---
+
+## Legacy client (`HeliosClient` → `/v1/traces`)
 
 ## Quick start
 
@@ -63,5 +134,7 @@ print(result["trace_id"])
 
 ## See also
 
-- [examples/rag_support_bot](../../examples/rag_support_bot/): deterministic RAG demo app
-- [docs/SDK_INGESTION.md](../../docs/SDK_INGESTION.md): end-to-end ingestion walkthrough
+- [examples/python_sdk_quickstart](../../examples/python_sdk_quickstart/): v2 `Helios` runtime + OpenAI auto-instrumentation demo
+- [docs/ADR_003_PYTHON_OTEL_SDK.md](../../docs/ADR_003_PYTHON_OTEL_SDK.md): v2 SDK decision record
+- [examples/rag_support_bot](../../examples/rag_support_bot/): deterministic legacy RAG demo app
+- [docs/SDK_INGESTION.md](../../docs/SDK_INGESTION.md): legacy end-to-end ingestion walkthrough

@@ -6,7 +6,33 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", ".output", ".vinxi"] },
+  {
+    ignores: [
+      // Build output
+      "dist",
+      ".output",
+      ".vinxi",
+      ".vercel/**",
+      ".tanstack/**",
+      ".nitro/**",
+      ".vite/**",
+      // Playwright (fixtures use Playwright's `use`, not React hooks)
+      "e2e/**",
+      "playwright.config.ts",
+      "playwright-report/**",
+      "test-results/**",
+      // Python virtual environments and bytecode caches
+      "**/.venv/**",
+      ".venv-demo/**",
+      "**/__pycache__/**",
+      "**/*.egg-info/**",
+      // TypeScript SDK + Node examples: standalone npm package with its own
+      // typecheck/test/package gates (frontend browser rules do not apply)
+      "sdk/typescript/**",
+      "examples/typescript-basic/**",
+      "examples/typescript-openai/**",
+    ],
+  },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],
