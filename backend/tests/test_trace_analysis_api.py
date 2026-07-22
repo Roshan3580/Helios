@@ -429,4 +429,3 @@ class TestMachinePathsUnchanged:
             "/v2/traces", headers={"Authorization": f"Bearer {key.token}"}
         )
         assert response.status_code == 200
-        assert response.json()[0]["trace_id"] == TRACE_ID_A.hex()

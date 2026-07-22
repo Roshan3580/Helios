@@ -14,6 +14,7 @@ import re
 from typing import Any
 from uuid import UUID
 
+from app.analyst.text_normalization import normalize_status_message
 from app.project_analyst.models import (
     Category,
     Confidence,
@@ -29,8 +30,6 @@ from app.project_analyst.thresholds import (
     MAX_SUPPORTING_SPAN_IDS,
     PROJECT_RULESET_VERSION,
     SIGNATURE_EXCEPTION_TYPE_MAX_LEN,
-    SIGNATURE_MESSAGE_MAX_LEN,
-    SIGNATURE_TOKEN_MAX_LEN,
 )
 
 _DIGIT_RUN_RE = re.compile(r"\d+")
@@ -39,31 +38,6 @@ _WHITESPACE_RE = re.compile(r"\s+")
 
 def trace_ui_path(trace_id: str) -> str:
     return f"/app/traces/{trace_id}"
-
-
-def normalize_status_message(message: Any) -> str | None:
-    """Collapse a status message into a bounded, redacted signature fragment.
-
-    - whitespace runs collapse to one space,
-    - digit runs collapse to ``#`` (request IDs, counts, timestamps),
-    - any remaining token longer than ``SIGNATURE_TOKEN_MAX_LEN`` collapses to
-      ``<long>`` (keys, JWTs, hashes, UUIDs, blobs),
-    - the result is truncated to ``SIGNATURE_MESSAGE_MAX_LEN``.
-    """
-    if not isinstance(message, str):
-        return None
-    text = _WHITESPACE_RE.sub(" ", message).strip()
-    if not text:
-        return None
-    text = _DIGIT_RUN_RE.sub("#", text)
-    tokens = [
-        token if len(token) <= SIGNATURE_TOKEN_MAX_LEN else "<long>"
-        for token in text.split(" ")
-    ]
-    text = " ".join(tokens)
-    if len(text) > SIGNATURE_MESSAGE_MAX_LEN:
-        text = text[: SIGNATURE_MESSAGE_MAX_LEN - 1] + "…"
-    return text
 
 
 def normalize_exception_type(value: Any) -> str | None:

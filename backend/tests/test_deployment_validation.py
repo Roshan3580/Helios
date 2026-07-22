@@ -200,3 +200,59 @@ def test_local_allows_demo_mode_true():
         openai_key_present=False,
     )
     assert issues == []
+
+
+def test_unknown_environment_prod_is_fatal():
+    """Unknown environment 'prod' must fail closed (H1)."""
+    issues = validate_settings(
+        environment="prod",
+        database_url="postgresql://u:p@db.example/helios",
+        cors_origins=["https://helios-staging.example.onrender.com"],
+        workos_issuer="https://api.workos.com/user_management/client_x",
+        workos_jwks_url="https://api.workos.com/sso/jwks/client_x",
+        helios_e2e_test_mode=False,
+        helios_demo_mode=False,
+        narrative_enabled=False,
+        allow_third_party=False,
+        analyst_provider="",
+        openai_key_present=False,
+    )
+    assert any(i.code == "unknown_environment" for i in issues)
+
+
+def test_unknown_environment_with_demo_mode_fails_closed():
+    """Unknown environment must fail closed even when combined with demo_mode (H1)."""
+    issues = validate_settings(
+        environment="live",
+        database_url="postgresql://u:p@db.example/helios",
+        cors_origins=["https://example.com"],
+        workos_issuer="https://api.workos.com/user_management/client_x",
+        workos_jwks_url="https://api.workos.com/sso/jwks/client_x",
+        helios_e2e_test_mode=False,
+        helios_demo_mode=True,  # try to sneak demo mode in
+        narrative_enabled=False,
+        allow_third_party=False,
+        analyst_provider="",
+        openai_key_present=False,
+    )
+    # Must include unknown_environment; demo_mode check should also apply
+    assert any(i.code == "unknown_environment" for i in issues)
+    assert any(i.code == "demo_mode_forbidden" for i in issues)
+
+
+def test_unknown_environment_production_variant_fails():
+    """Arbitrary unknown environment like 'production-1' must fail closed."""
+    issues = validate_settings(
+        environment="production-1",
+        database_url="postgresql://u:p@db.example/helios",
+        cors_origins=["https://example.com"],
+        workos_issuer="https://api.workos.com/user_management/client_x",
+        workos_jwks_url="https://api.workos.com/sso/jwks/client_x",
+        helios_e2e_test_mode=False,
+        helios_demo_mode=False,
+        narrative_enabled=False,
+        allow_third_party=False,
+        analyst_provider="",
+        openai_key_present=False,
+    )
+    assert any(i.code == "unknown_environment" for i in issues)

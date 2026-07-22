@@ -64,6 +64,8 @@ def validate_settings(
     """Return validation issues for the given settings snapshot.
 
     Never include secret values in issue messages.
+    Unknown environments are always fatal — no local/staging/production
+    checks are skipped for unknown environments.
     """
     env = (environment or "local").strip().lower()
     issues: list[ValidationIssue] = []
@@ -75,8 +77,12 @@ def validate_settings(
                 f"Unknown HELIOS_ENVIRONMENT={env!r}; expected local|test|e2e|staging|production",
             )
         )
+        # Unknown environments fail closed: all subsequent checks apply equally.
+        # Treat unknown as staging-like (unsafe, require all checks to pass).
 
-    if env in STAGING_LIKE:
+    # Apply staging/production checks to staging-like AND unknown environments
+    is_staging_like_or_unknown = env in STAGING_LIKE or env not in LOCAL_LIKE
+    if is_staging_like_or_unknown:
         if helios_e2e_test_mode:
             issues.append(
                 ValidationIssue(

@@ -22,10 +22,10 @@ from app.analyst.redaction import (
     span_type,
     tool_identity,
 )
+from app.analyst.text_normalization import normalize_status_message
 from app.analyst.thresholds import (
     LATENCY_CONCENTRATION_ERROR,
     LATENCY_CONCENTRATION_WARN,
-    MAX_STATUS_MESSAGE_LEN,
     REPEATED_SIBLING_MIN_COUNT,
     SERIAL_MIN_PARENT_FRACTION,
     SERIAL_MIN_SIBLINGS,
@@ -36,10 +36,6 @@ from app.models_otel import STATUS_CODE_ERROR
 from app.otel_genai_attributes import INPUT_TOKEN_KEYS, OUTPUT_TOKEN_KEYS
 
 RuleFn = Callable[[UUID, str, dict[str, Any], TraceHierarchy], list[Finding]]
-
-
-def _safe_status_message(node: SpanNode) -> str | None:
-    return bound_string(node.status_message, max_len=MAX_STATUS_MESSAGE_LEN)
 
 
 def rule_error_span(
@@ -53,7 +49,8 @@ def rule_error_span(
         node = hierarchy.nodes[span_id]
         if node.status_code != STATUS_CODE_ERROR:
             continue
-        msg = _safe_status_message(node)
+        # Normalize status_message: collapse secrets/IDs/tokens for privacy
+        msg = normalize_status_message(node.status_message)
         # Do not interpolate status_message into the statement (untrusted text).
         statement = (
             f"Span '{node.name}' ({span_id}) recorded OTel status ERROR "

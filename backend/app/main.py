@@ -41,9 +41,15 @@ _LEGACY_DEMO_ROUTERS = (
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    from app.deployment_validation import STAGING_LIKE, LOCAL_LIKE
+
     settings = get_settings()
     issues = settings.deployment_issues()
-    if issues and settings.helios_environment in {"staging", "production"}:
+    # Fail closed: any validation issue in staging/production/unknown environments
+    # is fatal. Unknown environments are treated as unsafe (fail closed).
+    env = (settings.helios_environment or "local").strip().lower()
+    is_staging_like_or_unknown = env not in LOCAL_LIKE
+    if issues and is_staging_like_or_unknown:
         details = "; ".join(f"{i.code}: {sanitize_message(i.message)}" for i in issues)
         raise RuntimeError(f"Helios deployment contract failed: {details}")
     yield

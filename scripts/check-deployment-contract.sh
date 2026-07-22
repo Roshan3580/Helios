@@ -86,6 +86,28 @@ echo "[deploy-contract] staging + HELIOS_DEMO_MODE=true must fail (L1 regression
   fi
 )
 
+echo "[deploy-contract] unknown environment must fail config check"
+(
+  if HELIOS_ENVIRONMENT='prod' \
+    HELIOS_E2E_TEST_MODE=false \
+    HELIOS_DEMO_MODE=false \
+    DATABASE_URL='postgresql://u:p@db.example/helios_staging' \
+    CORS_ORIGINS='https://helios-staging.example.onrender.com' \
+    WORKOS_CLIENT_ID='client_staging_example' \
+    WORKOS_ISSUER='https://api.workos.com/user_management/client_staging_example' \
+    WORKOS_JWKS_URL='https://api.workos.com/sso/jwks/client_staging_example' \
+    "$BACKEND_PY" -m app.cli.deployment_check --config-only >/dev/null 2>&1; then
+    echo "expected unknown HELIOS_ENVIRONMENT=prod to fail config check" >&2
+    exit 1
+  fi
+)
+
+echo "[deploy-contract] render.yaml preDeployCommand includes config validation"
+if ! grep -q "deployment_check --config-only && alembic upgrade head" render.yaml; then
+  echo "expected render.yaml preDeployCommand to run config check before alembic" >&2
+  exit 1
+fi
+
 echo "[deploy-contract] frontend staging-shaped build + bundle scan"
 VITE_API_BASE_URL='https://helios-api-staging.example.onrender.com' \
 VITE_HELIOS_DEMO_MODE=false \

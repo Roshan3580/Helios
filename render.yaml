@@ -22,8 +22,8 @@ services:
     region: oregon
     rootDir: backend
     buildCommand: pip install -r requirements.txt
-    # Migrate once per deploy, not from each uvicorn worker.
-    preDeployCommand: alembic upgrade head
+    # Validate config before running migrations; fail closed on invalid deployment.
+    preDeployCommand: python -m app.cli.deployment_check --config-only && alembic upgrade head
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1
     healthCheckPath: /health/ready
     autoDeploy: false
