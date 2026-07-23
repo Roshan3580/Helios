@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { useHeliosAccessToken as useAccessToken } from "@/lib/auth/helios-auth";
 
 import { useProjectSelection } from "@/contexts/project-selection";
-import { redirectToSignIn } from "@/lib/auth/redirect-to-sign-in";
+import { useAuthorizedRequest } from "@/lib/api/authorized-request";
 import { fetchUserProjectDashboard, UserApiError, type ProjectDashboard } from "@/lib/api/user";
 
 export type DashboardHours = 24 | 168 | 720;
@@ -22,7 +21,7 @@ export interface DashboardLoadState {
  * Never falls back to demo data or legacy /v1/dashboard/summary.
  */
 export function useDashboardSummary(): DashboardLoadState {
-  const { getAccessToken } = useAccessToken();
+  const { run } = useAuthorizedRequest();
   const {
     selectedProject,
     loading: projectLoading,
@@ -66,28 +65,19 @@ export function useDashboardSummary(): DashboardLoadState {
       setError(null);
       setErrorStatus(null);
       try {
-        const token = await getAccessToken();
-        if (!token) {
-          redirectToSignIn();
-          if (!cancelled) {
-            setData(null);
-            setLoading(false);
-            setError("Session expired. Redirecting to sign in…");
-            setErrorStatus(401);
-          }
-          return;
-        }
-        const dashboard = await fetchUserProjectDashboard(token, projectId, { hours });
+        const dashboard = await run((token) =>
+          fetchUserProjectDashboard(token, projectId, { hours }),
+        );
         if (cancelled) return;
         setData(dashboard);
         setLoading(false);
       } catch (err) {
         if (cancelled) return;
         if (err instanceof UserApiError && err.status === 401) {
-          redirectToSignIn();
+          // Bounded expiry already reported to central recovery; no redirect.
           setData(null);
           setLoading(false);
-          setError("Session expired. Redirecting to sign in…");
+          setError(null);
           setErrorStatus(401);
           return;
         }

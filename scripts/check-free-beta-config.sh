@@ -74,6 +74,14 @@ require(
     "DATABASE_URL must be a placeholder in the committed beta example",
 )
 
+# Cookie contract (Checkpoint 25): the misspelled/unconsumed WORKOS_COOKIE_SAMESITE
+# must never be presented as a settable variable (an assignment, active or
+# commented). A prose warning that it is NOT consumed is allowed.
+require(
+    re.search(r"WORKOS_COOKIE_SAMESITE\s*=", text) is None,
+    "WORKOS_COOKIE_SAMESITE is not a consumed variable; do not document it as a setting",
+)
+
 # No real secret-like blobs (allow short docs placeholders / angle-bracket forms).
 require(not re.search(r"sk_(?:test|live)_[A-Za-z0-9]{20,}", text), "secret-like WorkOS key found")
 require(

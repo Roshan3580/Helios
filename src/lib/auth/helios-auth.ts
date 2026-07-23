@@ -28,6 +28,7 @@ type HeliosUser = {
 
 export function useHeliosAccessToken(): {
   getAccessToken: () => Promise<string | null>;
+  refresh: () => Promise<string | null>;
 } {
   const workos = useWorkOSAccessToken();
   const workosRef = useRef(workos);
@@ -42,7 +43,17 @@ export function useHeliosAccessToken(): {
     return token ?? null;
   }, [e2e]);
 
-  return { getAccessToken };
+  // Force one SDK-managed token refresh (single-flight inside the SDK). In E2E
+  // mode the runtime token is fixed, so refresh resolves to the same token.
+  const refresh = useCallback(async () => {
+    if (e2e) {
+      return getE2EAccessToken();
+    }
+    const token = await workosRef.current.refresh();
+    return token ?? null;
+  }, [e2e]);
+
+  return { getAccessToken, refresh };
 }
 
 export function useHeliosAuth(): {

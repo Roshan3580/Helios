@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { useHeliosAccessToken as useAccessToken } from "@/lib/auth/helios-auth";
 
 import { useProjectSelection } from "@/contexts/project-selection";
-import { redirectToSignIn } from "@/lib/auth/redirect-to-sign-in";
+import { useAuthorizedRequest } from "@/lib/api/authorized-request";
 import { fetchUserProjectTraces, UserApiError, type OtelTraceSummary } from "@/lib/api/user";
 
 export interface TraceListFilters {
@@ -30,7 +29,7 @@ const DEFAULT_FILTERS: TraceListFilters = {
  * Never falls back to demo data.
  */
 export function useTraceList(filters: TraceListFilters = DEFAULT_FILTERS): TracesLoadState {
-  const { getAccessToken } = useAccessToken();
+  const { run } = useAuthorizedRequest();
   const {
     selectedProject,
     loading: projectLoading,
@@ -72,32 +71,23 @@ export function useTraceList(filters: TraceListFilters = DEFAULT_FILTERS): Trace
       setError(null);
       setErrorStatus(null);
       try {
-        const token = await getAccessToken();
-        if (!token) {
-          redirectToSignIn();
-          if (!cancelled) {
-            setTraces([]);
-            setLoading(false);
-            setError("Session expired. Redirecting to sign in…");
-            setErrorStatus(401);
-          }
-          return;
-        }
-        const rows = await fetchUserProjectTraces(token, selectedProject!.id, {
-          limit: filters.limit,
-          service_name: filters.serviceName.trim() || undefined,
-          has_errors: filters.errorsOnly ? true : undefined,
-        });
+        const rows = await run((token) =>
+          fetchUserProjectTraces(token, selectedProject!.id, {
+            limit: filters.limit,
+            service_name: filters.serviceName.trim() || undefined,
+            has_errors: filters.errorsOnly ? true : undefined,
+          }),
+        );
         if (cancelled) return;
         setTraces(rows);
         setLoading(false);
       } catch (err) {
         if (cancelled) return;
         if (err instanceof UserApiError && err.status === 401) {
-          redirectToSignIn();
+          // Bounded expiry already reported to central recovery; no redirect.
           setTraces([]);
           setLoading(false);
-          setError("Session expired. Redirecting to sign in…");
+          setError(null);
           setErrorStatus(401);
           return;
         }

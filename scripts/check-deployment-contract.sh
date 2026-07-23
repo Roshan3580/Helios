@@ -6,7 +6,8 @@ cd "$ROOT"
 
 echo "[deploy-contract] frontend unit tests"
 bun test src/lib/api/base-url.test.ts src/lib/deploy/staging-guards.test.ts \
-  src/lib/api/cold-start.test.ts src/lib/onboarding/workspace-state.test.ts
+  src/lib/api/cold-start.test.ts src/lib/onboarding/workspace-state.test.ts \
+  src/lib/api/authorized-request.test.ts src/lib/auth/session-recovery.test.ts
 
 echo "[deploy-contract] smoke script syntax"
 bash -n scripts/smoke-staging.sh

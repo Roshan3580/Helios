@@ -19,10 +19,12 @@ import {
 import { HeliosMark } from "./primitives";
 import { ProjectSelector } from "./project-selector";
 import { WorkspaceOnboarding } from "./workspace-onboarding";
+import { SessionRecoveryPanel } from "./session-recovery-panel";
 import { ProjectSelectionProvider } from "@/contexts/project-selection";
 import { useUserMe } from "@/hooks/use-user-me";
 import { isE2EClientFlag } from "@/lib/auth/e2e-guards";
 import { deriveWorkspaceState } from "@/lib/onboarding/workspace-state";
+import { useSessionRecovery } from "@/lib/auth/session-recovery";
 import { type UserMe } from "@/lib/api/user";
 import { cn } from "@/lib/utils";
 
@@ -102,6 +104,10 @@ function AppShellLayout() {
   const workspaceState = isE2EClientFlag()
     ? "ready"
     : deriveWorkspaceState({ me, loading: meLoading });
+  // Central authentication recovery: a bounded auth failure renders one stable
+  // panel here instead of the route, and only its explicit button can start a
+  // new sign-in — replacing the previous per-query redirect storm.
+  const recovery = useSessionRecovery();
   return (
     <div className="min-h-screen bg-paper text-foreground">
       <div className="flex">
@@ -181,7 +187,13 @@ Helios.configure(...)`}</pre>
             </div>
           </header>
           <main className="px-6 py-8">
-            {workspaceState === "needs_workspace" ? <WorkspaceOnboarding /> : <Outlet />}
+            {recovery.status !== "active" ? (
+              <SessionRecoveryPanel state={recovery} />
+            ) : workspaceState === "needs_workspace" ? (
+              <WorkspaceOnboarding />
+            ) : (
+              <Outlet />
+            )}
           </main>
         </div>
       </div>

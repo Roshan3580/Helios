@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { useHeliosAccessToken as useAccessToken } from "@/lib/auth/helios-auth";
 
+import { useAuthorizedRequest } from "@/lib/api/authorized-request";
 import { fetchUserMe, type UserMe } from "@/lib/api/user";
 
 export interface UserMeState {
@@ -15,7 +15,7 @@ export interface UserMeState {
  * and the token is never persisted).
  */
 export function useUserMe(): UserMeState {
-  const { getAccessToken } = useAccessToken();
+  const { run } = useAuthorizedRequest();
   const [state, setState] = useState<UserMeState>({ me: null, loading: true, error: null });
 
   useEffect(() => {
@@ -23,12 +23,7 @@ export function useUserMe(): UserMeState {
 
     async function load() {
       try {
-        const token = await getAccessToken();
-        if (!token) {
-          if (!cancelled) setState({ me: null, loading: false, error: "not authenticated" });
-          return;
-        }
-        const me = await fetchUserMe(token);
+        const me = await run((token) => fetchUserMe(token));
         if (!cancelled) setState({ me, loading: false, error: null });
       } catch (error) {
         if (!cancelled) {

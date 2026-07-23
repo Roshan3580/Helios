@@ -24,7 +24,7 @@ staging, and production. Placeholders only — never commit real secrets.
 | `WORKOS_API_KEY` | Frontend server only | Secret | Yes (AuthKit) | `sk_test_…` | Never `VITE_*` |
 | `WORKOS_REDIRECT_URI` | Frontend server | Public URL | Yes | `https://…/api/auth/callback` | HTTPS; fixed origin |
 | `WORKOS_COOKIE_PASSWORD` | Frontend server | Secret | Yes | ≥32 chars | Never `VITE_*` |
-| `WORKOS_COOKIE_SAMESITE` | Frontend server | Config | Optional | `lax` | AuthKit default |
+| Session cookie SameSite | Frontend server | Config | Not env-set | `lax` (SDK default) | AuthKit sets SameSite=Lax, Secure, HttpOnly, Path=/. No `WORKOS_COOKIE_SAMESITE` var is consumed; the correct name if ever exposed is `WORKOS_COOKIE_SAME_SITE` |
 | `WORKOS_COOKIE_NAME` | Frontend server | Config | Optional | `wos-session` | AuthKit default |
 | `WORKOS_COOKIE_MAX_AGE` | Frontend server | Config | Optional | seconds | AuthKit default |
 | `WORKOS_ISSUER` | Backend | Public URL | Yes (or derive) | HTTPS WorkOS | No loopback in staging |

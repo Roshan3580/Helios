@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useHeliosAccessToken as useAccessToken } from "@/lib/auth/helios-auth";
 
 import { PageHeader } from "@/components/helios/app-shell";
 import { BackendStateNotice } from "@/components/helios/backend-state-notice";
@@ -9,8 +8,8 @@ import { ProjectCreateForm } from "@/components/helios/project-create-form";
 import { Eyebrow, StatusBadge } from "@/components/helios/primitives";
 import { useProjectSelection } from "@/contexts/project-selection";
 import { useProjectApiKeys } from "@/hooks/use-project-api-keys";
+import { useAuthorizedRequest } from "@/lib/api/authorized-request";
 import { fetchUserProjectTraces, UserApiError, type OtelTraceSummary } from "@/lib/api/user";
-import { redirectToSignIn } from "@/lib/auth/redirect-to-sign-in";
 import { API_BASE_URL } from "@/lib/api/client";
 
 export const Route = createFileRoute("/app/getting-started")({
@@ -34,7 +33,7 @@ function GettingStartedPage() {
     refreshProjects,
     selectProject,
   } = useProjectSelection();
-  const { getAccessToken } = useAccessToken();
+  const { run } = useAuthorizedRequest();
   const keys = useProjectApiKeys(selectedProject?.id ?? null);
   const [telemetry, setTelemetry] = useState<TelemetryState>({ status: "idle" });
   const [createdStep, setCreatedStep] = useState(false);
@@ -47,14 +46,9 @@ function GettingStartedPage() {
     if (!selectedProject) return;
     setTelemetry({ status: "checking" });
     try {
-      const token = await getAccessToken();
-      if (!token) {
-        redirectToSignIn();
-        return;
-      }
-      const rows = await fetchUserProjectTraces(token, selectedProject.id, {
-        limit: 1,
-      });
+      const rows = await run((token) =>
+        fetchUserProjectTraces(token, selectedProject.id, { limit: 1 }),
+      );
       if (rows.length === 0) {
         setTelemetry({ status: "none" });
         return;
@@ -62,7 +56,8 @@ function GettingStartedPage() {
       setTelemetry({ status: "received", trace: rows[0] });
     } catch (err) {
       if (err instanceof UserApiError && err.status === 401) {
-        redirectToSignIn();
+        // Bounded expiry already reported to central recovery; no redirect.
+        setTelemetry({ status: "idle" });
         return;
       }
       setTelemetry({
@@ -70,7 +65,7 @@ function GettingStartedPage() {
         message: err instanceof UserApiError ? err.message : "Unable to check telemetry",
       });
     }
-  }, [selectedProject, getAccessToken]);
+  }, [selectedProject, run]);
 
   const hasActiveKey = keys.keys.some((key) => key.status === "active");
   const endpointBase = API_BASE_URL || "<HELIOS_ENDPOINT>";

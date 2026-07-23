@@ -7,12 +7,9 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import {
-  useHeliosAccessToken as useAccessToken,
-  useHeliosAuth as useAuth,
-} from "@/lib/auth/helios-auth";
+import { useHeliosAuth as useAuth } from "@/lib/auth/helios-auth";
 
-import { redirectToSignIn } from "@/lib/auth/redirect-to-sign-in";
+import { useAuthorizedRequest } from "@/lib/api/authorized-request";
 import { fetchUserProjects, UserApiError, type UserProject } from "@/lib/api/user";
 
 const STORAGE_KEY = "helios.selectedProjectId";
@@ -56,7 +53,7 @@ function resolveSelection(projects: UserProject[], preferredId: string | null): 
 }
 
 export function ProjectSelectionProvider({ children }: { children: ReactNode }) {
-  const { getAccessToken } = useAccessToken();
+  const { run } = useAuthorizedRequest();
   const { organizationId } = useAuth();
   const [projects, setProjects] = useState<UserProject[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
@@ -75,19 +72,7 @@ export function ProjectSelectionProvider({ children }: { children: ReactNode }) 
       setError(null);
       setErrorStatus(null);
       try {
-        const token = await getAccessToken();
-        if (!token) {
-          if (!cancelled) {
-            setProjects([]);
-            setSelectedProjectId(null);
-            setLoading(false);
-            setError("not authenticated");
-            setErrorStatus(401);
-          }
-          redirectToSignIn();
-          return;
-        }
-        const rows = await fetchUserProjects(token);
+        const rows = await run((token) => fetchUserProjects(token));
         if (cancelled) return;
         const preferred = readPersistedProjectId();
         const nextId = resolveSelection(rows, preferred);
@@ -102,11 +87,11 @@ export function ProjectSelectionProvider({ children }: { children: ReactNode }) 
       } catch (err) {
         if (cancelled) return;
         if (err instanceof UserApiError && err.status === 401) {
-          redirectToSignIn();
+          // Bounded expiry already reported to central recovery; no redirect.
           setProjects([]);
           setSelectedProjectId(null);
           setLoading(false);
-          setError("Session expired. Redirecting to sign in…");
+          setError(null);
           setErrorStatus(401);
           return;
         }
