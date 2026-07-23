@@ -81,14 +81,25 @@ class TestIdentity:
 
 
 class TestOrganizationScoping:
-    def test_unknown_org_returns_403(self, client, workos_verifier):
-        # Valid JWT with an org_id that no admin has linked locally.
+    def test_new_org_is_auto_bootstrapped(self, client, db_session, workos_verifier):
+        # Checkpoint 24: a valid JWT with a not-yet-seen (but plausible) org_id
+        # is mapped to a local organization automatically — no admin CLI step.
+        # The org is scoped to itself: it owns no projects until it creates one.
+        from app.models_identity import Organization
+
         response = client.get(
             "/v2/user/projects",
-            headers=bearer(make_token(org_id="org_01UNLINKEDORG00000000000")),
+            headers=bearer(make_token(org_id="org_01BRANDNEWORG0000000001")),
         )
-        assert response.status_code == 403
-        assert "not linked" in response.json()["detail"]
+        assert response.status_code == 200
+        assert response.json() == []
+        db_session.expire_all()
+        org = (
+            db_session.query(Organization)
+            .filter_by(workos_org_id="org_01BRANDNEWORG0000000001")
+            .one()
+        )
+        assert org.slug  # a unique slug was derived from the verified org id
 
     def test_missing_org_id_on_org_route_403(self, client, workos_verifier):
         response = client.get(

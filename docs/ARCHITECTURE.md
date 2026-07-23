@@ -166,9 +166,16 @@ Decision records: [ADR_001_OTLP_TRACE_FOUNDATION.md](ADR_001_OTLP_TRACE_FOUNDATI
   `GET /v2/user/projects/{project}/traces[/{trace_id}]` with
   `Authorization: Bearer <WorkOS access token>`; FastAPI verifies the JWT
   against the WorkOS JWKS and scopes access to the organization in the token's
-  `org_id`. Organizations are linked and projects assigned via
-  `python -m app.cli.organizations`. **User JWTs must not be used for OTLP
-  ingestion, and project keys must never be used by browsers.**
+  `org_id`. **Self-serve onboarding (Checkpoint 24):** on first sign-in the
+  verified organization (and identity) are mapped to local Helios records
+  automatically and tenant-safely by `app/services/identity_bootstrap.py` — no
+  admin CLI or SQL step is required for an invited tester. The authoritative
+  organization id comes only from the verified token (a client can never choose
+  it); creation is idempotent and concurrency-safe (DB uniqueness +
+  integrity-conflict retry); a verified user with no active organization is
+  routed to a bounded onboarding screen. `python -m app.cli.organizations`
+  remains available for explicit administrative mapping. **User JWTs must not be
+  used for OTLP ingestion, and project keys must never be used by browsers.**
   Organization-wide access is the initial model; per-project user membership
   is deferred.
 - **Browser E2E release gate:** Chromium Playwright suite under `e2e/` driven by

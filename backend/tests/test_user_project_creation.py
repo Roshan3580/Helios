@@ -47,13 +47,27 @@ class TestAuthGuards:
         )
         assert response.status_code == 401
 
-    def test_unlinked_org_403(self, client, workos_verifier):
+    def test_new_org_self_serves_without_admin_linking(
+        self, client, db_session, workos_verifier
+    ):
+        # Checkpoint 24: a first user in a brand-new (but plausible) WorkOS org
+        # auto-bootstraps the local org and can immediately create a project —
+        # no admin CLI mapping required.
+        from app.models_identity import Organization
+
+        new_org = "org_01SELFSERVEORG0000000001"
         response = client.post(
             "/v2/user/projects",
-            json={"name": "A", "slug": "a"},
-            headers=bearer(make_token(org_id="org_01UNLINKEDORG00000000000")),
+            json={"name": "A", "slug": "self-serve-a"},
+            headers=bearer(make_token(org_id=new_org)),
         )
-        assert response.status_code == 403
+        assert response.status_code == 201
+        stored = db_session.get(Project, uuid.UUID(response.json()["id"]))
+        assert stored is not None
+        bootstrapped = (
+            db_session.query(Organization).filter_by(workos_org_id=new_org).one()
+        )
+        assert stored.organization_id == bootstrapped.id
 
 
 class TestCreateProject:

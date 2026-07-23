@@ -86,10 +86,12 @@ class TestDashboardAuthorization:
         response = client.get(f"/v2/user/projects/{project.id}/dashboard")
         assert response.status_code == 401
 
-    def test_unlinked_organization_403(self, client, db_session, workos_verifier):
+    def test_org_without_this_project_404(self, client, db_session, workos_verifier):
+        # Checkpoint 24: a valid JWT's org is auto-bootstrapped, but a project it
+        # does not own is an indistinguishable 404 (never 403 leaking existence).
         project, _ = _create_project(db_session, client, slug="unlinked-dash")
         response = _dashboard(client, project.slug)
-        assert response.status_code == 403
+        assert response.status_code == 404
 
     def test_inaccessible_project_404(self, client, db_session, workos_verifier, linked_org):
         response = _dashboard(client, "no-such-project")

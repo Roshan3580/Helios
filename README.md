@@ -21,6 +21,24 @@ Helios ships as a deployed full-stack system: a TanStack Start console on Vercel
   <a href="https://www.loom.com/share/cd168cff3de843e8a0c00a1980085992">Watch the 90-second walkthrough</a>
 </p>
 
+### Demo vs. invited beta
+
+Helios runs in clearly separated environments:
+
+- **Public synthetic demo** — `helios-alpha-nine.vercel.app` (branch `demo-v1`).
+  Seeded/sample data only; no sign-in.
+- **Invited free beta** — the **real product** (WorkOS sign-in, project API
+  keys, OTLP ingestion, Dashboard/Traces/Analysis/Insights) on zero-cost
+  infrastructure for invited testers. Onboarding is **self-serve**: signing in
+  with a WorkOS organization maps it to a Helios workspace automatically and
+  tenant-safely — no administrator database step. Authenticated pages never use
+  synthetic fallback data, and OpenAI narrative stays disabled. It is **not** an
+  SLA-backed production service. See
+  [docs/FREE_BETA_DEPLOYMENT.md](docs/FREE_BETA_DEPLOYMENT.md).
+
+Paid dedicated staging (`render.yaml`) and production are separate and not part
+of the beta.
+
 ---
 
 ## What it does

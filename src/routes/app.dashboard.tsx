@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 
 import { PageHeader } from "@/components/helios/app-shell";
+import { BackendStateNotice } from "@/components/helios/backend-state-notice";
 import { Eyebrow, MetricCard, StatusBadge, ButtonLink } from "@/components/helios/primitives";
 import { useProjectSelection } from "@/contexts/project-selection";
 import { useDashboardSummary, type DashboardHours } from "@/hooks/use-dashboard-summary";
@@ -23,7 +24,12 @@ const TIME_WINDOWS: { hours: DashboardHours; label: string }[] = [
 ];
 
 function DashboardPage() {
-  const { selectedProject, loading: projectLoading, error: projectError } = useProjectSelection();
+  const {
+    selectedProject,
+    loading: projectLoading,
+    error: projectError,
+    errorStatus: projectErrorStatus,
+  } = useProjectSelection();
   const { data, hours, setHours, loading, error, errorStatus, reload } = useDashboardSummary();
 
   const eyebrow = selectedProject
@@ -44,12 +50,7 @@ function DashboardPage() {
       />
 
       {projectError ? (
-        <StatePanel
-          title="Project unavailable"
-          body={projectError}
-          actionLabel="Retry"
-          onAction={reload}
-        />
+        <BackendStateNotice error={projectError} status={projectErrorStatus} onRetry={reload} />
       ) : !projectLoading && !selectedProject ? (
         <StatePanel
           title="No project selected"
@@ -87,18 +88,7 @@ function DashboardPage() {
           </div>
 
           {error ? (
-            <StatePanel
-              title={
-                errorStatus === 403
-                  ? "Access denied"
-                  : errorStatus === 404
-                    ? "Not found"
-                    : "Could not load dashboard"
-              }
-              body={error}
-              actionLabel="Retry"
-              onAction={reload}
-            />
+            <BackendStateNotice error={error} status={errorStatus} onRetry={reload} />
           ) : loading || projectLoading || !data ? (
             <div className="border border-rule bg-card px-4 py-10 text-center">
               <Eyebrow>Loading telemetry…</Eyebrow>

@@ -23,7 +23,12 @@ export interface DashboardLoadState {
  */
 export function useDashboardSummary(): DashboardLoadState {
   const { getAccessToken } = useAccessToken();
-  const { selectedProject, loading: projectLoading, error: projectError } = useProjectSelection();
+  const {
+    selectedProject,
+    loading: projectLoading,
+    error: projectError,
+    errorStatus: projectErrorStatus,
+  } = useProjectSelection();
   const [hours, setHours] = useState<DashboardHours>(24);
   const [data, setData] = useState<ProjectDashboard | null>(null);
   const [loading, setLoading] = useState(true);
@@ -42,7 +47,7 @@ export function useDashboardSummary(): DashboardLoadState {
       setData(null);
       setLoading(false);
       setError(projectError);
-      setErrorStatus(null);
+      setErrorStatus(projectErrorStatus);
       return;
     }
     if (!selectedProject) {
