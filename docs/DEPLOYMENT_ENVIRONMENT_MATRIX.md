@@ -3,6 +3,17 @@
 Authoritative classification of Helios environment variables for local, E2E,
 staging, and production. Placeholders only — never commit real secrets.
 
+> **Environment topology.** Four distinct deployments must never be conflated:
+> the **public synthetic demo** (branch `demo-v1`, `helios-alpha-nine.vercel.app`
+> + `helios-backend`) serves seeded sample data only; the **invited free beta**
+> (Checkpoint 24, branch `main`, existing Vercel `helios-staging` + WorkOS
+> Staging + Render **Free** `helios-api-beta` + external free PostgreSQL) runs
+> the **real product** for invited testers on zero-cost infra — not an SLA
+> service; the **paid dedicated staging** (`render.yaml`, `helios-api-staging`)
+> is a separate paid contract; and **production** does not exist yet. The beta
+> uses the hardened `staging` variable contract below (demo/e2e/narrative all
+> false). See `.env.beta.example` and `docs/FREE_BETA_DEPLOYMENT.md`.
+
 | Variable | Runtime | Public/Secret | Required | Staging form | Validation |
 |----------|---------|---------------|----------|--------------|------------|
 | `VITE_API_BASE_URL` | Frontend build | Public | Yes (staging) | `https://…onrender.com` | HTTPS; no credentials/query |

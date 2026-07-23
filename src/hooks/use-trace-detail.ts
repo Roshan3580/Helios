@@ -19,7 +19,12 @@ export interface TraceDetailLoadState {
  */
 export function useTraceDetail(traceId: string): TraceDetailLoadState {
   const { getAccessToken } = useAccessToken();
-  const { selectedProject, loading: projectLoading, error: projectError } = useProjectSelection();
+  const {
+    selectedProject,
+    loading: projectLoading,
+    error: projectError,
+    errorStatus: projectErrorStatus,
+  } = useProjectSelection();
   const [trace, setTrace] = useState<OtelTraceDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +42,7 @@ export function useTraceDetail(traceId: string): TraceDetailLoadState {
       setTrace(null);
       setLoading(false);
       setError(projectError);
-      setErrorStatus(null);
+      setErrorStatus(projectErrorStatus);
       return;
     }
     if (!selectedProject) {

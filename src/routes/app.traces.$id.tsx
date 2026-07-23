@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 
 import { PageHeader } from "@/components/helios/app-shell";
+import { BackendStateNotice } from "@/components/helios/backend-state-notice";
 import { SpanInspector } from "@/components/helios/span-inspector";
 import { TraceAnalysisPanel } from "@/components/helios/trace-analysis-panel";
 import { Eyebrow, StatusBadge } from "@/components/helios/primitives";
@@ -24,7 +25,12 @@ export const Route = createFileRoute("/app/traces/$id")({ component: TraceDetail
 
 function TraceDetailPage() {
   const { id } = Route.useParams();
-  const { selectedProject, loading: projectLoading, error: projectError } = useProjectSelection();
+  const {
+    selectedProject,
+    loading: projectLoading,
+    error: projectError,
+    errorStatus: projectErrorStatus,
+  } = useProjectSelection();
   const { trace, loading, error, errorStatus, reload } = useTraceDetail(id);
   const analysisState = useTraceAnalysis(id);
 
@@ -79,12 +85,7 @@ function TraceDetailPage() {
     return (
       <div>
         <BackLink />
-        <StatePanel
-          title="Project unavailable"
-          body={projectError}
-          actionLabel="Retry"
-          onAction={reload}
-        />
+        <BackendStateNotice error={projectError} status={projectErrorStatus} onRetry={reload} />
       </div>
     );
   }
@@ -105,18 +106,7 @@ function TraceDetailPage() {
     return (
       <div>
         <BackLink />
-        <StatePanel
-          title={
-            errorStatus === 403
-              ? "Access denied"
-              : errorStatus === 404
-                ? "Trace not found"
-                : "Could not load trace"
-          }
-          body={error}
-          actionLabel="Retry"
-          onAction={reload}
-        />
+        <BackendStateNotice error={error} status={errorStatus} onRetry={reload} />
       </div>
     );
   }

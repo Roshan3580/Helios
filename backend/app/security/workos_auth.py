@@ -11,11 +11,15 @@ fetching fails closed, uses explicit timeouts, and retries exactly once when
 an unknown `kid` appears (key rotation). JWTs and Authorization headers are
 never logged.
 
-JIT identity: a verified user is upserted/touched locally (isolated session,
-same pattern as api-key last_used_at). Organizations are NOT auto-created:
-the org must already be linked via `python -m app.cli.organizations`, so
-arbitrary external org IDs can never implicitly own projects. Unknown org →
-stable 403 onboarding response.
+JIT bootstrap (Checkpoint 24): a verified user, and the verified active
+organization carried by the token's ``org_id`` claim, are mapped into local
+Helios records on first sight via ``app.services.identity_bootstrap`` — no
+manual admin CLI step is required for an invited tester. The authoritative
+organization ID comes exclusively from the signature-verified token, never
+from client input, so a caller can never influence which organization owns
+projects. A verified user with no active organization (``org_id`` absent) still
+authenticates for onboarding routes but is refused org-scoped routes with a
+stable 403; the admin CLI remains available for explicit mappings.
 """
 
 from __future__ import annotations
@@ -23,18 +27,15 @@ from __future__ import annotations
 import logging
 import threading
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 
 import httpx
 import jwt as pyjwt
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.database import SessionLocal
-from app.models_identity import Organization, User
 from app.security.api_keys import AuthError
+from app.services import identity_bootstrap
 
 logger = logging.getLogger("helios.auth.human")
 
@@ -193,42 +194,19 @@ def set_verifier_for_tests(verifier: WorkOSTokenVerifier | None) -> None:
         _verifier = verifier
 
 
-def _utc_now() -> datetime:
-    return datetime.now(timezone.utc)
-
-
-def _touch_user(claims: dict) -> str:
-    """JIT upsert of the local user in an isolated committed session.
-
-    Returns the local user UUID (as str). Independent of the request session so
-    read-only routes still record identity and rollbacks never lose it.
-    """
-    now = _utc_now()
-    with SessionLocal() as session:
-        user = session.scalar(select(User).where(User.workos_user_id == claims["sub"]))
-        if user is None:
-            user = User(
-                workos_user_id=claims["sub"],
-                first_seen_at=now,
-                last_seen_at=now,
-            )
-            session.add(user)
-        else:
-            user.last_seen_at = now
-        session.commit()
-        return str(user.id)
-
-
 def authenticate_human(
-    db: Session,
     token: str | None,
     *,
     require_org: bool = True,
 ) -> HumanAuthContext:
-    """Verify a WorkOS bearer token and resolve local identity.
+    """Verify a WorkOS bearer token and resolve (bootstrap) local identity.
 
-    Raises AuthError(401) for credential problems, AuthError(403) when the
-    token's organization is not linked locally (or missing when required).
+    The verified user, and the verified active organization from the token's
+    ``org_id`` claim, are idempotently mapped to local records
+    (``identity_bootstrap``). Raises AuthError(401) for credential problems and
+    AuthError(403) when an org-scoped route is reached without a usable
+    organization (missing ``org_id``, or an implausible one) — the onboarding
+    boundary. Organization identity is taken only from the verified token.
     """
     if not token:
         logger.info("human auth reject: missing bearer token")
@@ -241,17 +219,16 @@ def authenticate_human(
         logger.info("human auth reject: token has no org_id (sub present)")
         raise AuthError("missing_org", status_code=403)
 
-    local_user_id = _touch_user(claims)
+    result = identity_bootstrap.bootstrap_identity(
+        workos_user_id=claims["sub"],
+        workos_org_id=org_id,
+    )
 
-    local_org: Organization | None = None
-    if org_id:
-        local_org = db.scalar(
-            select(Organization).where(Organization.workos_org_id == org_id)
-        )
-        if require_org and local_org is None:
-            # Deliberate: organizations are linked only via the admin CLI.
-            logger.info("human auth reject: unlinked organization")
-            raise AuthError("organization_not_linked", status_code=403)
+    if require_org and result.org is None:
+        # org_id was present but not a plausible WorkOS organization id, so no
+        # local organization was created. Fail closed to onboarding.
+        logger.info("human auth reject: organization could not be bootstrapped")
+        raise AuthError("organization_unavailable", status_code=403)
 
     permissions = claims.get("permissions") or []
     return HumanAuthContext(
@@ -261,8 +238,8 @@ def authenticate_human(
         role=claims.get("role"),
         permissions=tuple(permissions) if isinstance(permissions, (list, tuple)) else (),
         expires_at=datetime.fromtimestamp(claims["exp"], tz=timezone.utc),
-        local_user_id=local_user_id,
-        local_org_id=str(local_org.id) if local_org else None,
-        organization_slug=local_org.slug if local_org else None,
-        organization_name=local_org.name if local_org else None,
+        local_user_id=result.local_user_id,
+        local_org_id=result.org.id if result.org else None,
+        organization_slug=result.org.slug if result.org else None,
+        organization_name=result.org.name if result.org else None,
     )

@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 
 import { PageHeader } from "@/components/helios/app-shell";
+import { BackendStateNotice } from "@/components/helios/backend-state-notice";
 import { ProjectApiKeysPanel } from "@/components/helios/project-api-keys-panel";
 import { useProjectSelection } from "@/contexts/project-selection";
 
@@ -9,7 +10,7 @@ export const Route = createFileRoute("/app/settings/api-keys")({
 });
 
 function ProjectApiKeysSettingsPage() {
-  const { selectedProject, loading, error, reload } = useProjectSelection();
+  const { selectedProject, loading, error, errorStatus, reload } = useProjectSelection();
 
   return (
     <div>
@@ -20,16 +21,7 @@ function ProjectApiKeysSettingsPage() {
       />
 
       {error ? (
-        <div className="border border-rule bg-paper-2 px-4 py-4" role="alert">
-          <p className="text-[13px]">{error}</p>
-          <button
-            type="button"
-            onClick={reload}
-            className="mt-3 border border-rule px-2.5 py-1.5 text-[12px]"
-          >
-            Retry
-          </button>
-        </div>
+        <BackendStateNotice error={error} status={errorStatus} onRetry={reload} />
       ) : loading ? (
         <p className="text-[13px] text-muted-foreground" aria-busy="true">
           Loading project…

@@ -31,7 +31,12 @@ const DEFAULT_FILTERS: TraceListFilters = {
  */
 export function useTraceList(filters: TraceListFilters = DEFAULT_FILTERS): TracesLoadState {
   const { getAccessToken } = useAccessToken();
-  const { selectedProject, loading: projectLoading, error: projectError } = useProjectSelection();
+  const {
+    selectedProject,
+    loading: projectLoading,
+    error: projectError,
+    errorStatus: projectErrorStatus,
+  } = useProjectSelection();
   const [traces, setTraces] = useState<OtelTraceSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -49,7 +54,7 @@ export function useTraceList(filters: TraceListFilters = DEFAULT_FILTERS): Trace
       setTraces([]);
       setLoading(false);
       setError(projectError);
-      setErrorStatus(null);
+      setErrorStatus(projectErrorStatus);
       return;
     }
     if (!selectedProject) {

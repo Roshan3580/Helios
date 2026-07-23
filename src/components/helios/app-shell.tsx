@@ -18,13 +18,16 @@ import {
 } from "lucide-react";
 import { HeliosMark } from "./primitives";
 import { ProjectSelector } from "./project-selector";
+import { WorkspaceOnboarding } from "./workspace-onboarding";
 import { ProjectSelectionProvider } from "@/contexts/project-selection";
 import { useUserMe } from "@/hooks/use-user-me";
+import { isE2EClientFlag } from "@/lib/auth/e2e-guards";
+import { deriveWorkspaceState } from "@/lib/onboarding/workspace-state";
+import { type UserMe } from "@/lib/api/user";
 import { cn } from "@/lib/utils";
 
-function UserIdentity() {
+function UserIdentity({ me }: { me: UserMe | null }) {
   const { user, loading, signOut } = useAuth();
-  const { me } = useUserMe();
 
   if (loading || !user) {
     return <div className="size-7 border border-rule bg-paper-2" aria-hidden />;
@@ -91,6 +94,14 @@ const NAV = [
 function AppShellLayout() {
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   const groups = ["Observe", "Improve", "Setup"] as const;
+  // Workspace (WorkOS organization) onboarding gate. A verified user with no
+  // active organization cannot use any org-scoped surface, so we render a
+  // bounded onboarding screen instead of the route. The E2E seam is a
+  // controlled environment with its own organization handling; never gate it.
+  const { me, loading: meLoading } = useUserMe();
+  const workspaceState = isE2EClientFlag()
+    ? "ready"
+    : deriveWorkspaceState({ me, loading: meLoading });
   return (
     <div className="min-h-screen bg-paper text-foreground">
       <div className="flex">
@@ -166,11 +177,11 @@ Helios.configure(...)`}</pre>
             </div>
             <div className="flex items-center gap-4">
               <Bell className="size-4 text-muted-foreground" strokeWidth={1.5} />
-              <UserIdentity />
+              <UserIdentity me={me} />
             </div>
           </header>
           <main className="px-6 py-8">
-            <Outlet />
+            {workspaceState === "needs_workspace" ? <WorkspaceOnboarding /> : <Outlet />}
           </main>
         </div>
       </div>

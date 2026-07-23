@@ -128,13 +128,15 @@ class TestAuthGuards:
         db_session.commit()
         assert analyze(client, "keyed", token=key.token).status_code == 401
 
-    def test_unlinked_org_403(self, client, workos_verifier):
+    def test_new_org_bootstraps_then_missing_project_404(self, client, workos_verifier):
+        # Checkpoint 24: the org auto-bootstraps; a project it does not own is a
+        # 404 (indistinguishable from nonexistent), never a 403.
         response = analyze(
             client,
             "any-project",
-            token=make_token(org_id="org_01UNLINKEDORG00000000000"),
+            token=make_token(org_id="org_01BRANDNEWORG0000000003"),
         )
-        assert response.status_code == 403
+        assert response.status_code == 404
 
     def test_inaccessible_project_404(self, client, db_session, workos_verifier, linked_org):
         seed_project(db_session, client, slug="unassigned")  # no org

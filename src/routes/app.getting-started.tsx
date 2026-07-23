@@ -3,6 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useHeliosAccessToken as useAccessToken } from "@/lib/auth/helios-auth";
 
 import { PageHeader } from "@/components/helios/app-shell";
+import { BackendStateNotice } from "@/components/helios/backend-state-notice";
 import { ProjectApiKeysPanel } from "@/components/helios/project-api-keys-panel";
 import { ProjectCreateForm } from "@/components/helios/project-create-form";
 import { Eyebrow, StatusBadge } from "@/components/helios/primitives";
@@ -29,6 +30,7 @@ function GettingStartedPage() {
     selectedProject,
     loading: projectLoading,
     error: projectError,
+    errorStatus: projectErrorStatus,
     refreshProjects,
     selectProject,
   } = useProjectSelection();
@@ -96,16 +98,11 @@ function GettingStartedPage() {
           title="Getting started"
           description="Create a project, mint a project API key, and send your first trace."
         />
-        <div className="border border-rule bg-paper-2 px-4 py-4" role="alert">
-          <p className="text-[13px]">{projectError}</p>
-          <button
-            type="button"
-            onClick={refreshProjects}
-            className="mt-3 border border-rule px-2.5 py-1.5 text-[12px] hover:bg-paper"
-          >
-            Retry
-          </button>
-        </div>
+        <BackendStateNotice
+          error={projectError}
+          status={projectErrorStatus}
+          onRetry={refreshProjects}
+        />
       </div>
     );
   }

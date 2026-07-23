@@ -2,6 +2,7 @@ import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 
 import { PageHeader } from "@/components/helios/app-shell";
+import { BackendStateNotice } from "@/components/helios/backend-state-notice";
 import { ProjectAnalysisPanel } from "@/components/helios/project-analysis-panel";
 import { useProjectSelection } from "@/contexts/project-selection";
 import { useProjectAnalysis } from "@/hooks/use-project-analysis";
@@ -21,6 +22,7 @@ function InsightsPage() {
     selectedProject,
     loading: projectLoading,
     error: projectError,
+    errorStatus: projectErrorStatus,
     reload,
   } = useProjectSelection();
   const [hours, setHours] = useState<InsightsHours>(24);
@@ -42,12 +44,7 @@ function InsightsPage() {
       />
 
       {projectError ? (
-        <StatePanel
-          title="Project unavailable"
-          body={projectError}
-          actionLabel="Retry"
-          onAction={reload}
-        />
+        <BackendStateNotice error={projectError} status={projectErrorStatus} onRetry={reload} />
       ) : !projectLoading && !selectedProject ? (
         <StatePanel
           title="No project selected"

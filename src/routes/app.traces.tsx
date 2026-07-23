@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 
 import { PageHeader } from "@/components/helios/app-shell";
+import { BackendStateNotice } from "@/components/helios/backend-state-notice";
 import { Eyebrow, StatusBadge } from "@/components/helios/primitives";
 import { useProjectSelection } from "@/contexts/project-selection";
 import { useTraceList } from "@/hooks/use-traces";
@@ -16,7 +17,12 @@ function TracesLayout() {
 }
 
 function TracesListPage() {
-  const { selectedProject, loading: projectLoading, error: projectError } = useProjectSelection();
+  const {
+    selectedProject,
+    loading: projectLoading,
+    error: projectError,
+    errorStatus: projectErrorStatus,
+  } = useProjectSelection();
   const [serviceName, setServiceName] = useState("");
   const [errorsOnly, setErrorsOnly] = useState(false);
   const [draftService, setDraftService] = useState("");
@@ -36,12 +42,7 @@ function TracesListPage() {
       />
 
       {projectError ? (
-        <StatePanel
-          title="Project unavailable"
-          body={projectError}
-          actionLabel="Retry"
-          onAction={reload}
-        />
+        <BackendStateNotice error={projectError} status={projectErrorStatus} onRetry={reload} />
       ) : !projectLoading && !selectedProject ? (
         <StatePanel
           title="No project selected"
@@ -93,18 +94,7 @@ function TracesListPage() {
           </div>
 
           {error ? (
-            <StatePanel
-              title={
-                errorStatus === 403
-                  ? "Access denied"
-                  : errorStatus === 404
-                    ? "Not found"
-                    : "Could not load traces"
-              }
-              body={error}
-              actionLabel="Retry"
-              onAction={reload}
-            />
+            <BackendStateNotice error={error} status={errorStatus} onRetry={reload} />
           ) : (
             <div className="border border-rule bg-card overflow-x-auto">
               <div className="min-w-[860px]">
