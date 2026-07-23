@@ -44,6 +44,7 @@ def run_config_check() -> int:
         environment=settings.helios_environment,
         database_url=settings.database_url,
         cors_origins=settings.cors_origin_list,
+        workos_client_id=settings.workos_client_id,
         workos_issuer=settings.workos_issuer_resolved,
         workos_jwks_url=settings.workos_jwks_url_resolved,
         helios_e2e_test_mode=settings.helios_e2e_test_mode,

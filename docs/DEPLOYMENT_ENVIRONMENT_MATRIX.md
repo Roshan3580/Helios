@@ -27,8 +27,8 @@ staging, and production. Placeholders only — never commit real secrets.
 | Session cookie SameSite | Frontend server | Config | Not env-set | `lax` (SDK default) | AuthKit sets SameSite=Lax, Secure, HttpOnly, Path=/. No `WORKOS_COOKIE_SAMESITE` var is consumed; the correct name if ever exposed is `WORKOS_COOKIE_SAME_SITE` |
 | `WORKOS_COOKIE_NAME` | Frontend server | Config | Optional | `wos-session` | AuthKit default |
 | `WORKOS_COOKIE_MAX_AGE` | Frontend server | Config | Optional | seconds | AuthKit default |
-| `WORKOS_ISSUER` | Backend | Public URL | Yes (or derive) | HTTPS WorkOS | No loopback in staging |
-| `WORKOS_JWKS_URL` | Backend | Public URL | Yes (or derive) | HTTPS WorkOS | No loopback in staging |
+| `WORKOS_ISSUER` | Backend | Public URL | Derive (unset) | `https://api.workos.com` | API root, no path; NOT `/user_management/<client_id>`. Explicit only for custom auth domain |
+| `WORKOS_JWKS_URL` | Backend | Public URL | Derive (unset) | `https://api.workos.com/sso/jwks/<client_id>` | Client id must match `WORKOS_CLIENT_ID` |
 | `DATABASE_URL` | Backend | Secret | Yes | Render internal URL | Not `helios_test` |
 | `CORS_ORIGINS` | Backend | Public list | Yes | Exact HTTPS origin | No `*`, no localhost |
 | `HELIOS_ENVIRONMENT` | Backend (+ docs) | Public | Yes | `staging` | Enum |

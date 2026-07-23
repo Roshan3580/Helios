@@ -5,6 +5,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.deployment_validation import validate_settings
 
+# Official WorkOS AuthKit access-token issuer. AuthKit signs access tokens with
+# ``iss=https://api.workos.com`` (NOT the /user_management/<client_id> path,
+# which is a different WorkOS surface). The application-specific JWKS, however,
+# is served per client id at /sso/jwks/<client_id>. Application isolation is
+# enforced separately by validating the token's ``client_id`` claim.
+WORKOS_DEFAULT_ISSUER = "https://api.workos.com"
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
@@ -60,10 +67,12 @@ class Settings(BaseSettings):
 
     @property
     def workos_issuer_resolved(self) -> str:
+        # Explicit issuer (e.g. a custom WorkOS auth domain) is used verbatim.
         if self.workos_issuer:
             return self.workos_issuer
+        # Default WorkOS-hosted AuthKit: the access-token issuer is the API root.
         if self.workos_client_id:
-            return f"https://api.workos.com/user_management/{self.workos_client_id}"
+            return WORKOS_DEFAULT_ISSUER
         return ""
 
     @property
@@ -83,6 +92,7 @@ class Settings(BaseSettings):
             environment=self.helios_environment,
             database_url=self.database_url,
             cors_origins=self.cors_origin_list,
+            workos_client_id=self.workos_client_id,
             workos_issuer=self.workos_issuer_resolved,
             workos_jwks_url=self.workos_jwks_url_resolved,
             helios_e2e_test_mode=self.helios_e2e_test_mode,

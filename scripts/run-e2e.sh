@@ -18,6 +18,9 @@ ORG_B_TOKEN_FILE="$TMP_DIR/access_b.jwt"
 ORG_A="org_01E2EORG00000000000000001"
 ORG_B="org_01E2EORG00000000000000002"
 USER_A="user_01E2EUSER000000000000001"
+# The WorkOS application (client) the E2E tokens are minted for; the backend
+# verifier validates the token's client_id claim against this exact value.
+E2E_CLIENT_ID="client_e2e_helios"
 
 log() { printf '[e2e] %s\n' "$*"; }
 fail() { printf '[e2e] ERROR: %s\n' "$*" >&2; exit 1; }
@@ -66,7 +69,8 @@ JWKS_URL="http://127.0.0.1:${JWKS_PORT}/jwks"
 
 log "starting loopback JWKS on :${JWKS_PORT}"
 "$PYTHON" "$ROOT/scripts/e2e/jwks_server.py" \
-  --host 127.0.0.1 --port "$JWKS_PORT" --issuer "$ISSUER" --org-id "$ORG_A" \
+  --host 127.0.0.1 --port "$JWKS_PORT" --issuer "$ISSUER" \
+  --client-id "$E2E_CLIENT_ID" --org-id "$ORG_A" \
   --token-out "$TOKEN_FILE" --pem-out "$PEM_FILE" --ready-file "$READY_FILE" &
 JWKS_PID=$!
 for ((i=1; i<=60; i++)); do [[ -f "$READY_FILE" ]] && break; sleep 0.1; done
@@ -74,7 +78,8 @@ for ((i=1; i<=60; i++)); do [[ -f "$READY_FILE" ]] && break; sleep 0.1; done
 wait_http "$JWKS_URL" "JWKS"
 
 "$PYTHON" "$ROOT/scripts/e2e/mint_token.py" \
-  --pem-file "$PEM_FILE" --issuer "$ISSUER" --org-id "$ORG_B" --token-out "$ORG_B_TOKEN_FILE"
+  --pem-file "$PEM_FILE" --issuer "$ISSUER" --client-id "$E2E_CLIENT_ID" \
+  --org-id "$ORG_B" --token-out "$ORG_B_TOKEN_FILE"
 
 log "resetting schema + linking orgs"
 "$PYTHON" "$ROOT/scripts/e2e/bootstrap_db.py" \
@@ -85,7 +90,7 @@ ACCESS_TOKEN="$(cat "$TOKEN_FILE")"
 log "starting FastAPI on :${BACKEND_PORT}"
 (
   cd "$ROOT/backend"
-  export DATABASE_URL WORKOS_CLIENT_ID="client_e2e_helios"
+  export DATABASE_URL WORKOS_CLIENT_ID="$E2E_CLIENT_ID"
   export WORKOS_ISSUER="$ISSUER" WORKOS_JWKS_URL="$JWKS_URL"
   export HELIOS_E2E_TEST_MODE=true
   export HELIOS_ENVIRONMENT=e2e

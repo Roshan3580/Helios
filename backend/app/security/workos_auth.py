@@ -116,12 +116,20 @@ class JWKSClient:
 
 
 class WorkOSTokenVerifier:
-    def __init__(self, *, issuer: str, jwks_client: JWKSClient) -> None:
+    def __init__(self, *, issuer: str, jwks_client: JWKSClient, client_id: str) -> None:
         self._issuer = issuer
         self._jwks = jwks_client
+        self._client_id = client_id
 
     def verify(self, token: str) -> dict:
-        """Verify signature + registered claims; return the claim set."""
+        """Verify signature + registered claims; return the claim set.
+
+        Because the WorkOS AuthKit issuer (``https://api.workos.com``) is shared
+        by every WorkOS application, the ``client_id`` claim is validated
+        explicitly against this deployment's configured client id: a token
+        correctly signed by WorkOS for a *different* application must be
+        rejected. This is the application-isolation boundary.
+        """
         try:
             header = pyjwt.get_unverified_header(token)
         except pyjwt.InvalidTokenError:
@@ -156,6 +164,13 @@ class WorkOSTokenVerifier:
         except pyjwt.InvalidTokenError:
             raise AuthError("invalid_signature", status_code=401)
 
+        # Application isolation: the token's client_id must be this app's.
+        token_client_id = claims.get("client_id")
+        if not token_client_id:
+            raise AuthError("missing_client_id", status_code=401)
+        if token_client_id != self._client_id:
+            raise AuthError("wrong_client_id", status_code=401)
+
         if not claims.get("sub"):
             raise AuthError("missing_sub", status_code=401)
         if not claims.get("sid"):
@@ -175,10 +190,12 @@ def get_verifier() -> WorkOSTokenVerifier:
             settings = get_settings()
             issuer = settings.workos_issuer_resolved
             jwks_url = settings.workos_jwks_url_resolved
-            if not issuer or not jwks_url:
+            client_id = settings.workos_client_id
+            if not issuer or not jwks_url or not client_id:
                 raise AuthError("human_auth_not_configured", status_code=401)
             _verifier = WorkOSTokenVerifier(
                 issuer=issuer,
+                client_id=client_id,
                 jwks_client=JWKSClient(
                     jwks_url,
                     cache_ttl=settings.workos_jwks_cache_ttl,

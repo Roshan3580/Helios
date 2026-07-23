@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
@@ -31,12 +32,19 @@ def _is_loopback_url(url: str) -> bool:
 
 
 # Official WorkOS AuthKit access-token verification contract (see config.py
-# derivation): issuer and JWKS are always served from this host with these
-# path prefixes. A staging/production verifier pointed anywhere else cannot
-# verify tokens issued by the same WorkOS application.
+# derivation). AuthKit access tokens are issued by the WorkOS API root
+# (``iss=https://api.workos.com``, no path) and verified against an
+# application-specific JWKS at ``/sso/jwks/<client_id>`` on the same host.
+# The prior ``/user_management/<client_id>`` issuer was incorrect: no WorkOS
+# access token carries it, so a verifier expecting it rejects every valid
+# token. A custom WorkOS auth domain may set an explicit non-workos issuer,
+# but the JWKS is always served from api.workos.com.
 _WORKOS_HOST = "api.workos.com"
-_WORKOS_ISSUER_PATH_PREFIX = "/user_management/"
 _WORKOS_JWKS_PATH_PREFIX = "/sso/jwks/"
+# WorkOS client ids look like ``client_<alphanumeric/underscore>``. Kept
+# permissive enough for documented placeholders (e.g. client_staging_example)
+# while rejecting empty/whitespace/obviously-wrong values.
+_CLIENT_ID_RE = re.compile(r"client_[0-9A-Za-z_]{3,}\Z")
 
 
 def _url_parts(url: str) -> tuple[str, str]:
@@ -45,6 +53,15 @@ def _url_parts(url: str) -> tuple[str, str]:
         return (parsed.hostname or "").lower(), parsed.path or ""
     except ValueError:
         return "", ""
+
+
+def _url_has_credentials_or_extras(url: str) -> bool:
+    """True if a URL carries userinfo, a query string, or a fragment."""
+    try:
+        parsed = urlparse(url)
+    except ValueError:
+        return True
+    return bool(parsed.username or parsed.password or parsed.query or parsed.fragment)
 
 
 def _db_name(database_url: str) -> str:
@@ -69,6 +86,7 @@ def validate_settings(
     environment: str,
     database_url: str,
     cors_origins: list[str],
+    workos_client_id: str,
     workos_issuer: str,
     workos_jwks_url: str,
     helios_e2e_test_mode: bool,
@@ -182,24 +200,64 @@ def validate_settings(
                 )
             )
 
-        # WorkOS verifier contract: a well-formed HTTPS issuer/JWKS must still
-        # point at the official WorkOS host and path, or tokens from the WorkOS
-        # application will never verify (the exact mismatch class behind a
-        # hosted "signed in but every API call is 401" loop).
+        # WorkOS client id: required and well-formed in staging/production, so
+        # the verifier can enforce application isolation (the client_id claim).
+        client_id = (workos_client_id or "").strip()
+        if not client_id:
+            issues.append(
+                ValidationIssue(
+                    "client_id_missing",
+                    "WORKOS_CLIENT_ID is required in staging/production",
+                )
+            )
+        elif not _CLIENT_ID_RE.match(client_id):
+            issues.append(
+                ValidationIssue(
+                    "client_id_malformed",
+                    "WORKOS_CLIENT_ID must look like client_<id>",
+                )
+            )
+
+        # WorkOS issuer contract. The official AuthKit access-token issuer is
+        # exactly https://api.workos.com (no path). An explicit custom WorkOS
+        # auth domain (a different host) is permitted, but must be a clean
+        # HTTPS origin. The api.workos.com host must NOT carry a path — in
+        # particular /user_management/<client_id> is NOT the token issuer and
+        # is the exact misconfiguration behind a hosted "signed in but every
+        # API call is 401" loop.
         if workos_issuer and _is_https(workos_issuer) and not _is_loopback_url(workos_issuer):
             host, path = _url_parts(workos_issuer)
-            if host != _WORKOS_HOST or not path.startswith(_WORKOS_ISSUER_PATH_PREFIX):
+            if _url_has_credentials_or_extras(workos_issuer):
                 issues.append(
                     ValidationIssue(
                         "issuer_contract",
-                        "WORKOS_ISSUER must be "
-                        f"https://{_WORKOS_HOST}{_WORKOS_ISSUER_PATH_PREFIX}<client_id> "
-                        "(official WorkOS AuthKit contract)",
+                        "WORKOS_ISSUER must not contain credentials, a query string, or a fragment",
                     )
                 )
+            elif host == _WORKOS_HOST and path.rstrip("/"):
+                issues.append(
+                    ValidationIssue(
+                        "issuer_contract",
+                        f"WORKOS_ISSUER for {_WORKOS_HOST} must be exactly "
+                        f"https://{_WORKOS_HOST} (no path); the access-token issuer is "
+                        "not /user_management/<client_id>",
+                    )
+                )
+            # A non-workos host is treated as a legitimate custom auth domain.
+
+        # WorkOS JWKS contract: always served from api.workos.com at
+        # /sso/jwks/<client_id>, even for custom auth domains. The embedded
+        # client id must match WORKOS_CLIENT_ID.
         if workos_jwks_url and _is_https(workos_jwks_url) and not _is_loopback_url(workos_jwks_url):
             host, path = _url_parts(workos_jwks_url)
-            if host != _WORKOS_HOST or not path.startswith(_WORKOS_JWKS_PATH_PREFIX):
+            if _url_has_credentials_or_extras(workos_jwks_url):
+                issues.append(
+                    ValidationIssue(
+                        "jwks_contract",
+                        "WORKOS_JWKS_URL must not contain credentials, a query string, or a fragment",
+                    )
+                )
+            elif host != _WORKOS_HOST or not path.startswith(_WORKOS_JWKS_PATH_PREFIX):
                 issues.append(
                     ValidationIssue(
                         "jwks_contract",
@@ -208,6 +266,15 @@ def validate_settings(
                         "(official WorkOS AuthKit contract)",
                     )
                 )
+            else:
+                jwks_client_id = path[len(_WORKOS_JWKS_PATH_PREFIX):].strip("/")
+                if client_id and jwks_client_id and jwks_client_id != client_id:
+                    issues.append(
+                        ValidationIssue(
+                            "jwks_client_mismatch",
+                            "WORKOS_JWKS_URL client id must match WORKOS_CLIENT_ID",
+                        )
+                    )
 
     if narrative_enabled and allow_third_party:
         if (analyst_provider or "").strip().lower() == "openai" and not openai_key_present:

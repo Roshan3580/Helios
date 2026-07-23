@@ -36,6 +36,8 @@ _REASON_CODES = {
     "missing_token": "auth_missing_token",
     "expired_jwt": "auth_expired_token",
     "wrong_issuer": "auth_invalid_issuer",
+    "missing_client_id": "auth_invalid_client_id",
+    "wrong_client_id": "auth_invalid_client_id",
     "invalid_signature": "auth_invalid_signature",
     "unknown_signing_key": "auth_invalid_signature",
     "unsupported_algorithm": "auth_invalid_signature",
@@ -46,7 +48,7 @@ _REASON_CODES = {
     "organization_unavailable": "auth_missing_org",
     "human_auth_not_configured": "auth_not_configured",
     "missing_claims": "auth_invalid_token",
-    "missing_sub": "auth_invalid_token",
+    "missing_sub": "auth_missing_subject",
     "missing_sid": "auth_invalid_token",
 }
 

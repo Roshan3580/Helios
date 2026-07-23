@@ -106,9 +106,9 @@ Server-only (set in the Vercel dashboard; **never** `VITE_*`):
 | `HELIOS_ANALYST_ALLOW_THIRD_PARTY`| `false` |
 | `DATABASE_URL`                    | external PostgreSQL URL (secret) |
 | `CORS_ORIGINS`                    | `https://helios-staging-tau.vercel.app` (exact; no wildcard) |
-| `WORKOS_CLIENT_ID`                | same staging client id |
-| `WORKOS_ISSUER`                   | derived or explicit issuer |
-| `WORKOS_JWKS_URL`                 | derived or explicit JWKS URL |
+| `WORKOS_CLIENT_ID`                | same staging client id as the frontend (parity required) |
+| `WORKOS_ISSUER`                   | leave unset → derives `https://api.workos.com` (API root, not `/user_management/…`) |
+| `WORKOS_JWKS_URL`                 | leave unset → derives `https://api.workos.com/sso/jwks/<client_id>` |
 
 `OPENAI_API_KEY` is intentionally **unset** — narrative stays disabled.
 

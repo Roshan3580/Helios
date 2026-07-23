@@ -14,7 +14,9 @@ import jwt as pyjwt
 from cryptography.hazmat.primitives.asymmetric import rsa
 
 TEST_CLIENT_ID = "client_test_helios"
-TEST_ISSUER = f"https://api.workos.com/user_management/{TEST_CLIENT_ID}"
+# Official WorkOS AuthKit access-token issuer (the API root, no path). The
+# application is identified by the separate ``client_id`` claim, not the issuer.
+TEST_ISSUER = "https://api.workos.com"
 TEST_KID = "sso_oidc_key_test_1"
 
 _PRIVATE_KEY = rsa.generate_private_key(public_exponent=65537, key_size=2048)
@@ -45,6 +47,7 @@ def make_token(
     sub: str | None = DEFAULT_SUB,
     sid: str | None = DEFAULT_SID,
     org_id: str | None = DEFAULT_ORG,
+    client_id: str | None = TEST_CLIENT_ID,
     issuer: str = TEST_ISSUER,
     kid: str = TEST_KID,
     algorithm: str = "RS256",
@@ -67,6 +70,8 @@ def make_token(
         claims["sid"] = sid
     if org_id is not None:
         claims["org_id"] = org_id
+    if client_id is not None:
+        claims["client_id"] = client_id
     if role is not None:
         claims["role"] = role
     if permissions is not None:
