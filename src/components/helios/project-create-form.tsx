@@ -1,9 +1,8 @@
 import { useEffect, useId, useState, type FormEvent } from "react";
-import { useHeliosAccessToken as useAccessToken } from "@/lib/auth/helios-auth";
 
 import { useProjectSelection } from "@/contexts/project-selection";
+import { useAuthorizedRequest } from "@/lib/api/authorized-request";
 import { createUserProject, UserApiError } from "@/lib/api/user";
-import { redirectToSignIn } from "@/lib/auth/redirect-to-sign-in";
 import {
   slugifyProjectName,
   validateProjectName,
@@ -15,7 +14,7 @@ interface ProjectCreateFormProps {
 }
 
 export function ProjectCreateForm({ onCreated }: ProjectCreateFormProps) {
-  const { getAccessToken } = useAccessToken();
+  const { run } = useAuthorizedRequest();
   const { refreshProjects, selectProject } = useProjectSelection();
   const nameId = useId();
   const slugId = useId();
@@ -48,15 +47,12 @@ export function ProjectCreateForm({ onCreated }: ProjectCreateFormProps) {
 
     setSubmitting(true);
     try {
-      const token = await getAccessToken();
-      if (!token) {
-        redirectToSignIn();
-        return;
-      }
-      const project = await createUserProject(token, {
-        name: name.trim(),
-        slug: slug.trim().toLowerCase(),
-      });
+      const project = await run((token) =>
+        createUserProject(token, {
+          name: name.trim(),
+          slug: slug.trim().toLowerCase(),
+        }),
+      );
       selectProject(project.id);
       refreshProjects();
       onCreated?.(project.id);
@@ -65,7 +61,7 @@ export function ProjectCreateForm({ onCreated }: ProjectCreateFormProps) {
       setSlugTouched(false);
     } catch (err) {
       if (err instanceof UserApiError && err.status === 401) {
-        redirectToSignIn();
+        // Bounded expiry already reported to central recovery; no redirect.
         return;
       }
       if (err instanceof UserApiError && err.status === 409) {

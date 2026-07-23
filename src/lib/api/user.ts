@@ -339,6 +339,8 @@ export class UserApiError extends Error {
     readonly status: number,
     readonly path: string,
     readonly detail?: string,
+    /** Seconds from a provider Retry-After header (429), when present. */
+    readonly retryAfterSeconds?: number | null,
   ) {
     super(message);
     this.name = "UserApiError";
@@ -377,11 +379,19 @@ async function userApiFetch<T>(
     } catch {
       // Ignore non-JSON error bodies; never surface raw auth material.
     }
+    // Preserve a provider rate-limit hint (seconds form) for bounded backoff.
+    let retryAfterSeconds: number | null = null;
+    const retryAfter = response.headers.get("Retry-After");
+    if (retryAfter && /^\d+$/.test(retryAfter.trim())) {
+      const parsed = Number.parseInt(retryAfter.trim(), 10);
+      retryAfterSeconds = Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+    }
     throw new UserApiError(
       detail || `Request failed (${response.status})`,
       response.status,
       path,
       detail,
+      retryAfterSeconds,
     );
   }
   return (await response.json()) as T;

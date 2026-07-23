@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { useHeliosAccessToken as useAccessToken } from "@/lib/auth/helios-auth";
 
 import { useProjectSelection } from "@/contexts/project-selection";
-import { redirectToSignIn } from "@/lib/auth/redirect-to-sign-in";
+import { useAuthorizedRequest } from "@/lib/api/authorized-request";
 import { fetchUserProjectTraceDetail, UserApiError, type OtelTraceDetail } from "@/lib/api/user";
 
 export interface TraceDetailLoadState {
@@ -18,7 +17,7 @@ export interface TraceDetailLoadState {
  * Never falls back to demo data or fabricated panels.
  */
 export function useTraceDetail(traceId: string): TraceDetailLoadState {
-  const { getAccessToken } = useAccessToken();
+  const { run } = useAuthorizedRequest();
   const {
     selectedProject,
     loading: projectLoading,
@@ -60,28 +59,19 @@ export function useTraceDetail(traceId: string): TraceDetailLoadState {
       setError(null);
       setErrorStatus(null);
       try {
-        const token = await getAccessToken();
-        if (!token) {
-          redirectToSignIn();
-          if (!cancelled) {
-            setTrace(null);
-            setLoading(false);
-            setError("Session expired. Redirecting to sign in…");
-            setErrorStatus(401);
-          }
-          return;
-        }
-        const detail = await fetchUserProjectTraceDetail(token, selectedProject!.id, traceId);
+        const detail = await run((token) =>
+          fetchUserProjectTraceDetail(token, selectedProject!.id, traceId),
+        );
         if (cancelled) return;
         setTrace(detail);
         setLoading(false);
       } catch (err) {
         if (cancelled) return;
         if (err instanceof UserApiError && err.status === 401) {
-          redirectToSignIn();
+          // Bounded expiry already reported to central recovery; no redirect.
           setTrace(null);
           setLoading(false);
-          setError("Session expired. Redirecting to sign in…");
+          setError(null);
           setErrorStatus(401);
           return;
         }

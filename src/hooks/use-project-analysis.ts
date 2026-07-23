@@ -1,11 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  useHeliosAccessToken as useAccessToken,
-  useHeliosAuth as useAuth,
-} from "@/lib/auth/helios-auth";
+import { useHeliosAuth as useAuth } from "@/lib/auth/helios-auth";
 
 import { useProjectSelection } from "@/contexts/project-selection";
-import { redirectToSignIn } from "@/lib/auth/redirect-to-sign-in";
+import { useAuthorizedRequest } from "@/lib/api/authorized-request";
 import { analyzeUserProject, UserApiError, type ProjectAnalysis } from "@/lib/api/user";
 
 export type ProjectAnalysisStatus = "idle" | "loading" | "success" | "error";
@@ -36,7 +33,7 @@ export interface ProjectAnalysisState {
  * - Narrative is optional and never requested until generateExplanation().
  */
 export function useProjectAnalysis(hours: number): ProjectAnalysisState {
-  const { getAccessToken } = useAccessToken();
+  const { run } = useAuthorizedRequest();
   const { organizationId } = useAuth();
   const { selectedProject } = useProjectSelection();
 
@@ -94,23 +91,15 @@ export function useProjectAnalysis(hours: number): ProjectAnalysisState {
       void (async () => {
         const isCurrent = () => generationRef.current === generation;
         try {
-          const token = await getAccessToken();
-          if (!isCurrent()) return;
-          if (!token) {
-            redirectToSignIn();
-            setStatus("error");
-            setError("Session expired. Redirecting to sign in…");
-            setErrorStatus(401);
-            setNarrativeRequestStatus("idle");
-            return;
-          }
-          const result = await analyzeUserProject({
-            accessToken: token,
-            projectRef: projectId,
-            hours,
-            includeNarrative,
-            signal: controller.signal,
-          });
+          const result = await run((token) =>
+            analyzeUserProject({
+              accessToken: token,
+              projectRef: projectId,
+              hours,
+              includeNarrative,
+              signal: controller.signal,
+            }),
+          );
           if (!isCurrent()) return;
           analysisRef.current = result;
           setAnalysis(result);
@@ -122,9 +111,9 @@ export function useProjectAnalysis(hours: number): ProjectAnalysisState {
           if (!isCurrent()) return;
           if (err instanceof DOMException && err.name === "AbortError") return;
           if (err instanceof UserApiError && err.status === 401) {
-            redirectToSignIn();
+            // Bounded expiry already reported to central recovery; no redirect.
             setStatus("error");
-            setError("Session expired. Redirecting to sign in…");
+            setError(null);
             setErrorStatus(401);
             setNarrativeRequestStatus("idle");
             return;
@@ -168,7 +157,7 @@ export function useProjectAnalysis(hours: number): ProjectAnalysisState {
         }
       })();
     },
-    [projectId, hours, getAccessToken],
+    [projectId, hours, run],
   );
 
   const runAnalysis = useCallback(() => execute(false), [execute]);

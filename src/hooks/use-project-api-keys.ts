@@ -6,9 +6,8 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { useHeliosAccessToken as useAccessToken } from "@/lib/auth/helios-auth";
 
-import { redirectToSignIn } from "@/lib/auth/redirect-to-sign-in";
+import { useAuthorizedRequest } from "@/lib/api/authorized-request";
 import {
   createUserProjectApiKey,
   fetchUserProjectApiKeys,
@@ -52,7 +51,7 @@ function safeErrorMessage(err: unknown): { message: string; status: number | nul
 }
 
 export function useProjectApiKeys(projectId: string | null): ProjectApiKeysState {
-  const { getAccessToken } = useAccessToken();
+  const { run } = useAuthorizedRequest();
   const [status, setStatus] = useState<ProjectApiKeysStatus>("idle");
   const [keys, setKeys] = useState<ProjectApiKeyMetadata[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -85,21 +84,14 @@ export function useProjectApiKeys(projectId: string | null): ProjectApiKeysState
       setError(null);
       setErrorStatus(null);
       try {
-        const token = await getAccessToken();
-        if (!token) {
-          redirectToSignIn();
-          return;
-        }
-        const rows = await fetchUserProjectApiKeys(token, projectId as string);
+        const rows = await run((token) => fetchUserProjectApiKeys(token, projectId as string));
         if (cancelled) return;
         setKeys(rows);
         setStatus("ready");
       } catch (err) {
         if (cancelled) return;
-        if (err instanceof UserApiError && err.status === 401) {
-          redirectToSignIn();
-          return;
-        }
+        // A bounded 401 was already reported to central session recovery by
+        // run(); surface a neutral state and never redirect from here.
         const safe = safeErrorMessage(err);
         setKeys([]);
         setStatus("error");
@@ -112,7 +104,7 @@ export function useProjectApiKeys(projectId: string | null): ProjectApiKeysState
     return () => {
       cancelled = true;
     };
-  }, [projectId, reloadToken, getAccessToken]);
+  }, [projectId, reloadToken, run]);
 
   const createKey = useCallback(
     async (input: CreateProjectApiKeyInput): Promise<boolean> => {
@@ -121,22 +113,15 @@ export function useProjectApiKeys(projectId: string | null): ProjectApiKeysState
       setError(null);
       setErrorStatus(null);
       try {
-        const token = await getAccessToken();
-        if (!token) {
-          redirectToSignIn();
-          return false;
-        }
-        const created = await createUserProjectApiKey(token, projectId, input);
+        // Each call is wrapped independently so a 401 refresh+retry never
+        // re-runs the non-idempotent create after the follow-up read fails.
+        const created = await run((token) => createUserProjectApiKey(token, projectId, input));
         setReveal(created);
-        const rows = await fetchUserProjectApiKeys(token, projectId);
+        const rows = await run((token) => fetchUserProjectApiKeys(token, projectId));
         setKeys(rows);
         setStatus("ready");
         return true;
       } catch (err) {
-        if (err instanceof UserApiError && err.status === 401) {
-          redirectToSignIn();
-          return false;
-        }
         const safe = safeErrorMessage(err);
         setError(safe.message);
         setErrorStatus(safe.status);
@@ -145,7 +130,7 @@ export function useProjectApiKeys(projectId: string | null): ProjectApiKeysState
         setCreating(false);
       }
     },
-    [projectId, creating, getAccessToken],
+    [projectId, creating, run],
   );
 
   const revokeKey = useCallback(
@@ -155,21 +140,12 @@ export function useProjectApiKeys(projectId: string | null): ProjectApiKeysState
       setError(null);
       setErrorStatus(null);
       try {
-        const token = await getAccessToken();
-        if (!token) {
-          redirectToSignIn();
-          return false;
-        }
-        await revokeUserProjectApiKey(token, projectId, keyId);
-        const rows = await fetchUserProjectApiKeys(token, projectId);
+        await run((token) => revokeUserProjectApiKey(token, projectId, keyId));
+        const rows = await run((token) => fetchUserProjectApiKeys(token, projectId));
         setKeys(rows);
         setStatus("ready");
         return true;
       } catch (err) {
-        if (err instanceof UserApiError && err.status === 401) {
-          redirectToSignIn();
-          return false;
-        }
         const safe = safeErrorMessage(err);
         setError(safe.message);
         setErrorStatus(safe.status);
@@ -178,7 +154,7 @@ export function useProjectApiKeys(projectId: string | null): ProjectApiKeysState
         setRevokingId(null);
       }
     },
-    [projectId, revokingId, getAccessToken],
+    [projectId, revokingId, run],
   );
 
   return {

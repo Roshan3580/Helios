@@ -1,11 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  useHeliosAccessToken as useAccessToken,
-  useHeliosAuth as useAuth,
-} from "@/lib/auth/helios-auth";
+import { useHeliosAuth as useAuth } from "@/lib/auth/helios-auth";
 
 import { useProjectSelection } from "@/contexts/project-selection";
-import { redirectToSignIn } from "@/lib/auth/redirect-to-sign-in";
+import { useAuthorizedRequest } from "@/lib/api/authorized-request";
 import { analyzeUserProjectTrace, UserApiError, type TraceAnalysis } from "@/lib/api/user";
 
 export type TraceAnalysisStatus = "idle" | "loading" | "success" | "error";
@@ -35,7 +32,7 @@ export interface TraceAnalysisState {
  * - Narrative is optional and never requested until generateExplanation().
  */
 export function useTraceAnalysis(traceId: string): TraceAnalysisState {
-  const { getAccessToken } = useAccessToken();
+  const { run } = useAuthorizedRequest();
   const { organizationId } = useAuth();
   const { selectedProject } = useProjectSelection();
 
@@ -93,23 +90,15 @@ export function useTraceAnalysis(traceId: string): TraceAnalysisState {
       void (async () => {
         const isCurrent = () => generationRef.current === generation;
         try {
-          const token = await getAccessToken();
-          if (!isCurrent()) return;
-          if (!token) {
-            redirectToSignIn();
-            setStatus("error");
-            setError("Session expired. Redirecting to sign in…");
-            setErrorStatus(401);
-            setNarrativeRequestStatus("idle");
-            return;
-          }
-          const result = await analyzeUserProjectTrace({
-            accessToken: token,
-            projectRef: projectId,
-            traceId,
-            includeNarrative,
-            signal: controller.signal,
-          });
+          const result = await run((token) =>
+            analyzeUserProjectTrace({
+              accessToken: token,
+              projectRef: projectId,
+              traceId,
+              includeNarrative,
+              signal: controller.signal,
+            }),
+          );
           if (!isCurrent()) return;
           analysisRef.current = result;
           setAnalysis(result);
@@ -121,9 +110,9 @@ export function useTraceAnalysis(traceId: string): TraceAnalysisState {
           if (!isCurrent()) return;
           if (err instanceof DOMException && err.name === "AbortError") return;
           if (err instanceof UserApiError && err.status === 401) {
-            redirectToSignIn();
+            // Bounded expiry already reported to central recovery; no redirect.
             setStatus("error");
-            setError("Session expired. Redirecting to sign in…");
+            setError(null);
             setErrorStatus(401);
             setNarrativeRequestStatus("idle");
             return;
@@ -167,7 +156,7 @@ export function useTraceAnalysis(traceId: string): TraceAnalysisState {
         }
       })();
     },
-    [projectId, traceId, getAccessToken],
+    [projectId, traceId, run],
   );
 
   const runAnalysis = useCallback(() => execute(false), [execute]);
