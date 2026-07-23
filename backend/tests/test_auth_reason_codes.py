@@ -85,6 +85,15 @@ class TestAuthReasonCodes:
         assert "auth_invalid_signature" in _reason_codes(records)
         assert token not in _all_log_text(records)
 
+    def test_wrong_client_id_emits_invalid_client_id_reason(self, client, workos_verifier):
+        # Token signed by the trusted key but for a different WorkOS application.
+        token = make_token(client_id="client_some_other_app")
+        with capture_auth_logs() as records:
+            response = client.get("/v2/user/me", headers=bearer(token))
+        assert response.status_code == 401
+        assert "auth_invalid_client_id" in _reason_codes(records)
+        assert token not in _all_log_text(records)
+
     def test_missing_token_emits_missing_reason(self, client, workos_verifier):
         with capture_auth_logs() as records:
             response = client.get("/v2/user/me")

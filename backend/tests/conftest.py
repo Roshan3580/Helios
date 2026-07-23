@@ -175,10 +175,11 @@ def workos_verifier():
         WorkOSTokenVerifier,
         set_verifier_for_tests,
     )
-    from workos_helpers import JWKS_DOCUMENT, TEST_ISSUER
+    from workos_helpers import JWKS_DOCUMENT, TEST_CLIENT_ID, TEST_ISSUER
 
     verifier = WorkOSTokenVerifier(
         issuer=TEST_ISSUER,
+        client_id=TEST_CLIENT_ID,
         jwks_client=JWKSClient("https://jwks.test/keys", fetcher=lambda: JWKS_DOCUMENT),
     )
     set_verifier_for_tests(verifier)

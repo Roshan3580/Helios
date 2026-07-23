@@ -12,12 +12,14 @@ import jwt as pyjwt
 from cryptography.hazmat.primitives import serialization
 
 KID = "helios_e2e_kid_1"
+DEFAULT_CLIENT_ID = "client_e2e_helios"
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--pem-file", type=Path, required=True)
     parser.add_argument("--issuer", required=True)
+    parser.add_argument("--client-id", default=DEFAULT_CLIENT_ID)
     parser.add_argument("--org-id", required=True)
     parser.add_argument("--sub", default="user_01E2EUSER000000000000002")
     parser.add_argument("--sid", default="session_01E2ESESSION00000000002")
@@ -37,6 +39,7 @@ def main() -> int:
         "sub": args.sub,
         "sid": args.sid,
         "org_id": args.org_id,
+        "client_id": args.client_id,
         "role": "member",
     }
     token = pyjwt.encode(

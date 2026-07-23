@@ -19,6 +19,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 DEFAULT_ORG = "org_01E2EORG00000000000000001"
 DEFAULT_SUB = "user_01E2EUSER000000000000001"
 DEFAULT_SID = "session_01E2ESESSION00000000001"
+DEFAULT_CLIENT_ID = "client_e2e_helios"
 KID = "helios_e2e_kid_1"
 
 
@@ -42,6 +43,7 @@ class E2EKeys:
         self,
         *,
         issuer: str,
+        client_id: str = DEFAULT_CLIENT_ID,
         org_id: str = DEFAULT_ORG,
         sub: str = DEFAULT_SUB,
         sid: str = DEFAULT_SID,
@@ -56,6 +58,7 @@ class E2EKeys:
             "sub": sub,
             "sid": sid,
             "org_id": org_id,
+            "client_id": client_id,
             "role": "member",
         }
         return pyjwt.encode(
@@ -101,6 +104,7 @@ def main() -> int:
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, required=True)
     parser.add_argument("--issuer", required=True)
+    parser.add_argument("--client-id", default=DEFAULT_CLIENT_ID)
     parser.add_argument("--org-id", default=DEFAULT_ORG)
     parser.add_argument("--token-out", type=Path, required=True)
     parser.add_argument("--pem-out", type=Path, required=True)
@@ -110,7 +114,7 @@ def main() -> int:
     keys = E2EKeys()
     args.pem_out.write_bytes(keys.pem_bytes())
     args.pem_out.chmod(0o600)
-    token = keys.mint(issuer=args.issuer, org_id=args.org_id)
+    token = keys.mint(issuer=args.issuer, client_id=args.client_id, org_id=args.org_id)
     args.token_out.write_text(token, encoding="utf-8")
     args.token_out.chmod(0o600)
     server = serve_jwks(keys, args.host, args.port)

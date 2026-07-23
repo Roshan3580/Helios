@@ -10,6 +10,7 @@ from app.security.workos_auth import JWKSClient, WorkOSTokenVerifier
 from workos_helpers import (
     JWKS_DOCUMENT,
     JWKS_DOCUMENT_ROTATED,
+    TEST_CLIENT_ID,
     TEST_ISSUER,
     make_token,
     make_token_with_rotated_key,
@@ -21,7 +22,9 @@ def make_verifier(fetcher=None, **jwks_kwargs) -> WorkOSTokenVerifier:
     client = JWKSClient(
         "https://jwks.test/keys", fetcher=fetcher or (lambda: JWKS_DOCUMENT), **jwks_kwargs
     )
-    return WorkOSTokenVerifier(issuer=TEST_ISSUER, jwks_client=client)
+    return WorkOSTokenVerifier(
+        issuer=TEST_ISSUER, client_id=TEST_CLIENT_ID, jwks_client=client
+    )
 
 
 class TestVerification:
@@ -30,7 +33,51 @@ class TestVerification:
         assert claims["sub"].startswith("user_")
         assert claims["sid"].startswith("session_")
         assert claims["org_id"].startswith("org_")
+        assert claims["client_id"] == TEST_CLIENT_ID
         assert claims["role"] == "member"
+
+    def test_official_issuer_is_api_root(self):
+        # The AuthKit access-token issuer is the API root, not a
+        # /user_management/<client_id> path.
+        assert TEST_ISSUER == "https://api.workos.com"
+        claims = make_verifier().verify(make_token(issuer=TEST_ISSUER))
+        assert claims["iss"] == "https://api.workos.com"
+
+    def test_user_management_issuer_rejected(self):
+        # A token whose issuer is the old (incorrect) /user_management/ form
+        # must be rejected: it is not what AuthKit emits.
+        token = make_token(
+            issuer=f"https://api.workos.com/user_management/{TEST_CLIENT_ID}"
+        )
+        with pytest.raises(AuthError) as exc:
+            make_verifier().verify(token)
+        assert exc.value.reason == "wrong_issuer"
+
+    def test_trailing_slash_issuer_rejected(self):
+        # Issuer comparison is exact: a trailing slash does not match the
+        # canonical https://api.workos.com.
+        token = make_token(issuer="https://api.workos.com/")
+        with pytest.raises(AuthError) as exc:
+            make_verifier().verify(token)
+        assert exc.value.reason == "wrong_issuer"
+
+    def test_correct_client_id_accepted(self):
+        claims = make_verifier().verify(make_token(client_id=TEST_CLIENT_ID))
+        assert claims["client_id"] == TEST_CLIENT_ID
+
+    def test_wrong_client_id_rejected(self):
+        # A token correctly signed by WorkOS but for a DIFFERENT application
+        # (different client_id) must be rejected — application isolation.
+        token = make_token(client_id="client_some_other_app")
+        with pytest.raises(AuthError) as exc:
+            make_verifier().verify(token)
+        assert exc.value.reason == "wrong_client_id"
+
+    def test_missing_client_id_rejected(self):
+        token = make_token(client_id=None)
+        with pytest.raises(AuthError) as exc:
+            make_verifier().verify(token)
+        assert exc.value.reason == "missing_client_id"
 
     def test_malformed_token_rejected(self):
         with pytest.raises(AuthError) as exc:

@@ -132,7 +132,7 @@ BACKEND_PY="${BACKEND_VENV:-$ROOT/backend/.venv}/bin/python"
   DATABASE_URL='postgresql://helios_staging:placeholder@db.example/helios_staging' \
   CORS_ORIGINS='https://helios-staging.example.vercel.app' \
   WORKOS_CLIENT_ID='client_staging_example' \
-  WORKOS_ISSUER='https://api.workos.com/user_management/client_staging_example' \
+  WORKOS_ISSUER='https://api.workos.com' \
   WORKOS_JWKS_URL='https://api.workos.com/sso/jwks/client_staging_example' \
   "$BACKEND_PY" -m app.cli.deployment_check --config-only
 )
@@ -148,7 +148,7 @@ echo "[deploy-contract] staging + HELIOS_DEMO_MODE=true must fail (L1 regression
     DATABASE_URL='postgresql://helios_staging:placeholder@db.example/helios_staging' \
     CORS_ORIGINS='https://helios-staging.example.vercel.app' \
     WORKOS_CLIENT_ID='client_staging_example' \
-    WORKOS_ISSUER='https://api.workos.com/user_management/client_staging_example' \
+    WORKOS_ISSUER='https://api.workos.com' \
     WORKOS_JWKS_URL='https://api.workos.com/sso/jwks/client_staging_example' \
     "$BACKEND_PY" -m app.cli.deployment_check --config-only >/dev/null 2>&1; then
     echo "expected HELIOS_DEMO_MODE=true to fail staging config check" >&2
@@ -164,7 +164,7 @@ echo "[deploy-contract] unknown environment must fail config check"
     DATABASE_URL='postgresql://u:p@db.example/helios_staging' \
     CORS_ORIGINS='https://helios-staging.example.onrender.com' \
     WORKOS_CLIENT_ID='client_staging_example' \
-    WORKOS_ISSUER='https://api.workos.com/user_management/client_staging_example' \
+    WORKOS_ISSUER='https://api.workos.com' \
     WORKOS_JWKS_URL='https://api.workos.com/sso/jwks/client_staging_example' \
     "$BACKEND_PY" -m app.cli.deployment_check --config-only >/dev/null 2>&1; then
     echo "expected unknown HELIOS_ENVIRONMENT=prod to fail config check" >&2
