@@ -66,6 +66,44 @@ persisted to local/sessionStorage, and FastAPI verifies it cryptographically.
 A BFF is deferred until requirements (token hiding, response shaping,
 rate-limit placement) actually demand one.
 
+### Client token readiness: four distinct states, not one
+
+A valid WorkOS session and a usable access token do **not** arrive in the same
+render, so the client must distinguish four states that all look like "no token"
+if collapsed. The UI **must never classify token initialization as session
+expiry** — that produced a "Your session has expired" panel on a freshly
+signed-in session, with no backend request ever attempted (Checkpoint 27).
+
+| State | Meaning | Required behavior |
+|---|---|---|
+| Auth loading | AuthKit is still resolving the user/session. `AuthKitProvider` holds the user in React state and fills it from its own mount effect, so React runs child data effects **first**. | Ordinary bounded loading. No backend request. **No expiry.** |
+| Token initializing | A valid user/session exists; access-token acquisition or refresh is in flight. | Ordinary bounded loading. No backend request. **No expiry.** |
+| Token ready | A non-empty access token exists. | Issue the request. |
+| Token acquisition failed | `getAccessToken()` plus one bounded `refresh()` produced no token, or the WorkOS token server function rejected. | Report stable session recovery. Never redirect automatically. |
+| Backend 401 | The backend rejected a token that *was* sent. | One refresh + one retry; a second 401 reports recovery (Checkpoint 25). |
+
+Two SDK behaviors make a naive gate wrong, and are load-bearing here:
+
+- `useAccessToken().loading` is `false` while `useAuth().loading` is `true` (its
+  initial value derives from a user that is still `null`). Auth loading must be
+  checked separately; SDK token `loading` alone is not a sufficient gate.
+- `getAccessToken()` returns `undefined` **immediately, without contacting
+  WorkOS**, when the user is not yet resolved. A missing token is therefore not
+  evidence of a failed token request.
+- There is a committed render where the user is valid, token `loading` is
+  `false`, and no token exists yet. "No token and not loading" is consequently
+  never terminal on its own.
+
+Terminality is decided only by an explicit bounded acquisition attempt, never by
+observing a transient state. `TokenReadinessProvider`
+(`src/contexts/token-readiness.tsx`) is the single owner of the session identity,
+the one bounded single-flight acquisition, and the phase every data hook gates
+on; `src/lib/auth/token-readiness.ts` holds the pure, unit-tested policy. Nothing
+in this path logs or persists a token, cookie, or Authorization header, and the
+internal failure classifications (`token_unavailable`, `token_refresh_failed`,
+`token_server_action_failed`, `backend_unauthorized`, …) are constant strings
+carrying no JWT, claims, email, or WorkOS identifier.
+
 ### JWKS caching and failure behavior
 
 Bounded in-memory cache (TTL `WORKOS_JWKS_CACHE_TTL`, default 3600 s) so JWKS

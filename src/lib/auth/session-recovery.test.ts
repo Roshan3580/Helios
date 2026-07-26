@@ -26,11 +26,22 @@ describe("session-recovery store", () => {
     expect(getSessionRecoverySnapshot().status).toBe("expired");
   });
 
+  test("expiry defaults to the backend_unauthorized classification", () => {
+    reportSessionExpired();
+    expect(getSessionRecoverySnapshot().reason).toBe("backend_unauthorized");
+  });
+
+  test("expiry records the supplied non-sensitive classification", () => {
+    reportSessionExpired("token_server_action_failed");
+    expect(getSessionRecoverySnapshot().reason).toBe("token_server_action_failed");
+  });
+
   test("reportRateLimited sets rate_limited with Retry-After", () => {
     reportRateLimited(30);
     const s = getSessionRecoverySnapshot();
     expect(s.status).toBe("rate_limited");
     expect(s.retryAfterSeconds).toBe(30);
+    expect(s.reason).toBe("provider_rate_limited");
   });
 
   test("rate_limited is not downgraded to expired", () => {
@@ -43,6 +54,7 @@ describe("session-recovery store", () => {
     reportSessionExpired();
     resetSessionRecovery();
     expect(getSessionRecoverySnapshot().status).toBe("active");
+    expect(getSessionRecoverySnapshot().reason).toBeNull();
   });
 });
 
