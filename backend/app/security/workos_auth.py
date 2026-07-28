@@ -34,10 +34,11 @@ import httpx
 import jwt as pyjwt
 
 from app.config import get_settings
+from app.logging_config import AUTH_LOGGER_NAME
 from app.security.api_keys import AuthError
 from app.services import identity_bootstrap
 
-logger = logging.getLogger("helios.auth.human")
+logger = logging.getLogger(AUTH_LOGGER_NAME)
 
 ALLOWED_ALGORITHMS = ("RS256",)
 
@@ -226,14 +227,14 @@ def authenticate_human(
     boundary. Organization identity is taken only from the verified token.
     """
     if not token:
-        logger.info("human auth reject: missing bearer token")
+        logger.debug("human auth reject: missing bearer token")
         raise AuthError("missing_token", status_code=401)
 
     claims = get_verifier().verify(token)
 
     org_id = claims.get("org_id") or None
     if require_org and not org_id:
-        logger.info("human auth reject: token has no org_id (sub present)")
+        logger.debug("human auth reject: token has no org_id (sub present)")
         raise AuthError("missing_org", status_code=403)
 
     result = identity_bootstrap.bootstrap_identity(
@@ -244,7 +245,7 @@ def authenticate_human(
     if require_org and result.org is None:
         # org_id was present but not a plausible WorkOS organization id, so no
         # local organization was created. Fail closed to onboarding.
-        logger.info("human auth reject: organization could not be bootstrapped")
+        logger.debug("human auth reject: organization could not be bootstrapped")
         raise AuthError("organization_unavailable", status_code=403)
 
     permissions = claims.get("permissions") or []

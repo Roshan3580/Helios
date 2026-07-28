@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -6,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.cors_policy import build_cors_kwargs
 from app.deployment_validation import sanitize_message
+from app.logging_config import AUTH_LOGGER_NAME, configure_auth_logging
 from app.routers import (
     dashboard,
     datasets,
@@ -39,6 +41,32 @@ _LEGACY_DEMO_ROUTERS = (
 )
 
 
+def log_auth_contract(settings) -> None:
+    """Emit one non-secret human-auth configuration line per worker startup.
+
+    Reports only *presence* and *derivation mode*. It deliberately never reports
+    the Client ID value, the issuer URL, the JWKS URL, a hostname, or any path
+    containing a Client ID — a hosted operator needs to know whether the verifier
+    is configured and whether the issuer/JWKS were derived or overridden, not
+    what they are.
+
+    Readiness never depends on this: it is a log line only, and any failure to
+    emit it is swallowed.
+    """
+    logger = logging.getLogger(AUTH_LOGGER_NAME)
+    try:
+        logger.info(
+            "human auth verifier configured: client_id_present=%s "
+            "issuer_mode=%s jwks_mode=%s environment=%s",
+            "true" if settings.workos_client_id else "false",
+            "explicit" if settings.workos_issuer else "derived",
+            "explicit" if settings.workos_jwks_url else "derived",
+            (settings.helios_environment or "local").strip().lower(),
+        )
+    except Exception:  # pragma: no cover - diagnostics must never block startup
+        pass
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     from app.deployment_validation import STAGING_LIKE, LOCAL_LIKE
@@ -52,6 +80,10 @@ async def lifespan(_app: FastAPI):
     if issues and is_staging_like_or_unknown:
         details = "; ".join(f"{i.code}: {sanitize_message(i.message)}" for i in issues)
         raise RuntimeError(f"Helios deployment contract failed: {details}")
+    # Emitted only in staging/production-like (or unknown) environments, and only
+    # after the fail-closed gate above, so a contract failure still aborts first.
+    if is_staging_like_or_unknown:
+        log_auth_contract(settings)
     yield
 
 
@@ -66,6 +98,12 @@ def create_app() -> FastAPI:
     and call ``get_settings.cache_clear()`` before invoking this.
     """
     settings = get_settings()
+
+    # Make human-auth rejection diagnostics reach the hosted stderr stream.
+    # Uvicorn configures only its own loggers, leaving the root logger at WARNING
+    # with no handlers, so these records were previously discarded at the call
+    # site. Idempotent, narrowly scoped, and never enables DEBUG.
+    configure_auth_logging()
 
     app = FastAPI(
         title="Helios API",
