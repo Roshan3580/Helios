@@ -52,10 +52,11 @@ OTLP; project keys cannot call `/v2/user/*`. Neither dependency calls the other.
 - **FastAPI** verifies the WorkOS **access token** independently: RS256
   signature via the WorkOS JWKS, issuer, exp/iat, and required `sub`/`sid`
   (+`org_id` for org-scoped routes). WorkOS access tokens carry no `aud` claim,
-  so audience verification is disabled (documented; the issuer embeds the
-  client ID). Verification needs only `WORKOS_CLIENT_ID` (issuer/JWKS URL are
-  derived, or overridable via `WORKOS_ISSUER`/`WORKOS_JWKS_URL`) — the WorkOS
-  server API key is *not* required to validate tokens.
+  so audience verification is disabled (documented; application isolation comes
+  from the `client_id` claim, not the issuer). Verification needs only
+  `WORKOS_CLIENT_ID` (issuer/JWKS URL are derived, or overridable via
+  `WORKOS_ISSUER`/`WORKOS_JWKS_URL`) — the WorkOS server API key is *not*
+  required to validate tokens.
 
 ### Why the browser calls FastAPI directly with the bearer token (no BFF)
 
@@ -103,6 +104,57 @@ in this path logs or persists a token, cookie, or Authorization header, and the
 internal failure classifications (`token_unavailable`, `token_refresh_failed`,
 `token_server_action_failed`, `backend_unauthorized`, …) are constant strings
 carrying no JWT, claims, email, or WorkOS identifier.
+
+### Accepted issuers: a closed two-entry set (Checkpoint 29)
+
+WorkOS documents the AuthKit access-token issuer as the API root and currently
+presents **both standard spellings** of that root:
+
+```
+https://api.workos.com
+https://api.workos.com/
+```
+
+A hosted token carrying the trailing-slash form was rejected by a verifier that
+accepted only the no-slash form. Everything else about the request was valid — a
+completed WorkOS session, a signature from the application JWKS, a matching
+`client_id`, and a usable `org_id` — so every authenticated request returned 401
+with `reason=auth_invalid_issuer` (surfaced by the Checkpoint 28 diagnostics).
+
+Helios therefore accepts exactly those two forms, as a **closed allowlist of
+exact full strings** — `WORKOS_STANDARD_ISSUERS` in `app/config.py`, the single
+definition in the codebase. This is emphatically *not* URL normalization:
+
+- Comparison is exact full-string membership (PyJWT `iss in <tuple>`).
+- Nothing is stripped, appended, lowercased, or canonicalized.
+- No prefix, suffix, substring, subdomain, path, or wildcard match exists.
+- The set is never derived from token data or request data.
+
+So `https://api.workos.com/foo`, `https://api.workos.com//`,
+`https://api.workos.com/user_management/<client_id>`, `http://api.workos.com`,
+`https://evil.api.workos.com`, and `https://api.workos.com.evil.example` all
+remain rejected. Accepting two spellings does not widen the trust boundary,
+because **the issuer was never the isolating factor** — `api.workos.com` is
+shared by every WorkOS application. Isolation comes from the separately
+validated `client_id` claim plus the application-specific JWKS at
+`/sso/jwks/<client_id>`, both unchanged.
+
+Two configuration modes, and only two:
+
+| Mode | Condition | Accepted issuers |
+|---|---|---|
+| `derived_standard_set` | `WORKOS_ISSUER` unset | exactly the two documented API-root spellings |
+| `explicit` | `WORKOS_ISSUER` set | exactly that one configured value, verbatim |
+
+Explicit mode stays strict: the configured value is used byte-for-byte, a
+trailing slash is neither added nor removed, and the standard roots are **not**
+additionally accepted. Configuring `https://auth.example.com` therefore rejects
+`https://auth.example.com/`, and vice versa — a deliberate custom auth domain is
+an exact contract, not a family of spellings. HTTPS remains required in
+staging/production.
+
+Operators should leave `WORKOS_ISSUER` unset for standard WorkOS-hosted AuthKit,
+and set it only for a deliberately configured custom issuer.
 
 ### Rejection diagnostics reach the hosted log (Checkpoint 28)
 

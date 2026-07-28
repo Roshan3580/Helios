@@ -5,12 +5,41 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.deployment_validation import validate_settings
 
-# Official WorkOS AuthKit access-token issuer. AuthKit signs access tokens with
-# ``iss=https://api.workos.com`` (NOT the /user_management/<client_id> path,
-# which is a different WorkOS surface). The application-specific JWKS, however,
-# is served per client id at /sso/jwks/<client_id>. Application isolation is
-# enforced separately by validating the token's ``client_id`` claim.
-WORKOS_DEFAULT_ISSUER = "https://api.workos.com"
+# Official WorkOS AuthKit access-token issuers (Checkpoint 29).
+#
+# WorkOS documents the AuthKit access-token issuer as the API root, and its
+# current documentation presents BOTH standard spellings of that root — with and
+# without a trailing slash. A hosted token carrying the trailing-slash form was
+# rejected by a verifier that accepted only the no-slash form, producing
+# `reason=auth_invalid_issuer` on every authenticated request despite a fully
+# valid session, signature, and client_id.
+#
+# This is therefore a CLOSED, two-entry allowlist of exact full strings — not a
+# normalization rule. Helios never strips, appends, lowercases, or otherwise
+# transforms an issuer, and never derives one from token or request data. Each
+# entry is compared by exact full-string equality (PyJWT membership over this
+# tuple), so no prefix, suffix, subdomain, path, or wildcard match is possible:
+# `https://api.workos.com/foo`, `https://api.workos.com//`,
+# `https://api.workos.com/user_management/<client_id>`,
+# `https://evil.api.workos.com`, and `https://api.workos.com.evil.example` all
+# remain rejected.
+#
+# Application isolation does NOT rest on the issuer — the issuer is shared by
+# every WorkOS application. It rests on the separately validated `client_id`
+# claim plus the application-specific JWKS at /sso/jwks/<client_id>.
+WORKOS_STANDARD_ISSUERS: tuple[str, ...] = (
+    "https://api.workos.com",
+    "https://api.workos.com/",
+)
+
+# Representative derived issuer, used where a single value is required (JWKS
+# derivation and the deployment contract). Never used to widen acceptance.
+WORKOS_DEFAULT_ISSUER = WORKOS_STANDARD_ISSUERS[0]
+
+# Startup-diagnostic mode labels. Non-secret: they name the mode only and never
+# carry an issuer value, accepted-issuer list, client id, or AuthKit domain.
+ISSUER_MODE_DERIVED = "derived_standard_set"
+ISSUER_MODE_EXPLICIT = "explicit"
 
 
 class Settings(BaseSettings):
@@ -67,6 +96,11 @@ class Settings(BaseSettings):
 
     @property
     def workos_issuer_resolved(self) -> str:
+        """Single representative issuer, for JWKS derivation and the contract.
+
+        Acceptance is decided by :attr:`workos_accepted_issuers`, never by this
+        value alone.
+        """
         # Explicit issuer (e.g. a custom WorkOS auth domain) is used verbatim.
         if self.workos_issuer:
             return self.workos_issuer
@@ -74,6 +108,32 @@ class Settings(BaseSettings):
         if self.workos_client_id:
             return WORKOS_DEFAULT_ISSUER
         return ""
+
+    @property
+    def workos_issuer_mode(self) -> str:
+        """``explicit`` when WORKOS_ISSUER is set, else ``derived_standard_set``."""
+        return ISSUER_MODE_EXPLICIT if self.workos_issuer else ISSUER_MODE_DERIVED
+
+    @property
+    def workos_accepted_issuers(self) -> tuple[str, ...]:
+        """The exact issuer value(s) this deployment accepts.
+
+        Two modes, and only two:
+
+        * **Explicit** — ``WORKOS_ISSUER`` is set: accept exactly that one value,
+          verbatim. A trailing slash is neither added nor removed, and the
+          standard WorkOS roots are NOT additionally accepted (unless the
+          configured value happens to be one of them).
+        * **Derived standard** — ``WORKOS_ISSUER`` is unset: accept exactly the
+          two documented WorkOS API-root spellings and nothing else.
+
+        Never inferred from request data or from an unverified token claim.
+        """
+        if self.workos_issuer:
+            return (self.workos_issuer,)
+        if self.workos_client_id:
+            return WORKOS_STANDARD_ISSUERS
+        return ()
 
     @property
     def workos_jwks_url_resolved(self) -> str:

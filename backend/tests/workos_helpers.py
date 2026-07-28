@@ -48,7 +48,7 @@ def make_token(
     sid: str | None = DEFAULT_SID,
     org_id: str | None = DEFAULT_ORG,
     client_id: str | None = TEST_CLIENT_ID,
-    issuer: str = TEST_ISSUER,
+    issuer: str | None = TEST_ISSUER,
     kid: str = TEST_KID,
     algorithm: str = "RS256",
     expires_in: int = 300,
@@ -59,11 +59,15 @@ def make_token(
 ) -> str:
     now = int(time.time())
     claims: dict = {
-        "iss": issuer,
         "exp": now + expires_in,
         "iat": now,
         "jti": str(uuid.uuid4()),
     }
+    # `issuer=None` omits the claim entirely (PyJWT's encoder rejects a
+    # non-string `iss`), so tests can mint a token with no issuer at all —
+    # matching how sub/sid/org_id/client_id already handle None.
+    if issuer is not None:
+        claims["iss"] = issuer
     if sub is not None:
         claims["sub"] = sub
     if sid is not None:

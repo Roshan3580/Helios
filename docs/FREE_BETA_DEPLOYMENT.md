@@ -107,7 +107,7 @@ Server-only (set in the Vercel dashboard; **never** `VITE_*`):
 | `DATABASE_URL`                    | external PostgreSQL URL (secret) |
 | `CORS_ORIGINS`                    | `https://helios-staging-tau.vercel.app` (exact; no wildcard) |
 | `WORKOS_CLIENT_ID`                | same staging client id as the frontend (parity required) |
-| `WORKOS_ISSUER`                   | leave unset → derives `https://api.workos.com` (API root, not `/user_management/…`) |
+| `WORKOS_ISSUER`                   | **leave unset** → accepts both documented API-root spellings (`https://api.workos.com` and `https://api.workos.com/`); never `/user_management/…`. Set only for a deliberately configured custom issuer |
 | `WORKOS_JWKS_URL`                 | leave unset → derives `https://api.workos.com/sso/jwks/<client_id>` |
 
 `OPENAI_API_KEY` is intentionally **unset** — narrative stays disabled.
@@ -195,7 +195,7 @@ once:**
 |---|---|---|
 | `auth_missing_token` | No bearer credential arrived | Inspect whether the frontend attached an `Authorization` header at all |
 | `auth_expired_token` | Signature valid, `exp` passed | Inspect the session refresh lifecycle |
-| `auth_invalid_issuer` | `iss` did not match exactly | Verify the exact current WorkOS issuer contract |
+| `auth_invalid_issuer` | `iss` matched neither accepted value | See "Accepted issuer values" below before changing anything |
 | `auth_invalid_client_id` | Token minted for a different WorkOS application | Verify Vercel, Render, and WorkOS application parity |
 | `auth_invalid_signature` | Signature, `kid`, algorithm, or JWT structure rejected | Verify WorkOS environment / JWKS parity |
 | `auth_jwks_failure` | JWKS document could not be fetched | Verify outbound network access and WorkOS availability |
@@ -214,6 +214,48 @@ sign-in (which surfaces separately as a bounded 429 panel, never a retry loop).
 > query string — the browser client sends the token in the `Authorization` header
 > only, and the Helios diagnostic line carries the route path without its query
 > string.
+
+### Accepted issuer values
+
+WorkOS documents the AuthKit access-token issuer as the API root and currently
+presents **both** standard spellings of it:
+
+```
+https://api.workos.com
+https://api.workos.com/
+```
+
+With `WORKOS_ISSUER` **unset** (the recommended configuration, and what the
+startup line reports as `issuer_mode=derived_standard_set`), Helios accepts
+exactly those two values and nothing else. This is a closed allowlist compared by
+exact full-string equality — Helios performs no URL normalization, and no prefix,
+suffix, subdomain, path, or wildcard matching. All of the following stay rejected:
+
+```
+https://api.workos.com/user_management/<client_id>
+https://api.workos.com/anything
+https://api.workos.com//
+http://api.workos.com
+https://evil.api.workos.com
+https://api.workos.com.evil.example
+```
+
+Accepting two spellings does not weaken tenancy: `api.workos.com` is shared by
+every WorkOS application, so isolation comes from the separately validated
+`client_id` claim and the application-specific JWKS at `/sso/jwks/<client_id>` —
+both unchanged.
+
+If you see `auth_invalid_issuer`:
+
+1. **Confirm the startup line reports `issuer_mode=derived_standard_set`.** If it
+   reports `explicit`, `WORKOS_ISSUER` is set — and in explicit mode Helios
+   accepts *only* that one exact value. Unsetting it is usually the fix.
+2. **Do not add a trailing slash to `WORKOS_ISSUER` to "fix" this.** Both root
+   spellings are already accepted in derived mode; setting either one explicitly
+   narrows acceptance rather than widening it.
+3. Set `WORKOS_ISSUER` only for a deliberately configured custom WorkOS auth
+   domain. It is then an exact contract: `https://auth.example.com` does **not**
+   also accept `https://auth.example.com/`.
 
 ## Free-tier limitations
 
