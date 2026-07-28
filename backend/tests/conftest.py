@@ -175,10 +175,14 @@ def workos_verifier():
         WorkOSTokenVerifier,
         set_verifier_for_tests,
     )
-    from workos_helpers import JWKS_DOCUMENT, TEST_CLIENT_ID, TEST_ISSUER
+    from app.config import WORKOS_STANDARD_ISSUERS
+    from workos_helpers import JWKS_DOCUMENT, TEST_CLIENT_ID
 
+    # Mirrors production *derived* mode (WORKOS_ISSUER unset): the closed set of
+    # the two documented WorkOS API-root spellings. This is what a hosted beta
+    # deployment runs, so route-level tests exercise the real acceptance set.
     verifier = WorkOSTokenVerifier(
-        issuer=TEST_ISSUER,
+        issuers=WORKOS_STANDARD_ISSUERS,
         client_id=TEST_CLIENT_ID,
         jwks_client=JWKSClient("https://jwks.test/keys", fetcher=lambda: JWKS_DOCUMENT),
     )

@@ -117,19 +117,55 @@ class JWKSClient:
 
 
 class WorkOSTokenVerifier:
-    def __init__(self, *, issuer: str, jwks_client: JWKSClient, client_id: str) -> None:
-        self._issuer = issuer
+    """Verifies a WorkOS access token against a CLOSED set of exact issuers.
+
+    ``issuers`` is a fixed collection of full issuer strings, compared by exact
+    equality (PyJWT performs ``iss in issuers`` membership over the stored
+    tuple). There is no normalization, prefix/suffix comparison, subdomain
+    allowance, path stripping, or wildcard anywhere in this path, and the set is
+    never influenced by token or request data.
+
+    In derived/default mode the set is the two documented WorkOS API-root
+    spellings (``config.WORKOS_STANDARD_ISSUERS``); in explicit mode it is the
+    single configured ``WORKOS_ISSUER``.
+    """
+
+    def __init__(
+        self,
+        *,
+        jwks_client: JWKSClient,
+        client_id: str,
+        issuers: tuple[str, ...] | list[str] | None = None,
+        issuer: str | None = None,
+    ) -> None:
+        if issuers is None and issuer is None:
+            raise ValueError("WorkOSTokenVerifier requires issuers or issuer")
+        # A single `issuer=` is accepted as an exact one-entry set. Stored as a
+        # tuple so PyJWT does set membership, never substring matching (a bare
+        # str would take PyJWT's separate equality branch, but a tuple makes the
+        # exact-membership intent explicit and uniform).
+        resolved = tuple(issuers) if issuers is not None else (issuer,)
+        if not resolved or any(not value for value in resolved):
+            raise ValueError("WorkOSTokenVerifier issuers must be non-empty strings")
+        self._issuers: tuple[str, ...] = resolved
         self._jwks = jwks_client
         self._client_id = client_id
+
+    @property
+    def accepted_issuers(self) -> tuple[str, ...]:
+        """The exact accepted issuer values (for tests/diagnostics, never logged)."""
+        return self._issuers
 
     def verify(self, token: str) -> dict:
         """Verify signature + registered claims; return the claim set.
 
-        Because the WorkOS AuthKit issuer (``https://api.workos.com``) is shared
-        by every WorkOS application, the ``client_id`` claim is validated
-        explicitly against this deployment's configured client id: a token
-        correctly signed by WorkOS for a *different* application must be
-        rejected. This is the application-isolation boundary.
+        Because the WorkOS AuthKit issuer (``https://api.workos.com``, in either
+        documented spelling) is shared by every WorkOS application, the
+        ``client_id`` claim is validated explicitly against this deployment's
+        configured client id: a token correctly signed by WorkOS for a
+        *different* application must be rejected. This is the
+        application-isolation boundary — accepting two issuer spellings does not
+        widen it, because the issuer was never the isolating factor.
         """
         try:
             header = pyjwt.get_unverified_header(token)
@@ -150,7 +186,9 @@ class WorkOSTokenVerifier:
                 token,
                 key=public_key,
                 algorithms=list(ALLOWED_ALGORITHMS),
-                issuer=self._issuer,
+                # Exact membership over the closed set; PyJWT raises
+                # InvalidIssuerError for anything not identically present.
+                issuer=self._issuers,
                 options={
                     "require": ["exp", "iat", "iss", "sub", "sid"],
                     "verify_aud": False,  # WorkOS access tokens carry no aud claim
@@ -189,13 +227,15 @@ def get_verifier() -> WorkOSTokenVerifier:
     with _verifier_lock:
         if _verifier is None:
             settings = get_settings()
-            issuer = settings.workos_issuer_resolved
+            # Derived mode yields the two documented WorkOS API-root spellings;
+            # explicit mode yields exactly the one configured issuer.
+            issuers = settings.workos_accepted_issuers
             jwks_url = settings.workos_jwks_url_resolved
             client_id = settings.workos_client_id
-            if not issuer or not jwks_url or not client_id:
+            if not issuers or not jwks_url or not client_id:
                 raise AuthError("human_auth_not_configured", status_code=401)
             _verifier = WorkOSTokenVerifier(
-                issuer=issuer,
+                issuers=issuers,
                 client_id=client_id,
                 jwks_client=JWKSClient(
                     jwks_url,

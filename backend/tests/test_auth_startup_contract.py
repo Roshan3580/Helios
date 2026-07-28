@@ -85,7 +85,7 @@ class TestStartupContractContent:
         log_auth_contract(_Settings(client_id=FAKE_CLIENT_ID))
         line = contract_lines(auth_logs)[0]
         assert field(line, "client_id_present") == "true"
-        assert field(line, "issuer_mode") == "derived"
+        assert field(line, "issuer_mode") == "derived_standard_set"
         assert field(line, "jwks_mode") == "derived"
         assert field(line, "environment") == "staging"
 
@@ -107,6 +107,18 @@ class TestStartupContractContent:
         assert field(line, "issuer_mode") == "explicit"
         assert field(line, "jwks_mode") == "derived"
 
+    def test_derived_mode_label_names_the_mode_without_the_issuer_set(self, auth_logs):
+        """Checkpoint 29: `derived_standard_set` must not enumerate the set."""
+        from app.config import WORKOS_STANDARD_ISSUERS
+
+        log_auth_contract(_Settings(client_id=FAKE_CLIENT_ID))
+        text = rendered(auth_logs)
+        assert "issuer_mode=derived_standard_set" in text
+        for accepted in WORKOS_STANDARD_ISSUERS:
+            assert accepted not in text
+        for fragment in ("api.workos.com", "https://", "workos.com"):
+            assert fragment not in text
+
     def test_never_reveals_values_hostnames_or_urls(self, auth_logs):
         log_auth_contract(
             _Settings(client_id=FAKE_CLIENT_ID, issuer=FAKE_ISSUER, jwks_url=FAKE_JWKS_URL)
@@ -127,7 +139,7 @@ class TestStartupContractContent:
         log_auth_contract(_Settings(client_id=FAKE_CLIENT_ID))
         assert contract_lines(auth_logs)[0] == (
             "human auth verifier configured: client_id_present=true "
-            "issuer_mode=derived jwks_mode=derived environment=staging"
+            "issuer_mode=derived_standard_set jwks_mode=derived environment=staging"
         )
 
     def test_never_raises_on_broken_settings(self, auth_logs):

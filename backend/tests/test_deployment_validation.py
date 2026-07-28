@@ -251,3 +251,95 @@ def test_local_does_not_enforce_workos_host_contract():
         in {"issuer_contract", "jwks_contract", "jwks_client_mismatch", "client_id_missing"}
         for i in issues
     )
+
+
+# ---------------------------------------------------------------------------
+# Checkpoint 29: both documented WorkOS API-root spellings are valid config.
+#
+# WorkOS documents the AuthKit access-token issuer in two standard spellings
+# (with and without a trailing slash). Both must pass the deployment contract,
+# while every other path on that host stays refused. This is a closed set, not a
+# normalization rule.
+# ---------------------------------------------------------------------------
+
+
+def test_staging_accepts_derived_standard_issuer_mode():
+    """WORKOS_ISSUER unset is valid: the app derives the standard set."""
+    from app.config import WORKOS_DEFAULT_ISSUER
+
+    # The derived representative is what validate_settings receives.
+    assert _staging(workos_issuer=WORKOS_DEFAULT_ISSUER) == []
+
+
+def test_staging_accepts_explicit_workos_root_without_slash():
+    assert _staging(workos_issuer="https://api.workos.com") == []
+
+
+def test_staging_accepts_explicit_workos_root_with_slash():
+    # The exact hosted token shape from Checkpoint 29.
+    assert _staging(workos_issuer="https://api.workos.com/") == []
+
+
+def test_staging_rejects_double_slash_workos_issuer():
+    """`//` is an arbitrary path, not a documented root spelling."""
+    codes = {i.code for i in _staging(workos_issuer="https://api.workos.com//")}
+    assert "issuer_contract" in codes
+
+
+def test_staging_rejects_triple_slash_workos_issuer():
+    codes = {i.code for i in _staging(workos_issuer="https://api.workos.com///")}
+    assert "issuer_contract" in codes
+
+
+def test_staging_rejects_issuer_with_fragment():
+    codes = {i.code for i in _staging(workos_issuer="https://api.workos.com/#frag")}
+    assert "issuer_contract" in codes
+
+
+def test_staging_rejects_issuer_with_credentials():
+    codes = {i.code for i in _staging(workos_issuer="https://u:p@api.workos.com")}
+    assert "issuer_contract" in codes
+
+
+def test_staging_rejects_http_workos_root_with_slash():
+    codes = {i.code for i in _staging(workos_issuer="http://api.workos.com/")}
+    assert "issuer_https" in codes
+
+
+def test_jwks_client_parity_still_enforced_with_slash_issuer():
+    """Accepting the slash spelling must not relax JWKS/client-id parity."""
+    codes = {
+        i.code
+        for i in _staging(
+            workos_issuer="https://api.workos.com/",
+            workos_jwks_url="https://api.workos.com/sso/jwks/client_a_different_app",
+        )
+    }
+    assert "jwks_client_mismatch" in codes
+
+
+def test_jwks_host_still_enforced_with_slash_issuer():
+    codes = {
+        i.code
+        for i in _staging(
+            workos_issuer="https://api.workos.com/",
+            workos_jwks_url=f"https://cdn.example.com/sso/jwks/{_CLIENT_ID}",
+        )
+    }
+    assert "jwks_contract" in codes
+
+
+def test_client_id_still_required_with_slash_issuer():
+    codes = {
+        i.code
+        for i in _staging(workos_issuer="https://api.workos.com/", workos_client_id="")
+    }
+    assert "client_id_missing" in codes
+
+
+def test_validation_messages_never_echo_a_configured_issuer_value():
+    """Operator-facing issues must not leak the configured value."""
+    canary = "https://api.workos.com/canary-secret-path"
+    for issue in _staging(workos_issuer=canary):
+        assert canary not in issue.message
+        assert "canary-secret-path" not in issue.message

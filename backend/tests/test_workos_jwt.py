@@ -4,6 +4,7 @@ import logging
 
 import pytest
 
+from app.config import WORKOS_STANDARD_ISSUERS
 from app.security.api_keys import AuthError
 from app.security.workos_auth import JWKSClient, WorkOSTokenVerifier
 
@@ -18,12 +19,15 @@ from workos_helpers import (
 )
 
 
-def make_verifier(fetcher=None, **jwks_kwargs) -> WorkOSTokenVerifier:
+def make_verifier(fetcher=None, *, issuers=None, **jwks_kwargs) -> WorkOSTokenVerifier:
+    """Verifier in production *derived* mode unless `issuers` overrides it."""
     client = JWKSClient(
         "https://jwks.test/keys", fetcher=fetcher or (lambda: JWKS_DOCUMENT), **jwks_kwargs
     )
     return WorkOSTokenVerifier(
-        issuer=TEST_ISSUER, client_id=TEST_CLIENT_ID, jwks_client=client
+        issuers=issuers if issuers is not None else WORKOS_STANDARD_ISSUERS,
+        client_id=TEST_CLIENT_ID,
+        jwks_client=client,
     )
 
 
@@ -53,13 +57,16 @@ class TestVerification:
             make_verifier().verify(token)
         assert exc.value.reason == "wrong_issuer"
 
-    def test_trailing_slash_issuer_rejected(self):
-        # Issuer comparison is exact: a trailing slash does not match the
-        # canonical https://api.workos.com.
-        token = make_token(issuer="https://api.workos.com/")
-        with pytest.raises(AuthError) as exc:
-            make_verifier().verify(token)
-        assert exc.value.reason == "wrong_issuer"
+    def test_trailing_slash_issuer_accepted_in_derived_mode(self):
+        # Checkpoint 29: WorkOS documents BOTH standard spellings of the API-root
+        # issuer. A hosted token carrying the trailing-slash form was rejected by
+        # a no-slash-only verifier, producing auth_invalid_issuer on every
+        # authenticated request. Derived mode accepts exactly these two forms.
+        #
+        # This test replaces an earlier one that asserted the trailing-slash form
+        # was rejected. That assertion encoded the defect, not the contract.
+        claims = make_verifier().verify(make_token(issuer="https://api.workos.com/"))
+        assert claims["iss"] == "https://api.workos.com/"
 
     def test_correct_client_id_accepted(self):
         claims = make_verifier().verify(make_token(client_id=TEST_CLIENT_ID))
