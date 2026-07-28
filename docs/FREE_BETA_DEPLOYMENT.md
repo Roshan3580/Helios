@@ -117,6 +117,31 @@ The backend runs under the hardened `staging` contract: startup fails closed if
 loopback, or if the environment value is unknown (see
 `app/deployment_validation.py`).
 
+## Hosted sign-in troubleshooting
+
+**Symptom:** a clean WorkOS sign-in loads the shell, the user's name renders, and
+the UI immediately shows "Your session has expired" — while Render logs show only
+`/health/ready` and no `/v2/user/me`.
+
+**This is a frontend token-readiness bug, not a backend, JWT, or WorkOS problem.**
+No backend request was ever attempted, so nothing in Render, the verifier, the
+issuer configuration, or the database is implicated. Diagnose in this order:
+
+1. **Did Render receive `/v2/user/me` at all?** If not, the failure is entirely
+   client-side and pre-backend. Do not change backend env vars, `WORKOS_ISSUER`,
+   `WORKOS_JWKS_URL`, or `CORS_ORIGINS` — none of them are involved.
+2. **Did the browser issue a same-origin server-function RPC before the panel
+   appeared?** If not, the client short-circuited before asking WorkOS for a
+   token. The SDK's `getAccessToken()` returns nothing — without any network
+   call — while the user is still unresolved.
+3. **Does the user's name render?** If yes, the WorkOS session cookie *was*
+   delivered and the callback succeeded; the session is valid.
+
+The fix (Checkpoint 27) is that the client distinguishes *token initializing*
+from *token unavailable*; see the readiness table in
+`docs/ADR_004_WORKOS_HUMAN_AUTH.md`. A genuine backend 401 looks different: Render
+logs the request, and recovery is only entered after one refresh and one retry.
+
 ## Free-tier limitations
 
 - **Cold starts:** the Render Free backend sleeps after inactivity and can take

@@ -26,10 +26,18 @@ type HeliosUser = {
   lastName: string | null;
 };
 
-export function useHeliosAccessToken(): {
+export interface HeliosAccessToken {
   getAccessToken: () => Promise<string | null>;
   refresh: () => Promise<string | null>;
-} {
+  /** SDK initial-token loading. NOT sufficient on its own — see token-readiness. */
+  loading: boolean;
+  /** Whether the SDK currently holds a token. The value itself is never exposed. */
+  hasToken: boolean;
+  /** Whether the last SDK token operation failed. The error object is not exposed. */
+  hasError: boolean;
+}
+
+export function useHeliosAccessToken(): HeliosAccessToken {
   const workos = useWorkOSAccessToken();
   const workosRef = useRef(workos);
   workosRef.current = workos;
@@ -53,7 +61,15 @@ export function useHeliosAccessToken(): {
     return token ?? null;
   }, [e2e]);
 
-  return { getAccessToken, refresh };
+  return {
+    getAccessToken,
+    refresh,
+    // In E2E mode the SDK token store is unused; readiness is driven entirely by
+    // the acquisition coordinator against `/api/e2e/session`.
+    loading: e2e ? false : workos.loading,
+    hasToken: e2e ? false : Boolean(workos.accessToken),
+    hasError: e2e ? false : workos.error != null,
+  };
 }
 
 export function useHeliosAuth(): {

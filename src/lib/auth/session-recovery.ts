@@ -17,6 +17,7 @@
 import { useSyncExternalStore } from "react";
 
 import { safeReturnPath } from "./return-path";
+import type { AuthDiagnostic } from "./token-readiness";
 
 export type SessionRecoveryStatus = "active" | "expired" | "rate_limited";
 
@@ -24,21 +25,45 @@ export interface SessionRecoveryState {
   status: SessionRecoveryStatus;
   /** Seconds to wait before retrying, when the provider supplied Retry-After. */
   retryAfterSeconds: number | null;
+  /**
+   * Internal, non-sensitive classification of *why* recovery was entered. Used
+   * by tests and internal diagnosis; the user-facing panel stays concise and
+   * does not vary on it.
+   */
+  reason: AuthDiagnostic | null;
 }
 
-const ACTIVE: SessionRecoveryState = { status: "active", retryAfterSeconds: null };
+const ACTIVE: SessionRecoveryState = { status: "active", retryAfterSeconds: null, reason: null };
 
 let state: SessionRecoveryState = ACTIVE;
 const listeners = new Set<() => void>();
 // Single-flight guard: only one explicit sign-in navigation may ever fire.
 let signInInFlight = false;
 
+/**
+ * Session-identity epoch bookkeeping (Checkpoint 27).
+ *
+ * A bounded failure recorded against one session identity must stay terminal for
+ * that identity — otherwise a re-render would clear the panel the user is
+ * reading. But a failure recorded before AuthKit had even resolved the user must
+ * not poison a session that subsequently becomes valid without a new login. The
+ * epoch is an opaque monotonic counter derived from user/session *change
+ * detection only*; no WorkOS identifier is stored here.
+ */
+let currentEpoch = 0;
+let expiredAtEpoch: number | null = null;
+let readyNotedEpoch: number | null = null;
+
 function emit(): void {
   for (const listener of listeners) listener();
 }
 
 function setState(next: SessionRecoveryState): void {
-  if (next.status === state.status && next.retryAfterSeconds === state.retryAfterSeconds) {
+  if (
+    next.status === state.status &&
+    next.retryAfterSeconds === state.retryAfterSeconds &&
+    next.reason === state.reason
+  ) {
     return;
   }
   state = next;
@@ -46,13 +71,18 @@ function setState(next: SessionRecoveryState): void {
 }
 
 /**
- * Report that authentication has failed after a bounded refresh+retry. Flips to
- * a terminal "expired" state exactly once; a provider rate-limit takes
- * precedence and is never downgraded to "expired".
+ * Report that authentication has failed after a bounded attempt: either a
+ * backend 401 that survived one refresh+retry, or a token that could not be
+ * acquired after `getToken` plus one `refresh`. Flips to a terminal "expired"
+ * state; a provider rate-limit takes precedence and is never downgraded.
+ *
+ * Never call this for a merely *initializing* auth/token state — that is the
+ * Checkpoint 27 defect this module's epoch bookkeeping guards against.
  */
-export function reportSessionExpired(): void {
+export function reportSessionExpired(reason: AuthDiagnostic = "backend_unauthorized"): void {
   if (state.status === "rate_limited") return;
-  setState({ status: "expired", retryAfterSeconds: null });
+  expiredAtEpoch = currentEpoch;
+  setState({ status: "expired", retryAfterSeconds: null, reason });
 }
 
 /**
@@ -60,12 +90,44 @@ export function reportSessionExpired(): void {
  * automatically; Retry-After (seconds) is preserved when available.
  */
 export function reportRateLimited(retryAfterSeconds: number | null): void {
-  setState({ status: "rate_limited", retryAfterSeconds });
+  setState({ status: "rate_limited", retryAfterSeconds, reason: "provider_rate_limited" });
+}
+
+/**
+ * Record the current session-identity epoch. Called whenever AuthKit's
+ * user/session identity changes, before token readiness resolves, so a later
+ * failure is attributed to the identity that actually failed.
+ */
+export function setAuthEpoch(epoch: number): void {
+  if (epoch === currentEpoch) return;
+  currentEpoch = epoch;
+}
+
+/**
+ * Note that a valid access token became available for `epoch`.
+ *
+ * Clears a terminal "expired" state only when the readiness belongs to a
+ * *different* identity than the one that failed — i.e. a genuinely new
+ * session/token transition. Idempotent per epoch, so it can never reset recovery
+ * on every render, and it never downgrades a provider rate-limit.
+ */
+export function noteTokenReadiness(epoch: number): void {
+  currentEpoch = epoch;
+  if (readyNotedEpoch === epoch) return;
+  readyNotedEpoch = epoch;
+  if (state.status !== "expired") return;
+  if (expiredAtEpoch !== null && expiredAtEpoch === epoch) return;
+  expiredAtEpoch = null;
+  signInInFlight = false;
+  setState(ACTIVE);
 }
 
 /** Reset to the active state. Full-page sign-in navigation resets this anyway. */
 export function resetSessionRecovery(): void {
   signInInFlight = false;
+  currentEpoch = 0;
+  expiredAtEpoch = null;
+  readyNotedEpoch = null;
   setState(ACTIVE);
 }
 

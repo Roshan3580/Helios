@@ -52,8 +52,17 @@ function resolveSelection(projects: UserProject[], preferredId: string | null): 
   return projects[0]?.id ?? null;
 }
 
+/**
+ * Checkpoint 27: this provider's load effect used to fire on mount, before
+ * AuthKit had resolved the user, so the SDK returned no access token and the
+ * shared runner reported a terminal "session expired" without ever contacting the
+ * backend. It now waits for token readiness. Every downstream hook
+ * (dashboard, traces, trace detail, API keys, analyses) already gates on this
+ * provider's `loading`/`selectedProject`, so gating here transitively prevents
+ * any authenticated request during token initialization.
+ */
 export function ProjectSelectionProvider({ children }: { children: ReactNode }) {
-  const { run } = useAuthorizedRequest();
+  const { run, ready, phase } = useAuthorizedRequest();
   const { organizationId } = useAuth();
   const [projects, setProjects] = useState<UserProject[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
@@ -65,6 +74,24 @@ export function ProjectSelectionProvider({ children }: { children: ReactNode }) 
   const reload = useCallback(() => setReloadToken((value) => value + 1), []);
 
   useEffect(() => {
+    if (!ready) {
+      // Initializing: keep the ordinary bounded loading state and issue nothing.
+      // A settled token failure has already been reported to central recovery,
+      // which renders in place of the route, so settle to a neutral empty state.
+      if (phase === "token_unavailable" || phase === "unauthenticated") {
+        setProjects([]);
+        setSelectedProjectId(null);
+        setLoading(false);
+        setError(null);
+        setErrorStatus(phase === "token_unavailable" ? 401 : null);
+      } else {
+        setLoading(true);
+        setError(null);
+        setErrorStatus(null);
+      }
+      return;
+    }
+
     let cancelled = false;
 
     async function load() {
@@ -116,9 +143,9 @@ export function ProjectSelectionProvider({ children }: { children: ReactNode }) 
     return () => {
       cancelled = true;
     };
-    // Refetch when WorkOS organization changes or an explicit reload is requested.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [organizationId, reloadToken]);
+    // Runs when token readiness is reached, when the WorkOS organization changes,
+    // or when an explicit reload is requested. `run` is referentially stable.
+  }, [ready, phase, organizationId, reloadToken, run]);
 
   const selectProject = useCallback((projectId: string) => {
     setSelectedProjectId((current) => {

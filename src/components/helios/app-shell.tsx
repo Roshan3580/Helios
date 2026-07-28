@@ -21,6 +21,7 @@ import { ProjectSelector } from "./project-selector";
 import { WorkspaceOnboarding } from "./workspace-onboarding";
 import { SessionRecoveryPanel } from "./session-recovery-panel";
 import { ProjectSelectionProvider } from "@/contexts/project-selection";
+import { TokenReadinessProvider } from "@/contexts/token-readiness";
 import { useUserMe } from "@/hooks/use-user-me";
 import { isE2EClientFlag } from "@/lib/auth/e2e-guards";
 import { deriveWorkspaceState } from "@/lib/onboarding/workspace-state";
@@ -202,10 +203,15 @@ Helios.configure(...)`}</pre>
 }
 
 export function AppShell() {
+  // TokenReadinessProvider must wrap every authenticated consumer: it is the
+  // single owner of the WorkOS session identity, the one bounded token
+  // acquisition, and the readiness phase all data hooks gate on (Checkpoint 27).
   return (
-    <ProjectSelectionProvider>
-      <AppShellLayout />
-    </ProjectSelectionProvider>
+    <TokenReadinessProvider>
+      <ProjectSelectionProvider>
+        <AppShellLayout />
+      </ProjectSelectionProvider>
+    </TokenReadinessProvider>
   );
 }
 

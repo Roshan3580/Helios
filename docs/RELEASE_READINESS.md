@@ -31,7 +31,15 @@ and **production** work.
       validates `.env.beta.example` (demo/e2e/narrative false, exact CORS, no
       wildcard, server-only WorkOS secrets, placeholder DB URL) and that
       `render.yaml` remains the paid staging contract
-- [x] Alembic head remains `004_human_identity` (Checkpoint 24 adds no migration)
+- [x] Alembic head remains `004_human_identity` (Checkpoints 24–27 add no migration)
+- [x] AuthKit access-token readiness (Checkpoint 27): the client distinguishes
+      auth loading, token initializing, token ready, token acquisition failed,
+      and backend 401. Token initialization is **never** classified as session
+      expiry, no authenticated request is issued without a token, and N
+      concurrently mounted hooks share exactly one bounded token acquisition.
+      Covered by `src/lib/auth/token-readiness.test.ts` and the
+      `e2e/04-token-readiness.spec.ts` browser gate (delayed token
+      initialization must not render an expiry panel)
 
 ## Invited free beta (Checkpoint 24)
 
