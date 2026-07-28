@@ -5,9 +5,11 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 echo "[deploy-contract] frontend unit tests"
-bun test src/lib/api/base-url.test.ts src/lib/deploy/staging-guards.test.ts \
-  src/lib/api/cold-start.test.ts src/lib/onboarding/workspace-state.test.ts \
-  src/lib/api/authorized-request.test.ts src/lib/auth/session-recovery.test.ts
+# Delegates to package.json `test:unit` — the single source of truth. This used
+# to duplicate the file list, which silently drifted: Checkpoint 27 registered
+# src/lib/auth/token-readiness.test.ts in package.json only, so CI (whose only
+# unit-test invocation is this script) would have skipped that whole suite.
+bun run test:unit
 
 echo "[deploy-contract] smoke script syntax"
 bash -n scripts/smoke-staging.sh
