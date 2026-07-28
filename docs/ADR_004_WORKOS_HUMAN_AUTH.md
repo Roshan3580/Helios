@@ -104,6 +104,48 @@ internal failure classifications (`token_unavailable`, `token_refresh_failed`,
 `token_server_action_failed`, `backend_unauthorized`, …) are constant strings
 carrying no JWT, claims, email, or WorkOS identifier.
 
+### Rejection diagnostics reach the hosted log (Checkpoint 28)
+
+Safe reason codes existed from Checkpoint 25 but were invisible in hosted logs.
+Render starts the app with plain `uvicorn app.main:app`, and uvicorn's
+`LOGGING_CONFIG` declares only `uvicorn`, `uvicorn.error`, and `uvicorn.access` —
+it has **no `root` key**, and `configure_logging()` sets levels only on
+`uvicorn.*`. The root logger therefore kept Python's defaults (level `WARNING`, no
+handlers), `helios.auth.human` inherited `WARNING`, and every `logger.info(...)`
+rejection record was discarded *at the call site* by `isEnabledFor(INFO)`. Uvicorn
+access lines were unaffected because `uvicorn.access` owns an explicit handler.
+
+`app/logging_config.py` configures exactly one logger — `helios.auth.human` —
+with a single stderr handler at INFO and `propagate = False`:
+
+- Scoped to the **child** deliberately. The parent `helios.auth` carries the
+  machine project-API-key path, whose records include internal key ids;
+  configuring the parent would newly expose them.
+- `propagate = False` plus one handler means a record is emitted exactly once.
+- Rejections are emitted at **WARNING**, so the record clears Python's default
+  threshold and still reaches the stream even if the configuration hook never
+  runs. Either way: exactly one record.
+- No other logger is configured and no level is raised globally — DEBUG is never
+  enabled anywhere.
+
+The hosted line shape is fixed:
+
+```
+human auth rejected: reason=<SAFE_REASON> status=<401|403> path=<ROUTE>
+```
+
+`SAFE_REASON` comes from a closed allowlist (`SAFE_REASONS` in
+`app/security/human_dependencies.py`); a raw internal `AuthError` reason never
+reaches a log line unmapped, and anything unrecognised collapses to
+`auth_rejected`. `path` is read **only** from `request.url.path` — the full URL,
+query string, headers, cookies, and client address are never touched. The
+formatter drops `exc_info`/`stack_info` structurally, so exception text (which can
+embed URLs, JWKS responses, or credentials) cannot reach the stream even if a
+future caller passes `exc_info=True`.
+
+Operator mapping from reason code to next action lives in
+`docs/FREE_BETA_DEPLOYMENT.md`.
+
 ### JWKS caching and failure behavior
 
 Bounded in-memory cache (TTL `WORKOS_JWKS_CACHE_TTL`, default 3600 s) so JWKS

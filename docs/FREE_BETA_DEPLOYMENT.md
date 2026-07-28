@@ -142,6 +142,79 @@ from *token unavailable*; see the readiness table in
 `docs/ADR_004_WORKOS_HUMAN_AUTH.md`. A genuine backend 401 looks different: Render
 logs the request, and recovery is only entered after one refresh and one retry.
 
+### The request reached the verifier: reading the safe reason code
+
+**Symptom:** Render logs show a successful CORS preflight *and* an authenticated
+GET that returns 401 — for example:
+
+```
+OPTIONS /v2/user/me      200
+OPTIONS /v2/user/projects 200
+GET     /v2/user/me      401
+GET     /v2/user/projects 401
+```
+
+A successful preflight plus an authenticated `GET` returning 401 means **the
+request reached the backend verifier**. This is no longer a readiness or CORS
+problem: a token was presented and rejected. The cause is now determinable.
+
+Search the Render logs for:
+
+```
+human auth rejected
+```
+
+Each rejection emits exactly one line, of exactly this shape:
+
+```
+human auth rejected: reason=<SAFE_REASON> status=<401|403> path=<ROUTE>
+```
+
+Only the safe reason code, the HTTP status, and the matched application route
+path are emitted. The JWT, its header and claims, the Authorization header,
+cookies, the Client ID value, user/organization/session identifiers, the issuer
+URL, the JWKS URL, and exception text are never logged — the log formatter drops
+exception and stack detail structurally, not merely by convention.
+
+On startup each worker also emits one non-secret configuration line:
+
+```
+human auth verifier configured: client_id_present=true issuer_mode=derived jwks_mode=derived environment=staging
+```
+
+`issuer_mode` / `jwks_mode` report `derived` when the value is computed from the
+Client ID and `explicit` when `WORKOS_ISSUER` / `WORKOS_JWKS_URL` override it. No
+URL, hostname, or Client ID value appears. If this line is absent, the deployed
+build predates Checkpoint 28 (or startup aborted — check for
+`Helios deployment contract failed`).
+
+**The reason code determines the next action. Change one thing, then re-test
+once:**
+
+| `reason=` | Meaning | Next action |
+|---|---|---|
+| `auth_missing_token` | No bearer credential arrived | Inspect whether the frontend attached an `Authorization` header at all |
+| `auth_expired_token` | Signature valid, `exp` passed | Inspect the session refresh lifecycle |
+| `auth_invalid_issuer` | `iss` did not match exactly | Verify the exact current WorkOS issuer contract |
+| `auth_invalid_client_id` | Token minted for a different WorkOS application | Verify Vercel, Render, and WorkOS application parity |
+| `auth_invalid_signature` | Signature, `kid`, algorithm, or JWT structure rejected | Verify WorkOS environment / JWKS parity |
+| `auth_jwks_failure` | JWKS document could not be fetched | Verify outbound network access and WorkOS availability |
+| `auth_missing_org` | Verified user with no usable active organization (403) | Use workspace onboarding or organization selection |
+| `auth_not_configured` | Backend WorkOS settings absent | Restore the backend WorkOS configuration |
+| `auth_invalid_token` | Required claims missing | Verify the token is a WorkOS **access** token, not another token type |
+| `auth_missing_subject` | No `sub` claim | Verify the token type and WorkOS application configuration |
+| `auth_rejected` | Unmapped internal reason (fallback) | Report it: the mapping needs a new explicit case |
+
+Do not retry sign-in repeatedly while diagnosing. One rejection produces one log
+line; repeated attempts only make the log harder to read, and WorkOS rate-limits
+sign-in (which surfaces separately as a bounded 429 panel, never a retry loop).
+
+> Note: uvicorn's own access logger echoes the full request line, including any
+> query string, as every web server does. Helios never places a credential in a
+> query string — the browser client sends the token in the `Authorization` header
+> only, and the Helios diagnostic line carries the route path without its query
+> string.
+
 ## Free-tier limitations
 
 - **Cold starts:** the Render Free backend sleeps after inactivity and can take
