@@ -70,12 +70,43 @@ def test_config_only_passes_staging_with_demo_mode_false(monkeypatch):
     monkeypatch.setenv("HELIOS_DEMO_MODE", "false")
     monkeypatch.setenv("CORS_ORIGINS", "https://helios-staging.example.vercel.app")
     monkeypatch.setenv("WORKOS_CLIENT_ID", "client_staging_example")
+    monkeypatch.delenv("WORKOS_ISSUER_CLIENT_ID", raising=False)
+    monkeypatch.delenv("WORKOS_ISSUER", raising=False)
+    monkeypatch.delenv("WORKOS_JWKS_URL", raising=False)
     monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@db.example/helios")
     get_settings.cache_clear()
     assert deployment_check.run_config_check() == 0
     get_settings.cache_clear()
-    monkeypatch.setenv("HELIOS_ENVIRONMENT", "test")
-    monkeypatch.delenv("HELIOS_DEMO_MODE", raising=False)
+
+
+def test_config_only_passes_staging_multi_application_mode(monkeypatch):
+    get_settings.cache_clear()
+    monkeypatch.setenv("HELIOS_ENVIRONMENT", "staging")
+    monkeypatch.setenv("HELIOS_E2E_TEST_MODE", "false")
+    monkeypatch.setenv("HELIOS_DEMO_MODE", "false")
+    monkeypatch.setenv("CORS_ORIGINS", "https://helios-staging.example.vercel.app")
+    monkeypatch.setenv("WORKOS_CLIENT_ID", "client_current_example")
+    monkeypatch.setenv("WORKOS_ISSUER_CLIENT_ID", "client_default_example")
+    monkeypatch.delenv("WORKOS_ISSUER", raising=False)
+    monkeypatch.delenv("WORKOS_JWKS_URL", raising=False)
+    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@db.example/helios")
+    get_settings.cache_clear()
+    assert deployment_check.run_config_check() == 0
+    get_settings.cache_clear()
+
+
+def test_config_only_rejects_ambiguous_issuer_mode(monkeypatch):
+    get_settings.cache_clear()
+    monkeypatch.setenv("HELIOS_ENVIRONMENT", "staging")
+    monkeypatch.setenv("HELIOS_E2E_TEST_MODE", "false")
+    monkeypatch.setenv("HELIOS_DEMO_MODE", "false")
+    monkeypatch.setenv("CORS_ORIGINS", "https://helios-staging.example.vercel.app")
+    monkeypatch.setenv("WORKOS_CLIENT_ID", "client_current_example")
+    monkeypatch.setenv("WORKOS_ISSUER_CLIENT_ID", "client_default_example")
+    monkeypatch.setenv("WORKOS_ISSUER", "https://auth.synthetic.example")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@db.example/helios")
+    get_settings.cache_clear()
+    assert deployment_check.run_config_check() == 1
     get_settings.cache_clear()
 
 

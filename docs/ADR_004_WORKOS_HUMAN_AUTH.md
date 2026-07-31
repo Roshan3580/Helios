@@ -53,10 +53,10 @@ OTLP; project keys cannot call `/v2/user/*`. Neither dependency calls the other.
   signature via the WorkOS JWKS, issuer, exp/iat, and required `sub`/`sid`
   (+`org_id` for org-scoped routes). WorkOS access tokens carry no `aud` claim,
   so audience verification is disabled (documented; application isolation comes
-  from the `client_id` claim, not the issuer). Verification needs only
-  `WORKOS_CLIENT_ID` (issuer/JWKS URL are derived, or overridable via
-  `WORKOS_ISSUER`/`WORKOS_JWKS_URL`) — the WorkOS server API key is *not*
-  required to validate tokens.
+  from the `client_id` claim, not the issuer). Verification uses
+  `WORKOS_CLIENT_ID` plus optional backend-only issuer configuration
+  (`WORKOS_ISSUER_CLIENT_ID` or `WORKOS_ISSUER`) — the WorkOS server API key is
+  *not* required to validate tokens.
 
 ### Why the browser calls FastAPI directly with the bearer token (no BFF)
 
@@ -105,25 +105,33 @@ internal failure classifications (`token_unavailable`, `token_refresh_failed`,
 `token_server_action_failed`, `backend_unauthorized`, …) are constant strings
 carrying no JWT, claims, email, or WorkOS identifier.
 
-### Accepted issuers: a closed two-entry set (Checkpoint 29)
+### Accepted issuers: closed WorkOS set (Checkpoints 29–30)
 
-WorkOS documents the AuthKit access-token issuer as the API root and currently
-presents **both standard spellings** of that root:
+WorkOS documents two AuthKit access-token issuer families:
+
+**API root** (sessions / single-application), both trailing-slash spellings:
 
 ```
 https://api.workos.com
 https://api.workos.com/
 ```
 
-A hosted token carrying the trailing-slash form was rejected by a verifier that
-accepted only the no-slash form. Everything else about the request was valid — a
-completed WorkOS session, a signature from the application JWKS, a matching
-`client_id`, and a usable `org_id` — so every authenticated request returned 401
-with `reason=auth_invalid_issuer` (surfaced by the Checkpoint 28 diagnostics).
+**Multi-application** ([WorkOS Applications](https://workos.com/docs/authkit/applications)):
+the `iss` claim is the same for every application in an environment and
+references the environment's *default* application's client id:
 
-Helios therefore accepts exactly those two forms, as a **closed allowlist of
-exact full strings** — `WORKOS_STANDARD_ISSUERS` in `app/config.py`, the single
-definition in the codebase. This is emphatically *not* URL normalization:
+```
+https://api.workos.com/user_management/<default_client_id>
+```
+
+Under multi-application the embedded issuer client id may differ from the
+token's `client_id` claim (which identifies the current application). Helios
+still isolates applications via that claim plus the application-specific JWKS
+at `/sso/jwks/<client_id>`.
+
+Helios selects one strict mode from validated server configuration and builds a
+**closed allowlist of exact full strings**. This is emphatically *not* URL
+normalization:
 
 - Comparison is exact full-string membership (PyJWT `iss in <tuple>`).
 - Nothing is stripped, appended, lowercased, or canonicalized.
@@ -131,30 +139,38 @@ definition in the codebase. This is emphatically *not* URL normalization:
 - The set is never derived from token data or request data.
 
 So `https://api.workos.com/foo`, `https://api.workos.com//`,
-`https://api.workos.com/user_management/<client_id>`, `http://api.workos.com`,
-`https://evil.api.workos.com`, and `https://api.workos.com.evil.example` all
-remain rejected. Accepting two spellings does not widen the trust boundary,
-because **the issuer was never the isolating factor** — `api.workos.com` is
-shared by every WorkOS application. Isolation comes from the separately
-validated `client_id` claim plus the application-specific JWKS at
-`/sso/jwks/<client_id>`, both unchanged.
+`https://api.workos.com/user_management/<other_client_id>`,
+`http://api.workos.com`, `https://evil.api.workos.com`, and
+`https://api.workos.com.evil.example` all remain rejected. Accepting the exact
+configured multi-application issuer does not widen the trust boundary, because
+**the issuer was never the isolating factor**.
 
-Two configuration modes, and only two:
+Three configuration modes, and only three:
 
 | Mode | Condition | Accepted issuers |
 |---|---|---|
-| `derived_standard_set` | `WORKOS_ISSUER` unset | exactly the two documented API-root spellings |
-| `explicit` | `WORKOS_ISSUER` set | exactly that one configured value, verbatim |
+| `derived_standard_set` | both issuer settings unset | exactly the two API-root spellings |
+| `multi_application` | only `WORKOS_ISSUER_CLIENT_ID` set | exactly the no-trailing-slash user-management issuer derived from that id |
+| `explicit` | only `WORKOS_ISSUER` set | exactly that configured HTTPS value, verbatim |
+
+When Helios is a secondary application (tokens carry
+`iss=.../user_management/<default_app_client_id>` while `client_id` is Helios's
+own id), set the backend-only `WORKOS_ISSUER_CLIENT_ID` to the environment's
+default application client id. It never defaults to or replaces
+`WORKOS_CLIENT_ID`. JWKS derivation and token `client_id` validation always use
+`WORKOS_CLIENT_ID`, never the issuer client id. Vercel does not need it, and it
+must never use a `VITE_*` prefix.
 
 Explicit mode stays strict: the configured value is used byte-for-byte, a
-trailing slash is neither added nor removed, and the standard roots are **not**
-additionally accepted. Configuring `https://auth.example.com` therefore rejects
-`https://auth.example.com/`, and vice versa — a deliberate custom auth domain is
-an exact contract, not a family of spellings. HTTPS remains required in
-staging/production.
+trailing slash is neither added nor removed, and the derived WorkOS set is
+**not** additionally accepted. Configuring `https://auth.example.com` therefore
+rejects `https://auth.example.com/`, and vice versa — a deliberate custom auth
+domain is an exact contract, not a family of spellings. HTTPS remains required
+in staging/production.
 
 Operators should leave `WORKOS_ISSUER` unset for standard WorkOS-hosted AuthKit,
-and set it only for a deliberately configured custom issuer.
+and set it only for a deliberately configured custom issuer. Setting it together
+with `WORKOS_ISSUER_CLIENT_ID` is ambiguous and fails closed.
 
 ### Rejection diagnostics reach the hosted log (Checkpoint 28)
 

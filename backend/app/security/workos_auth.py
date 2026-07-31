@@ -125,9 +125,8 @@ class WorkOSTokenVerifier:
     allowance, path stripping, or wildcard anywhere in this path, and the set is
     never influenced by token or request data.
 
-    In derived/default mode the set is the two documented WorkOS API-root
-    spellings (``config.WORKOS_STANDARD_ISSUERS``); in explicit mode it is the
-    single configured ``WORKOS_ISSUER``.
+    Standard mode contains the two exact API-root spellings; multi-application
+    and explicit modes each contain exactly one configured/derived issuer.
     """
 
     def __init__(
@@ -159,13 +158,15 @@ class WorkOSTokenVerifier:
     def verify(self, token: str) -> dict:
         """Verify signature + registered claims; return the claim set.
 
-        Because the WorkOS AuthKit issuer (``https://api.workos.com``, in either
-        documented spelling) is shared by every WorkOS application, the
+        Because the WorkOS AuthKit issuer is shared by every WorkOS application
+        in an environment — and under multi-application may even embed the
+        *default* application's client id rather than this app's — the
         ``client_id`` claim is validated explicitly against this deployment's
         configured client id: a token correctly signed by WorkOS for a
         *different* application must be rejected. This is the
-        application-isolation boundary — accepting two issuer spellings does not
-        widen it, because the issuer was never the isolating factor.
+        application-isolation boundary — accepting the documented issuer
+        spellings does not widen it, because the issuer was never the
+        isolating factor.
         """
         try:
             header = pyjwt.get_unverified_header(token)
@@ -227,8 +228,8 @@ def get_verifier() -> WorkOSTokenVerifier:
     with _verifier_lock:
         if _verifier is None:
             settings = get_settings()
-            # Derived mode yields the two documented WorkOS API-root spellings;
-            # explicit mode yields exactly the one configured issuer.
+            # Settings select one strict server-configured issuer mode. Token
+            # data never influences verifier construction.
             issuers = settings.workos_accepted_issuers
             jwks_url = settings.workos_jwks_url_resolved
             client_id = settings.workos_client_id

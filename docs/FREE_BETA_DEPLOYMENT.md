@@ -89,7 +89,7 @@ Server-only (set in the Vercel dashboard; **never** `VITE_*`):
 
 | Variable                | Value |
 |-------------------------|-------|
-| `WORKOS_CLIENT_ID`      | staging client id |
+| `WORKOS_CLIENT_ID`      | current Helios staging application Client ID |
 | `WORKOS_API_KEY`        | server-only staging API key |
 | `WORKOS_REDIRECT_URI`   | `https://helios-staging-tau.vercel.app/api/auth/callback` |
 | `WORKOS_COOKIE_PASSWORD`| random secret, ≥ 32 characters |
@@ -106,8 +106,9 @@ Server-only (set in the Vercel dashboard; **never** `VITE_*`):
 | `HELIOS_ANALYST_ALLOW_THIRD_PARTY`| `false` |
 | `DATABASE_URL`                    | external PostgreSQL URL (secret) |
 | `CORS_ORIGINS`                    | `https://helios-staging-tau.vercel.app` (exact; no wildcard) |
-| `WORKOS_CLIENT_ID`                | same staging client id as the frontend (parity required) |
-| `WORKOS_ISSUER`                   | **leave unset** → accepts both documented API-root spellings (`https://api.workos.com` and `https://api.workos.com/`); never `/user_management/…`. Set only for a deliberately configured custom issuer |
+| `WORKOS_CLIENT_ID`                | current Helios staging application Client ID; same as Vercel |
+| `WORKOS_ISSUER`                   | leave unset for standard or multi-application mode; set only for an exact custom HTTPS issuer |
+| `WORKOS_ISSUER_CLIENT_ID`         | set to the default WorkOS application only for multi-application mode; otherwise unset; Render/backend-only, never Vercel or `VITE_*` |
 | `WORKOS_JWKS_URL`                 | leave unset → derives `https://api.workos.com/sso/jwks/<client_id>` |
 
 `OPENAI_API_KEY` is intentionally **unset** — narrative stays disabled.
@@ -179,11 +180,11 @@ exception and stack detail structurally, not merely by convention.
 On startup each worker also emits one non-secret configuration line:
 
 ```
-human auth verifier configured: client_id_present=true issuer_mode=derived jwks_mode=derived environment=staging
+human auth verifier configured: client_id_present=true issuer_client_id_present=true issuer_mode=multi_application jwks_mode=derived environment=staging
 ```
 
-`issuer_mode` / `jwks_mode` report `derived` when the value is computed from the
-Client ID and `explicit` when `WORKOS_ISSUER` / `WORKOS_JWKS_URL` override it. No
+`issuer_mode` is `derived_standard_set`, `multi_application`, or `explicit`;
+`jwks_mode` is `derived` or `explicit`. Presence fields are booleans only. No
 URL, hostname, or Client ID value appears. If this line is absent, the deployed
 build predates Checkpoint 28 (or startup aborted — check for
 `Helios deployment contract failed`).
@@ -217,22 +218,29 @@ sign-in (which surfaces separately as a bounded 429 panel, never a retry loop).
 
 ### Accepted issuer values
 
-WorkOS documents the AuthKit access-token issuer as the API root and currently
-presents **both** standard spellings of it:
+Helios selects one of three mutually exclusive issuer modes from validated
+backend configuration:
 
 ```
 https://api.workos.com
 https://api.workos.com/
+https://api.workos.com/user_management/<default_client_id>
 ```
 
-With `WORKOS_ISSUER` **unset** (the recommended configuration, and what the
-startup line reports as `issuer_mode=derived_standard_set`), Helios accepts
-exactly those two values and nothing else. This is a closed allowlist compared by
-exact full-string equality — Helios performs no URL normalization, and no prefix,
-suffix, subdomain, path, or wildcard matching. All of the following stay rejected:
+In `derived_standard_set`, both issuer variables are unset and only the two API
+roots are accepted. In `multi_application`, `WORKOS_ISSUER_CLIENT_ID` is set,
+`WORKOS_ISSUER` is unset, and only the one no-trailing-slash user-management
+issuer is accepted. In `explicit`, `WORKOS_ISSUER_CLIENT_ID` is unset and only
+the exact configured HTTPS issuer is accepted. Setting both fails startup.
+
+All modes use exact full-string equality. Helios performs no normalization and
+no prefix, suffix, substring, regex, subdomain, path, or wildcard matching. In
+multi-application mode all of the following stay rejected:
 
 ```
-https://api.workos.com/user_management/<client_id>
+https://api.workos.com/user_management/<other_client_id>
+https://api.workos.com/user_management/<default_client_id>/
+https://api.workos.com/user_management/
 https://api.workos.com/anything
 https://api.workos.com//
 http://api.workos.com
@@ -240,22 +248,28 @@ https://evil.api.workos.com
 https://api.workos.com.evil.example
 ```
 
-Accepting two spellings does not weaken tenancy: `api.workos.com` is shared by
-every WorkOS application, so isolation comes from the separately validated
-`client_id` claim and the application-specific JWKS at `/sso/jwks/<client_id>` —
-both unchanged.
+Accepting the configured multi-application issuer does not weaken tenancy:
+isolation comes from the separately validated `client_id` claim and the
+application-specific JWKS at `/sso/jwks/<client_id>` — both unchanged. The
+issuer may even embed a different (default-app) client id than Helios's own.
 
 If you see `auth_invalid_issuer`:
 
-1. **Confirm the startup line reports `issuer_mode=derived_standard_set`.** If it
-   reports `explicit`, `WORKOS_ISSUER` is set — and in explicit mode Helios
-   accepts *only* that one exact value. Unsetting it is usually the fix.
-2. **Do not add a trailing slash to `WORKOS_ISSUER` to "fix" this.** Both root
-   spellings are already accepted in derived mode; setting either one explicitly
-   narrows acceptance rather than widening it.
-3. Set `WORKOS_ISSUER` only for a deliberately configured custom WorkOS auth
+1. **Confirm the startup line reports the intended mode.** Standard deployments
+   use `derived_standard_set`; the confirmed hosted shape uses
+   `multi_application`; custom issuers use `explicit`.
+2. **If Helios is a secondary WorkOS application**, set
+   `WORKOS_ISSUER_CLIENT_ID` to the environment's default application client id
+   (the id embedded in `iss`). Do not put that value into `WORKOS_CLIENT_ID`.
+3. **Do not add a trailing slash to "fix" multi-application mode.** Its issuer
+   is intentionally the single no-trailing-slash value.
+4. Set `WORKOS_ISSUER` only for a deliberately configured custom WorkOS auth
    domain. It is then an exact contract: `https://auth.example.com` does **not**
    also accept `https://auth.example.com/`.
+
+FastAPI does not need `WORKOS_API_KEY`. JWKS and token `client_id` validation
+always use `WORKOS_CLIENT_ID`; only multi-app issuer derivation uses
+`WORKOS_ISSUER_CLIENT_ID`. Never put real identifiers in committed files.
 
 ## Free-tier limitations
 

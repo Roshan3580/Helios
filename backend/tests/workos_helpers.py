@@ -14,8 +14,9 @@ import jwt as pyjwt
 from cryptography.hazmat.primitives.asymmetric import rsa
 
 TEST_CLIENT_ID = "client_test_helios"
-# Official WorkOS AuthKit access-token issuer (the API root, no path). The
-# application is identified by the separate ``client_id`` claim, not the issuer.
+# Default synthetic issuer used by most mint helpers (API-root spelling).
+# Multi-application tests override this with their one configured issuer.
+# Application isolation always uses the separate ``client_id`` claim.
 TEST_ISSUER = "https://api.workos.com"
 TEST_KID = "sso_oidc_key_test_1"
 

@@ -62,6 +62,17 @@ for secret in ("WORKOS_API_KEY", "WORKOS_COOKIE_PASSWORD"):
         f"VITE_{secret}" not in text,
         f"{secret} must be server-only, never VITE_-prefixed",
     )
+
+# The separate issuer application identity is backend-only. It may be named in
+# backend configuration and docs, but must never be a browser VITE_* variable.
+require(
+    "VITE_" + "WORKOS_ISSUER_CLIENT_ID" not in text,
+    "WORKOS_ISSUER_CLIENT_ID must be backend-only, never VITE_-prefixed",
+)
+require(
+    "WORKOS_ISSUER_CLIENT_ID" in text,
+    "beta example must document multi-application issuer configuration",
+)
 # The WorkOS API key must be commented (dashboard-managed), never an active line.
 require(
     not re.search(r"^\s*WORKOS_API_KEY=\S", text, re.MULTILINE),
@@ -116,6 +127,13 @@ require(
 
 doc = Path("docs/FREE_BETA_DEPLOYMENT.md").read_text()
 require("helios-api-beta" in doc, "beta docs must describe the helios-api-beta service")
+for required in (
+    "derived_standard_set",
+    "multi_application",
+    "WORKOS_ISSUER_CLIENT_ID",
+    "backend-only",
+):
+    require(required in doc, f"beta docs must describe {required}")
 # The beta backend must build from `main` (the beta source branch), documented
 # somewhere in the deployment doc (Markdown table cell or prose).
 require(

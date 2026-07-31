@@ -40,18 +40,24 @@ class TestVerification:
         assert claims["client_id"] == TEST_CLIENT_ID
         assert claims["role"] == "member"
 
-    def test_official_issuer_is_api_root(self):
-        # The AuthKit access-token issuer is the API root, not a
-        # /user_management/<client_id> path.
+    def test_official_issuer_includes_api_root(self):
+        # The AuthKit access-token issuer includes the API root; multi-application
+        # environments may also emit /user_management/<default_client_id>.
         assert TEST_ISSUER == "https://api.workos.com"
         claims = make_verifier().verify(make_token(issuer=TEST_ISSUER))
         assert claims["iss"] == "https://api.workos.com"
 
-    def test_user_management_issuer_rejected(self):
-        # A token whose issuer is the old (incorrect) /user_management/ form
-        # must be rejected: it is not what AuthKit emits.
+    def test_user_management_issuer_rejected_in_standard_mode(self):
         token = make_token(
             issuer=f"https://api.workos.com/user_management/{TEST_CLIENT_ID}"
+        )
+        with pytest.raises(AuthError) as exc:
+            make_verifier().verify(token)
+        assert exc.value.reason == "wrong_issuer"
+
+    def test_user_management_issuer_for_other_client_rejected(self):
+        token = make_token(
+            issuer="https://api.workos.com/user_management/client_some_other_app"
         )
         with pytest.raises(AuthError) as exc:
             make_verifier().verify(token)

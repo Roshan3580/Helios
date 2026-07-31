@@ -126,6 +126,7 @@ echo "[deploy-contract] backend config-only check (staging-shaped placeholders)"
 BACKEND_PY="${BACKEND_VENV:-$ROOT/backend/.venv}/bin/python"
 (
   cd backend
+  unset WORKOS_ISSUER_CLIENT_ID WORKOS_ISSUER WORKOS_JWKS_URL
   HELIOS_ENVIRONMENT=staging \
   HELIOS_E2E_TEST_MODE=false \
   HELIOS_DEMO_MODE=false \
@@ -134,9 +135,40 @@ BACKEND_PY="${BACKEND_VENV:-$ROOT/backend/.venv}/bin/python"
   DATABASE_URL='postgresql://helios_staging:placeholder@db.example/helios_staging' \
   CORS_ORIGINS='https://helios-staging.example.vercel.app' \
   WORKOS_CLIENT_ID='client_staging_example' \
-  WORKOS_ISSUER='https://api.workos.com' \
-  WORKOS_JWKS_URL='https://api.workos.com/sso/jwks/client_staging_example' \
   "$BACKEND_PY" -m app.cli.deployment_check --config-only
+)
+
+echo "[deploy-contract] multi-application mode is valid and backend-only"
+(
+  cd backend
+  unset WORKOS_ISSUER WORKOS_JWKS_URL
+  HELIOS_ENVIRONMENT=staging \
+  HELIOS_E2E_TEST_MODE=false \
+  HELIOS_DEMO_MODE=false \
+  HELIOS_ANALYST_NARRATIVE_ENABLED=false \
+  HELIOS_ANALYST_ALLOW_THIRD_PARTY=false \
+  DATABASE_URL='postgresql://helios_staging:placeholder@db.example/helios_staging' \
+  CORS_ORIGINS='https://helios-staging.example.vercel.app' \
+  WORKOS_CLIENT_ID='client_current_example' \
+  WORKOS_ISSUER_CLIENT_ID='client_default_example' \
+  "$BACKEND_PY" -m app.cli.deployment_check --config-only
+)
+
+echo "[deploy-contract] ambiguous issuer configuration must fail"
+(
+  cd backend
+  if HELIOS_ENVIRONMENT=staging \
+    HELIOS_E2E_TEST_MODE=false \
+    HELIOS_DEMO_MODE=false \
+    DATABASE_URL='postgresql://helios_staging:placeholder@db.example/helios_staging' \
+    CORS_ORIGINS='https://helios-staging.example.vercel.app' \
+    WORKOS_CLIENT_ID='client_current_example' \
+    WORKOS_ISSUER_CLIENT_ID='client_default_example' \
+    WORKOS_ISSUER='https://auth.synthetic.example' \
+    "$BACKEND_PY" -m app.cli.deployment_check --config-only >/dev/null 2>&1; then
+    echo "expected ambiguous WorkOS issuer configuration to fail" >&2
+    exit 1
+  fi
 )
 
 echo "[deploy-contract] staging + HELIOS_DEMO_MODE=true must fail (L1 regression guard)"
