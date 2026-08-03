@@ -2,7 +2,7 @@
   "name": "@helios-ai/sdk",
   "version": "0.1.0",
   "description": "Helios OpenTelemetry SDK for Node.js: canonical OTLP/HTTP protobuf trace export with project API-key authentication. Package name reserved for publication; NOT yet published to npm.",
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/roshanraj/helios-observatory.git",

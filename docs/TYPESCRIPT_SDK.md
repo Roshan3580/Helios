@@ -161,8 +161,8 @@ manager, and W3C propagators.
 
 ## Remaining before npm publication
 
-License selection (package is currently `UNLICENSED`), org/npm scope
-ownership for `@helios-ai`, changelog + semver policy (recommend staying
+The package is licensed under Apache-2.0. Remaining work includes org/npm
+scope ownership for `@helios-ai`, a changelog and semver policy (recommend staying
 `0.x` until the OTel experimental exporter line stabilizes), provenance
 signing, and a decision on ESM loader-hook support for pure-ESM
 instrumentation consumers.
