@@ -1,146 +1,210 @@
-# Helios Python SDK
+# Helios Observatory Python SDK
 
-One distribution, two APIs:
+`helios-observatory-sdk` adds OpenTelemetry tracing to Python applications and
+exports authenticated OTLP/HTTP protobuf spans to Helios. It supports manual
+agent, retrieval, tool, LLM, and workflow spans plus optional OpenAI
+auto-instrumentation.
 
-- **v2 `Helios` runtime (recommended)** — exports standard OpenTelemetry spans
-  through authenticated OTLP/HTTP protobuf to `/v1/otlp/traces`, with automatic
-  OpenAI instrumentation. Requires the `[otel]` extra (`[openai]` for OpenAI).
-- **Legacy `HeliosClient`** — submits a custom JSON trace to `/v1/traces`.
-  Dependency-light; kept for backward compatibility.
+The distribution name is `helios-observatory-sdk`. The Python import remains
+`helios_sdk`.
 
-## Install
+Helios is currently a production-capable hosted beta. It is not a generally
+available or SLA-backed service.
+
+## Installation
+
+Install only the dependency-light legacy client:
 
 ```bash
-# v2 runtime + OpenAI auto-instrumentation
-pip install -e "sdk/python[otel,openai]"
-
-# legacy client only (no OpenTelemetry)
-pip install -e "sdk/python"
+pip install helios-observatory-sdk
 ```
 
-## v2 quick start
+Install the recommended OpenTelemetry runtime:
+
+```bash
+pip install "helios-observatory-sdk[otel]"
+```
+
+Install the runtime with OpenAI auto-instrumentation:
+
+```bash
+pip install "helios-observatory-sdk[openai]"
+```
+
+The combined and all-inclusive forms are also supported:
+
+```bash
+pip install "helios-observatory-sdk[otel,openai]"
+pip install "helios-observatory-sdk[all]"
+```
+
+The `openai` extra includes the OpenTelemetry runtime it needs. Development and
+test dependencies are not installed by any runtime extra.
+
+## OpenTelemetry quick start
+
+Create a project API key in Helios with `traces:ingest` access, then inject it
+through your local secret-management mechanism. Never commit a `hel_proj_*`
+key, print it, or place it in browser code.
 
 ```python
 import os
+
 from helios_sdk import Helios
 
 helios = Helios.configure(
-    api_key=os.environ["HELIOS_API_KEY"],   # project API key (a secret)
+    api_key=os.environ["HELIOS_API_KEY"],
     service_name="my-agent",
-    # endpoint defaults to http://localhost:8000
+    endpoint=os.environ.get("HELIOS_ENDPOINT", "http://localhost:8000"),
+    environment="development",
 )
 
-helios.instrument_openai()  # prompt/response content is NOT captured by default
-
-# Manual spans for custom workflow boundaries:
-with helios.agent("my-agent"):
-    with helios.retrieval("kb.search") as span:
+with helios.agent("answer-question"):
+    with helios.retrieval("knowledge.search") as span:
         span.set_attribute("retrieval.top_k", 5)
-    with helios.tool("lookup_policy") as span:
+    with helios.tool("policy.lookup") as span:
         span.set_attribute("tool.name", "policy-engine")
-
-@helios.trace("answer-question")           # sync or async functions
-def answer_question(q): ...
 
 flush_completed = helios.force_flush()
 helios.shutdown()
 if not flush_completed:
-    raise SystemExit("Export did not complete locally. Review exporter errors before retrying.")
-print("Export completed locally. Check Helios to confirm trace arrival. Exporter errors are authoritative.")
+    raise SystemExit(
+        "Export did not complete locally. Review exporter errors before retrying."
+    )
+
+print(
+    "Export completed locally. Check Helios to confirm trace arrival. "
+    "Exporter errors are authoritative."
+)
 ```
 
-### Environment variables (precedence: explicit arg > Helios env > OTel env > default)
+`force_flush()` confirms that the local OpenTelemetry processor completed its
+work. It does not prove that the backend accepted the trace because the
+OpenTelemetry batch processor does not propagate the exporter result. Verify
+trace arrival in Helios before claiming successful delivery.
 
-| Variable                 | Purpose                         | Default                                 |
-| ------------------------ | ------------------------------- | --------------------------------------- |
-| `HELIOS_API_KEY`         | project API key (bearer)        | required                                |
-| `HELIOS_ENDPOINT`        | backend base URL                | `http://localhost:8000`                 |
-| `HELIOS_SERVICE_NAME`    | `service.name`                  | required unless `OTEL_SERVICE_NAME` set |
-| `HELIOS_ENVIRONMENT`     | deployment environment          | unset                                   |
-| `HELIOS_CAPTURE_CONTENT` | capture prompt/response content | `false`                                 |
+An invalid or revoked project key remains rejected by Helios with HTTP 401.
+The SDK does not retry with another credential or convert that rejection into
+success. OpenTelemetry exporter errors are authoritative.
 
-### Privacy
+## Endpoint and environment configuration
 
-Prompt and completion content are **disabled by default**. Enabling capture
-(`HELIOS_CAPTURE_CONTENT=true` or `instrument_openai(capture_content=True)`) may
-send sensitive data to Helios; you are responsible for consent, redaction, and
-data-handling. Helios never logs prompts/responses. **API keys are secrets** —
-never commit them or ship them to browser code.
+Explicit arguments take precedence over Helios environment variables, which
+take precedence over recognized OpenTelemetry variables and defaults.
 
-### Lifecycle
+| Variable | Purpose | Default |
+| --- | --- | --- |
+| `HELIOS_API_KEY` | Project API key used as the bearer credential | Required |
+| `HELIOS_ENDPOINT` | Helios backend base URL | `http://localhost:8000` |
+| `HELIOS_SERVICE_NAME` | OpenTelemetry `service.name` | `OTEL_SERVICE_NAME`, then required |
+| `HELIOS_ENVIRONMENT` | Deployment environment resource attribute | Unset |
+| `HELIOS_CAPTURE_CONTENT` | Opt in to prompt and response capture | `false` |
 
-- `force_flush()`: drains the local batch queue before a short-lived or
-  serverless process returns. Its boolean reports processor completion, not
-  remote acceptance, because OpenTelemetry does not propagate the exporter result.
-- `shutdown()`: flushes and stops telemetry; idempotent and registered at exit.
-- Exporter errors are authoritative. Verify trace arrival in Helios before
-  reporting remote export success.
+The SDK appends `/v1/otlp/traces` to a base endpoint. A full endpoint already
+ending in that canonical path is accepted without duplicating it.
 
-### Compatibility
+## OpenAI instrumentation
 
-- Auto-instrumentation this release: **OpenAI** only, via the official
-  `opentelemetry-instrumentation-openai-v2` (beta). Verified with `openai`
-  2.46.0 on Python ≥3.10. Other providers/frameworks are future work.
-- A Node.js/TypeScript SDK also ships in this repository
-  (`sdk/typescript`, `@helios-ai/sdk` — repository artifact, not yet published
-  to npm); see [docs/TYPESCRIPT_SDK.md](../../docs/TYPESCRIPT_SDK.md).
-- The legacy `HeliosClient` (below) continues to target `/v1/traces`.
+Install the `openai` extra before enabling instrumentation:
 
----
+```python
+import os
 
-## Legacy client (`HeliosClient` → `/v1/traces`)
+from helios_sdk import Helios
+from openai import OpenAI
 
-## Quick start
+helios = Helios.configure(
+    api_key=os.environ["HELIOS_API_KEY"],
+    service_name="openai-agent",
+    endpoint=os.environ.get("HELIOS_ENDPOINT", "http://localhost:8000"),
+)
+helios.instrument_openai()
+
+client = OpenAI()
+
+with helios.agent("openai-agent"):
+    client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": "Hello"}],
+    )
+
+helios.force_flush()
+helios.shutdown()
+```
+
+Prompt and completion content capture is disabled by default. Enabling
+`HELIOS_CAPTURE_CONTENT=true` or passing `capture_content=True` may transmit
+sensitive content. You are responsible for consent, redaction, and applicable
+data-handling requirements.
+
+## Decorators and manual spans
+
+`Helios.trace()` decorates synchronous or asynchronous workflow functions:
+
+```python
+@helios.trace("answer-question")
+def answer_question(question: str) -> str:
+    with helios.tool("policy.lookup"):
+        return "answer"
+```
+
+The runtime also exposes `agent`, `retrieval`, `tool`, `llm`, and general
+`span` context managers. Raw OpenTelemetry access remains available through
+`helios.tracer`.
+
+## Legacy client
+
+The base installation retains the dependency-light `HeliosClient` API for the
+legacy `/v1/traces` JSON endpoint:
 
 ```python
 from helios_sdk import HeliosClient
 
 client = HeliosClient(
     base_url="http://localhost:8000",
-    project_slug="rag-support-bot",
-    project_name="RAG Support Bot",
+    project_slug="example",
+    project_name="Example",
     environment="development",
 )
 
 trace = client.create_trace(
-    user_query="How do I rotate API keys without downtime?",
-    app_name="rag-support-bot",
-    model="gpt-4o-mini",
+    user_query="How do I rotate a key?",
+    app_name="support-agent",
+    model="example-model",
 )
 
-with trace.span("retriever.search", span_type="rag") as span:
-    span.set_input("api key rotation policy")
-    span.set_output("Retrieved 3 policy chunks")
-    span.set_metadata({"top_k": 3, "source": "docs/security.md"})
-
-with trace.span("llm.generate", span_type="llm", provider="openai", model="gpt-4o-mini") as span:
-    span.set_input("Question + retrieved context")
-    span.set_output("Step-by-step rotation plan")
-    span.set_tokens(1240)
-    span.set_cost(0.0042)
+with trace.span("policy.lookup", span_type="tool") as span:
+    span.set_output("Rotation guidance retrieved")
 
 result = client.submit_trace(trace)
 print(result["trace_id"])
 ```
 
-## API
+`HeliosConnectionError` reports an unreachable backend.
+`HeliosAPIError` reports a non-success HTTP response.
 
-| Class / method                                              | Description                       |
-| ----------------------------------------------------------- | --------------------------------- |
-| `HeliosClient(base_url, project_slug, ...)`                 | Configure backend URL and project |
-| `create_trace(user_query, app_name, model)`                 | Start a trace builder             |
-| `TraceBuilder.span(name, span_type)`                        | Context manager for a span        |
-| `SpanRecorder.set_input/output/metadata/tokens/cost/status` | Attach span details               |
-| `submit_trace(trace)`                                       | POST trace + spans to Helios      |
+## Version and compatibility
 
-## Errors
+The installed distribution exposes its metadata version as
+`helios_sdk.__version__`. Version `0.2.0` supports Python 3.10 through 3.13.
+Artifact installation and SDK tests cover each advertised Python version in
+ordinary CI.
 
-- `HeliosConnectionError`: backend unreachable
-- `HeliosAPIError`: non-2xx API response
+The package is pure Python. OpenAI auto-instrumentation uses the upstream
+`opentelemetry-instrumentation-openai-v2` package and does not imply affiliation
+with OpenAI or OpenTelemetry.
 
-## See also
+## Project links
 
-- [examples/python_sdk_quickstart](../../examples/python_sdk_quickstart/): v2 `Helios` runtime + OpenAI auto-instrumentation demo
-- [docs/ADR_003_PYTHON_OTEL_SDK.md](../../docs/ADR_003_PYTHON_OTEL_SDK.md): v2 SDK decision record
-- [examples/rag_support_bot](../../examples/rag_support_bot/): deterministic legacy RAG demo app
-- [docs/SDK_INGESTION.md](../../docs/SDK_INGESTION.md): legacy end-to-end ingestion walkthrough
+- Repository: https://github.com/Roshan3580/Helios
+- Issues: https://github.com/Roshan3580/Helios/issues
+- Documentation: https://github.com/Roshan3580/Helios/tree/main/docs
+- Hosted beta: https://helios-staging-tau.vercel.app
+- Python SDK example: https://github.com/Roshan3580/Helios/tree/main/examples/python_sdk_quickstart
+
+## License
+
+Copyright 2026 Roshan Raj.
+
+Helios Observatory Python SDK is licensed under the Apache License, Version
+2.0. See https://github.com/Roshan3580/Helios/blob/main/LICENSE.

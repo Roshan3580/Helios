@@ -297,7 +297,7 @@ class Helios:
         except ImportError as exc:
             raise HeliosInstrumentationError(
                 "OpenAI instrumentation requires the optional extra. Install with:\n"
-                '    pip install "helios-sdk[otel,openai]"'
+                '    pip install "helios-observatory-sdk[openai]"'
             ) from exc
 
         import os

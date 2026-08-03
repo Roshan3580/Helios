@@ -133,5 +133,8 @@ class TestMissingExtra:
         monkeypatch.setattr(builtins, "__import__", fake_import)
         from helios_sdk.errors import HeliosInstrumentationError
 
-        with pytest.raises(HeliosInstrumentationError, match="helios-sdk\\[otel,openai\\]"):
+        with pytest.raises(
+            HeliosInstrumentationError,
+            match="helios-observatory-sdk\\[openai\\]",
+        ):
             helios.instrument_openai()

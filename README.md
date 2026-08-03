@@ -332,9 +332,18 @@ Full walkthrough: [docs/ADR_002_PROJECT_API_KEYS.md](docs/ADR_002_PROJECT_API_KE
 - Rate limiting on ingestion and read APIs (human WorkOS auth + `hel_proj_*` machine auth already shipped)
 - Migrate the remaining legacy `/v1` demo pages (RAG, evals, prompts, datasets, experiments) onto authenticated v2 data (the unauthenticated `/v1` demo surface itself is now gated behind explicit `HELIOS_DEMO_MODE`, forbidden in staging/production — Checkpoint 18)
 - Per-project user membership / RBAC (today: organization-wide access)
-- Publish the TypeScript SDK to npm (currently repository-artifact only, `UNLICENSED`)
+- Publish the TypeScript SDK to npm (currently a repository artifact)
 - Eval runner with background workers
 - Prompt, dataset, and eval creation workflows (create/run UI actions are placeholders today)
 - Production monitoring
 
 See [docs/PROJECT_IMPROVEMENTS.md](docs/PROJECT_IMPROVEMENTS.md) and [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md).
+
+## License
+
+Copyright 2026 Roshan Raj.
+
+Helios-owned code and documentation are licensed under the
+[Apache License, Version 2.0](LICENSE). Third-party and generated material
+identified in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) retains its
+original license.

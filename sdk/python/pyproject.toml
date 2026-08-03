@@ -1,24 +1,29 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "helios-sdk"
+name = "helios-observatory-sdk"
 version = "0.2.0"
-description = "Python client and OpenTelemetry instrumentation SDK for Helios"
-readme = "README.md"
+description = "OpenTelemetry tracing SDK for Helios observability"
+readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.10"
-authors = [{ name = "Helios" }]
-keywords = ["opentelemetry", "observability", "tracing", "llm", "helios"]
-# Not published to any package index. Distributed only as a repository artifact
-# (editable/local install), matching the TypeScript SDK's UNLICENSED posture.
-# "Private :: Do Not Upload" makes PyPI reject an accidental `twine upload`.
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "Roshan Raj" }]
+maintainers = [{ name = "Roshan Raj" }]
+keywords = ["agents", "helios", "llm", "observability", "opentelemetry", "tracing"]
 classifiers = [
-  "Private :: Do Not Upload",
-  "License :: Other/Proprietary License",
-  "Programming Language :: Python :: 3",
+  "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Topic :: System :: Monitoring",
+  "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 # Base install keeps the legacy HeliosClient (/v1/traces) dependency-light.
 # The v2 OTLP runtime lives behind the [otel] extra; OpenAI auto-instrumentation
@@ -30,8 +35,10 @@ dependencies = [
 # NOTE: [project.urls] is a sub-table and must follow every top-level [project]
 # key (including `dependencies`); otherwise those keys are absorbed into it.
 [project.urls]
+Homepage = "https://helios-staging-tau.vercel.app"
 Repository = "https://github.com/Roshan3580/Helios"
-Documentation = "https://github.com/Roshan3580/Helios/blob/main/docs/ARCHITECTURE.md"
+Issues = "https://github.com/Roshan3580/Helios/issues"
+Documentation = "https://github.com/Roshan3580/Helios/tree/main/docs"
 
 [project.optional-dependencies]
 # v2 OTLP runtime: standard OpenTelemetry API/SDK + HTTP protobuf exporter.
@@ -42,17 +49,33 @@ otel = [
 ]
 # Automatic OpenAI instrumentation (official OTel GenAI instrumentor).
 openai = [
-  "opentelemetry-instrumentation-openai-v2>=2.0b0,<3",
-  "openai>=1.26,<3",
-]
-dev = [
-  "pytest>=8.0",
   "opentelemetry-api>=1.30,<2",
   "opentelemetry-sdk>=1.30,<2",
   "opentelemetry-exporter-otlp-proto-http>=1.30,<2",
   "opentelemetry-instrumentation-openai-v2>=2.0b0,<3",
   "openai>=1.26,<3",
 ]
+all = [
+  "opentelemetry-api>=1.30,<2",
+  "opentelemetry-sdk>=1.30,<2",
+  "opentelemetry-exporter-otlp-proto-http>=1.30,<2",
+  "opentelemetry-instrumentation-openai-v2>=2.0b0,<3",
+  "openai>=1.26,<3",
+]
+dev = [
+  "build>=1.2,<2",
+  "packaging>=24",
+  "pytest>=8.0",
+  "twine>=6,<7",
+  "opentelemetry-api>=1.30,<2",
+  "opentelemetry-sdk>=1.30,<2",
+  "opentelemetry-exporter-otlp-proto-http>=1.30,<2",
+  "opentelemetry-instrumentation-openai-v2>=2.0b0,<3",
+  "openai>=1.26,<3",
+]
+
+[tool.setuptools]
+include-package-data = false
 
 [tool.setuptools.packages.find]
 where = ["."]

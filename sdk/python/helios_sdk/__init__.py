@@ -9,6 +9,8 @@ Two APIs share one distribution:
   imported lazily, so ``import helios_sdk`` never pulls in OpenTelemetry.
 """
 
+from importlib.metadata import version as _distribution_version
+
 from helios_sdk.client import HeliosClient, SpanRecorder, TraceBuilder
 from helios_sdk.errors import (
     HeliosAPIError,
@@ -28,9 +30,10 @@ __all__ = [
     "HeliosConfigurationError",
     "HeliosInstrumentationError",
     "Helios",
+    "__version__",
 ]
 
-__version__ = "0.2.0"
+__version__ = _distribution_version("helios-observatory-sdk")
 
 
 def __getattr__(name: str):
@@ -42,7 +45,8 @@ def __getattr__(name: str):
         except ImportError as exc:  # pragma: no cover - exercised via extras
             raise ImportError(
                 "helios_sdk.Helios requires the OpenTelemetry runtime. Install with:\n"
-                '    pip install "helios-sdk[otel]"  (add ",openai" for OpenAI)'
+                '    pip install "helios-observatory-sdk[otel]" '
+                '(use the "openai" extra for OpenAI)'
             ) from exc
         return Helios
     raise AttributeError(f"module 'helios_sdk' has no attribute {name!r}")

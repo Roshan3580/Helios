@@ -379,11 +379,16 @@ export function CtaSection() {
         </h2>
         <div className="mx-auto mt-10 max-w-xl border border-rule bg-card p-5 text-left">
           <div className="label-eyebrow">install</div>
-          <pre className="mt-2 font-mono text-[12.5px]">{`pip install helios-sdk
+          <pre className="mt-2 font-mono text-[12.5px]">{`# From a Helios checkout
+pip install -e "sdk/python[otel]"
 
-import helios
-helios.init(api_key="hel_•••••••••")
-helios.trace(openai.chat.completions.create)`}</pre>
+import os
+from helios_sdk import Helios
+
+helios = Helios.configure(
+    api_key=os.environ["HELIOS_API_KEY"],
+    service_name="my-agent",
+)`}</pre>
         </div>
       </div>
     </section>
