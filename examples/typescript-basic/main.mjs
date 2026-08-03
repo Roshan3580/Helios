@@ -7,24 +7,23 @@
 //   HELIOS_API_KEY       project API key with traces:ingest (hel_proj_…)
 //   HELIOS_ENDPOINT      e.g. http://localhost:8000
 //   HELIOS_SERVICE_NAME  optional (defaults below)
-import {
-  Helios,
-  llmAttributes,
-  retrievalAttributes,
-  toolAttributes,
-} from "@helios-ai/sdk";
+import { Helios, llmAttributes, retrievalAttributes, toolAttributes } from "@helios-ai/sdk";
 
 await Helios.configure({
   apiKey: process.env.HELIOS_API_KEY, // never hardcode the key
   endpoint: process.env.HELIOS_ENDPOINT ?? "http://localhost:8000",
   serviceName: process.env.HELIOS_SERVICE_NAME ?? "ts-basic-example",
   environment: "development",
+  diagnostics: "warn",
 });
 
 const answer = await Helios.trace("support.workflow", async () => {
   const documents = await Helios.span(
     "retrieval.search",
-    { spanType: "retrieval", attributes: retrievalAttributes({ operation: "search", documentCount: 3 }) },
+    {
+      spanType: "retrieval",
+      attributes: retrievalAttributes({ operation: "search", documentCount: 3 }),
+    },
     async () => ["policy.md", "faq.md", "pricing.md"],
   );
 
@@ -55,4 +54,6 @@ console.log(`workflow result: ${answer}`);
 
 await Helios.forceFlush();
 await Helios.shutdown();
-console.log("trace exported — open the Helios console to inspect it");
+console.log(
+  "Export completed locally. Check Helios to confirm trace arrival; exporter errors are authoritative.",
+);

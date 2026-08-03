@@ -10,6 +10,7 @@ import { useProjectSelection } from "@/contexts/project-selection";
 import { useTraceAnalysis } from "@/hooks/use-trace-analysis";
 import { useTraceDetail } from "@/hooks/use-trace-detail";
 import type { OtelSpan } from "@/lib/api/user";
+import { markTracesOpened } from "@/lib/onboarding/trace-progress";
 import {
   formatDurationMs,
   formatTimestamp,
@@ -33,6 +34,12 @@ function TraceDetailPage() {
   } = useProjectSelection();
   const { trace, loading, error, errorStatus, reload } = useTraceDetail(id);
   const analysisState = useTraceAnalysis(id);
+
+  useEffect(() => {
+    if (!projectLoading && !projectError && selectedProject) {
+      markTracesOpened(selectedProject.id);
+    }
+  }, [projectLoading, projectError, selectedProject]);
 
   const rows = useMemo(() => (trace ? buildTimelineRows(trace.spans) : []), [trace]);
   const total = timelineTotalMs(rows);

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 
 import { PageHeader } from "@/components/helios/app-shell";
@@ -6,6 +6,7 @@ import { BackendStateNotice } from "@/components/helios/backend-state-notice";
 import { Eyebrow, StatusBadge } from "@/components/helios/primitives";
 import { useProjectSelection } from "@/contexts/project-selection";
 import { useTraceList } from "@/hooks/use-traces";
+import { markTracesOpened } from "@/lib/onboarding/trace-progress";
 import { formatDurationMs, formatTimestamp, shortTraceId } from "@/lib/otel/format";
 
 export const Route = createFileRoute("/app/traces")({ component: TracesLayout });
@@ -32,6 +33,12 @@ function TracesListPage() {
     [serviceName, errorsOnly],
   );
   const { traces, loading, error, errorStatus, reload } = useTraceList(filters);
+
+  useEffect(() => {
+    if (!projectLoading && !projectError && selectedProject) {
+      markTracesOpened(selectedProject.id);
+    }
+  }, [projectLoading, projectError, selectedProject]);
 
   return (
     <div>

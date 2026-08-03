@@ -45,10 +45,11 @@ declarations; both are exercised by the package verification suite.
 import { Helios } from "@helios-ai/sdk";
 
 await Helios.configure({
-  apiKey: process.env.HELIOS_API_KEY!,     // hel_proj_… (scope: traces:ingest)
-  endpoint: process.env.HELIOS_ENDPOINT!,  // e.g. https://your-helios-backend
+  apiKey: process.env.HELIOS_API_KEY!, // hel_proj_… (scope: traces:ingest)
+  endpoint: process.env.HELIOS_ENDPOINT!, // e.g. https://your-helios-backend
   serviceName: "support-agent",
   environment: "development",
+  diagnostics: "warn", // redacted exporter diagnostics
 });
 
 await Helios.trace("support.workflow", async () => {
@@ -63,18 +64,21 @@ await Helios.trace("support.workflow", async () => {
 
 await Helios.forceFlush();
 await Helios.shutdown();
+console.log(
+  "Export completed locally. Check Helios to confirm trace arrival; exporter errors are authoritative.",
+);
 ```
 
 ### Environment variables
 
-| Variable | Meaning |
-| -------- | ------- |
-| `HELIOS_API_KEY` | Project API key (required unless passed explicitly) |
-| `HELIOS_ENDPOINT` | Base URL or full `/v1/otlp/traces` URL (default `http://localhost:8000`) |
-| `HELIOS_SERVICE_NAME` | `service.name` (falls back to `OTEL_SERVICE_NAME`) |
-| `HELIOS_SERVICE_VERSION` | Optional `service.version` |
-| `HELIOS_ENVIRONMENT` | Optional `deployment.environment.name` |
-| `HELIOS_CAPTURE_CONTENT` | Opt-in GenAI content capture (default `false`) |
+| Variable                 | Meaning                                                                  |
+| ------------------------ | ------------------------------------------------------------------------ |
+| `HELIOS_API_KEY`         | Project API key (required unless passed explicitly)                      |
+| `HELIOS_ENDPOINT`        | Base URL or full `/v1/otlp/traces` URL (default `http://localhost:8000`) |
+| `HELIOS_SERVICE_NAME`    | `service.name` (falls back to `OTEL_SERVICE_NAME`)                       |
+| `HELIOS_SERVICE_VERSION` | Optional `service.version`                                               |
+| `HELIOS_ENVIRONMENT`     | Optional `deployment.environment.name`                                   |
+| `HELIOS_CAPTURE_CONTENT` | Opt-in GenAI content capture (default `false`)                           |
 
 Explicit options always win over environment variables.
 
@@ -102,7 +106,12 @@ Explicit options always win over environment variables.
 ### AI attribute builders
 
 ```ts
-import { llmAttributes, toolAttributes, retrievalAttributes, workflowAttributes } from "@helios-ai/sdk";
+import {
+  llmAttributes,
+  toolAttributes,
+  retrievalAttributes,
+  workflowAttributes,
+} from "@helios-ai/sdk";
 
 llmAttributes({ operation: "chat", requestModel: "gpt-4o-mini", inputTokens: 42, outputTokens: 7 });
 toolAttributes({ toolName: "kb.search" });
@@ -124,7 +133,7 @@ await Helios.configure({
   // ...
   instrumentations: {
     openai: true, // official @opentelemetry/instrumentation-openai
-    node: true,   // official @opentelemetry/auto-instrumentations-node
+    node: true, // official @opentelemetry/auto-instrumentations-node
   },
 });
 ```
@@ -166,9 +175,11 @@ is excluded upstream by default.
   throws `HeliosConfigurationError`; reconfiguration is allowed after
   `shutdown()`. A foreign global tracer provider is never replaced.
 - `Helios.isConfigured()` / `Helios.getTracer()`
-- `Helios.forceFlush()` — drains pending spans; absorbs routine export
-  failures instead of throwing into application code.
-- `Helios.shutdown()` — flush + release global registrations; idempotent.
+- `Helios.forceFlush()`: drains pending spans. OpenTelemetry does not expose
+  remote acceptance through this lifecycle call, so it cannot confirm delivery.
+- `Helios.shutdown()`: flushes and releases global registrations; idempotent.
+- Enable redacted diagnostics and treat exporter errors as authoritative. Check
+  Helios before reporting that a trace arrived.
 
 **Serverless:** call `await Helios.forceFlush()` before the handler returns
 (or `shutdown()` if the instance is being frozen); batching is timer-based and

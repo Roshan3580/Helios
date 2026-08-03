@@ -15,14 +15,14 @@ reference. This document covers repository integration and design decisions.
 
 ## Support matrix
 
-| Requirement | Value |
-| ----------- | ----- |
-| Node.js | `^18.19.0 \|\| >=20.6.0` (OpenTelemetry JS SDK 2.x window; enforced via `engines`) |
-| TypeScript (consumers) | ≥ 5.0 (developed/verified against 5.9; NodeNext + Bundler resolution both work) |
-| Module systems | ESM **and** CommonJS (dual build, both consumer-tested) |
-| `openai` (optional instrumentation) | `>=4.19.0 <7` |
-| Browser | **Unsupported** — server SDK only; a project key must never reach a browser |
-| Metrics / logs export | Not implemented (traces only) |
+| Requirement                         | Value                                                                              |
+| ----------------------------------- | ---------------------------------------------------------------------------------- |
+| Node.js                             | `^18.19.0 \|\| >=20.6.0` (OpenTelemetry JS SDK 2.x window; enforced via `engines`) |
+| TypeScript (consumers)              | ≥ 5.0 (developed/verified against 5.9; NodeNext + Bundler resolution both work)    |
+| Module systems                      | ESM **and** CommonJS (dual build, both consumer-tested)                            |
+| `openai` (optional instrumentation) | `>=4.19.0 <7`                                                                      |
+| Browser                             | **Unsupported**: server SDK only; a project key must never reach a browser         |
+| Metrics / logs export               | Not implemented (traces only)                                                      |
 
 ## Dependency family (research summary, resolved 2026-07)
 
@@ -30,17 +30,17 @@ One internally compatible OpenTelemetry release train: stable **2.9.0** core +
 its matched experimental **0.220.0** line (released together; mixing
 generations is unsupported upstream).
 
-| Package | Version | Status | Role |
-| ------- | ------- | ------ | ---- |
-| `@opentelemetry/api` | 1.9.1 (`^1.9.0`) | stable | tracing API, context, diag |
-| `@opentelemetry/sdk-trace-node` | 2.9.0 | stable | NodeTracerProvider, BatchSpanProcessor |
-| `@opentelemetry/resources` | 2.9.0 | stable | `defaultResource` + `resourceFromAttributes` |
-| `@opentelemetry/core` | 2.9.0 | stable | W3C trace-context/baggage propagators |
-| `@opentelemetry/context-async-hooks` | 2.9.0 | stable | AsyncLocalStorage context manager |
-| `@opentelemetry/exporter-trace-otlp-proto` | 0.220.0 | experimental line | the OTLP/HTTP **protobuf** exporter (JSON exporter deliberately not used) |
-| `@opentelemetry/instrumentation` | 0.220.0 | experimental line | `registerInstrumentations` |
-| `@opentelemetry/instrumentation-openai` | 0.18.0 | **optional peer** | official OpenAI instrumentation (semconv 1.36 chat / 1.38 responses) |
-| `@opentelemetry/auto-instrumentations-node` | 0.78.0 | **optional peer** | official Node bundle (`fs` excluded upstream by default) |
+| Package                                     | Version          | Status            | Role                                                                      |
+| ------------------------------------------- | ---------------- | ----------------- | ------------------------------------------------------------------------- |
+| `@opentelemetry/api`                        | 1.9.1 (`^1.9.0`) | stable            | tracing API, context, diag                                                |
+| `@opentelemetry/sdk-trace-node`             | 2.9.0            | stable            | NodeTracerProvider, BatchSpanProcessor                                    |
+| `@opentelemetry/resources`                  | 2.9.0            | stable            | `defaultResource` + `resourceFromAttributes`                              |
+| `@opentelemetry/core`                       | 2.9.0            | stable            | W3C trace-context/baggage propagators                                     |
+| `@opentelemetry/context-async-hooks`        | 2.9.0            | stable            | AsyncLocalStorage context manager                                         |
+| `@opentelemetry/exporter-trace-otlp-proto`  | 0.220.0          | experimental line | the OTLP/HTTP **protobuf** exporter (JSON exporter deliberately not used) |
+| `@opentelemetry/instrumentation`            | 0.220.0          | experimental line | `registerInstrumentations`                                                |
+| `@opentelemetry/instrumentation-openai`     | 0.18.0           | **optional peer** | official OpenAI instrumentation (semconv 1.36 chat / 1.38 responses)      |
+| `@opentelemetry/auto-instrumentations-node` | 0.78.0           | **optional peer** | official Node bundle (`fs` excluded upstream by default)                  |
 
 `@opentelemetry/sdk-node` (0.220.0) was considered and not used: it bundles
 metrics/logs wiring Helios does not need and is itself on the experimental
@@ -106,13 +106,13 @@ Deliberate differences (not copied from Python):
 
 ## Testing and CI
 
-- `npm test` — 74 `node --test` unit tests (compiled CommonJS so
+- `npm test`: 76 `node --test` unit tests (compiled CommonJS so
   require-in-the-middle instrumentation patching is exercised the way real
   Node CJS apps experience it): configuration/env/endpoint validation, span
   semantics and async context, error recording, export headers/route/payload,
   failure absorption, diagnostics redaction, fake-OpenAI instrumentation
   (local server, no external network), Node http instrumentation, defaults-off
-  checks.
+  checks, plus truthful official-example export wording.
 - `npm run verify:package` — build, `npm pack`, packed-file allowlist
   (`package.json` + `README.md` + `dist/` only), artifact secret scan, version
   consistency, then installs the tarball into temp fixtures and runs **ESM**,
@@ -136,7 +136,9 @@ Deliberate differences (not copied from Python):
   the same process (upstream patching limitation) — restart the process.
 - `@opentelemetry/instrumentation-http` 0.220.x emits the legacy HTTP
   semantic conventions by default (`http.method` etc.).
-- Serverless: `await Helios.forceFlush()` before the handler returns.
+- Serverless: `await Helios.forceFlush()` before the handler returns. This
+  drains local work but does not confirm remote acceptance. Enable redacted
+  diagnostics and check Helios before reporting that a trace arrived.
 - Traces only — no metrics or logs export, no cost computation, no
   quality/hallucination claims.
 

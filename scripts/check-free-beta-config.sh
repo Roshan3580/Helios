@@ -108,6 +108,8 @@ require(
     Path("docs/FREE_BETA_DEPLOYMENT.md").exists(),
     "docs/FREE_BETA_DEPLOYMENT.md is missing",
 )
+smoke_path = Path("docs/HOSTED_BETA_SMOKE_TEST.md")
+require(smoke_path.exists(), "docs/HOSTED_BETA_SMOKE_TEST.md is missing")
 
 # ---------------------------------------------------------------------------
 # render.yaml remains the PAID staging contract — beta must not repurpose it.
@@ -139,6 +141,30 @@ for required in (
 require(
     re.search(r"[Bb]ranch[^\n]*\bmain\b", doc) is not None,
     "beta docs must document `main` as the beta source branch",
+)
+
+smoke = smoke_path.read_text() if smoke_path.exists() else ""
+for required in (
+    "production-capable hosted beta",
+    "https://helios-staging-tau.vercel.app",
+    "https://helios-0cqu.onrender.com",
+    "issuer_mode=multi_application",
+    "jwks_mode=derived",
+    "Confirm ingestion returns HTTP 401",
+    "Confirm no new trace was",
+):
+    require(required.lower() in smoke.lower(), f"hosted beta smoke test must describe {required}")
+require(
+    len(re.findall(r"^\d+\. ", smoke, re.MULTILINE)) == 22,
+    "hosted beta smoke test must contain exactly 22 numbered journey steps",
+)
+require(
+    not re.search(r"hel_proj_[A-Za-z0-9]{8,}_[A-Za-z0-9+/=_-]{8,}", smoke),
+    "project API key found in hosted beta smoke test",
+)
+require(
+    not re.search(r"eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]+\.", smoke),
+    "JWT found in hosted beta smoke test",
 )
 
 if fail:

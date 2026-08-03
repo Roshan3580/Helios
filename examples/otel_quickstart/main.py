@@ -21,6 +21,24 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.trace import SpanKind, Status, StatusCode
 
 
+EXPORT_ATTEMPT_MESSAGE = (
+    "Export completed locally. Check Helios to confirm trace arrival. "
+    "Exporter errors are authoritative."
+)
+
+
+def report_export_attempt(flush_completed: bool) -> int:
+    """Report queue-drain completion without claiming remote acceptance."""
+    if flush_completed:
+        print(EXPORT_ATTEMPT_MESSAGE)
+        return 0
+    print(
+        "Export did not complete locally. Review exporter errors before retrying.",
+        file=sys.stderr,
+    )
+    return 1
+
+
 def build_provider(api_url: str, api_key: str, service_name: str) -> TracerProvider:
     resource = Resource.create(
         {
@@ -94,12 +112,13 @@ def main() -> int:
 
     trace_id = run_demo_trace(tracer)
 
-    # Flush and shut down cleanly so the batch is exported before exit.
-    provider.force_flush()
+    # The flush result confirms only that the local processor completed.
+    flush_completed = provider.force_flush()
     provider.shutdown()
+    if report_export_attempt(flush_completed) != 0:
+        return 1
 
     # The API key is never printed.
-    print("OTel quickstart trace submitted")
     print(f"  trace_id:  {trace_id}")
     print("  read with your key, e.g.:")
     print(

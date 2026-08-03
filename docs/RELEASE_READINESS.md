@@ -60,31 +60,42 @@ checkpoint.
 
 ## Hosted deployment status
 
-A hosted Vercel frontend and a hosted Render backend + PostgreSQL exist and
-**currently serve demo/sample data** (owner-confirmed, Checkpoint 17). The
-items below that concern *creating* the hosted infrastructure are therefore
-done; the items that concern *validating real authenticated behavior on
-staging* (WorkOS login, smoke tests, real-tenant browser flows) remain
-**pending** — the deployment has not yet been exercised with real WorkOS
-sign-in or real multi-tenant data. Do not treat hosted deployment as
-production-ready until those are verified.
+A production-capable hosted beta is operational at the confirmed Vercel
+frontend and Render backend. The complete real journey has verified WorkOS
+authentication, organization authorization and bootstrap, project and key
+creation, authenticated OTLP ingestion, trace inspection, deterministic
+analysis, dashboard aggregation, project insights, key revocation, revoked-key
+rejection with 401, and no post-revocation trace write. This is an invited beta,
+not a generally available or SLA-backed production service. Repeat the bounded
+[hosted beta smoke test](./HOSTED_BETA_SMOKE_TEST.md) for a release candidate.
 
-## Still requires manual staging verification
+## Verified hosted beta journey
 
 - [x] Create Vercel staging project and fixed hostname (hosted frontend live)
-- [x] Create Render staging web service + PostgreSQL (hosted backend live, demo data)
-- [ ] Apply/configure WorkOS **staging** redirect/sign-in/sign-out URIs
-- [ ] Set real staging secrets in platform dashboards (never in git)
-- [ ] Run migrations via Render pre-deploy on a real database
-- [ ] Hosted `/health/live` and `/health/ready`
-- [ ] Hosted CORS between fixed frontend and API origins
-- [ ] HTTPS cookie / SameSite behavior with AuthKit
-- [ ] Real WorkOS staging login, org switching, sign-out
-- [ ] `scripts/smoke-staging.sh` against real staging URLs
-- [ ] Browser project/key/OTLP/Dashboard/Traces/Insights on staging
-- [ ] Vercel/Render runtime logs and cold-start behavior
+- [x] Create Render web service + PostgreSQL (hosted beta backend live)
+- [x] Apply WorkOS staging redirect, sign-in, and sign-out configuration
+- [x] Configure hosted secrets through platform dashboards
+- [x] Apply migrations to the hosted beta database
+- [x] Hosted `/health/ready`
+- [x] Hosted CORS between fixed frontend and API origins
+- [x] HTTPS AuthKit sign-in and session behavior
+- [x] Real WorkOS login and organization-scoped authorization
+- [x] Organization and identity bootstrap
+- [x] Browser project/key/OTLP/Dashboard/Traces/Analysis/Insights journey
+- [x] Project API-key revocation, 401 rejection, and no rejected trace write
+- [x] Render cold-start behavior documented as a bounded operational condition
 - [ ] Optional: enable narrative + real OpenAI only after explicit review
 - [ ] Broader browser/visual review
+
+## Deferred release work
+
+- [ ] Public Python SDK publication
+- [ ] Public TypeScript SDK publication
+- [ ] Self-serve workspace onboarding
+- [ ] Usage limits and retention
+- [ ] Operational recovery hardening
+- [ ] Separate demo database restoration
+- [ ] Full em-dash removal across production and demo user-facing copy
 
 ## Still prohibited / not done
 
@@ -93,6 +104,8 @@ production-ready until those are verified.
 - [ ] Automatic production promotion
 - [ ] Enabling E2E seam outside local/CI harness
 
-Do not mark manual staging or production items complete from CI alone.
+Do not infer future hosted verification from CI alone. Follow the operator
+runbook and record only safe pass or fail evidence.
 
-See [STAGING_DEPLOYMENT.md](./STAGING_DEPLOYMENT.md).
+See [STAGING_DEPLOYMENT.md](./STAGING_DEPLOYMENT.md) and
+[HOSTED_BETA_SMOKE_TEST.md](./HOSTED_BETA_SMOKE_TEST.md).
