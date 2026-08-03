@@ -34,6 +34,10 @@ Open **Traces** in the Helios console: the `openai.workflow` trace contains a
 `gen_ai.request.model`, `gen_ai.response.model`, and numeric
 `gen_ai.usage.input_tokens` / `gen_ai.usage.output_tokens`.
 
+The example enables redacted warning diagnostics and reports only that local
+export work completed. OpenTelemetry does not expose remote acceptance through
+`forceFlush()`, so check Helios before treating the trace as delivered.
+
 ## Startup ordering (important)
 
 `Helios.configure({ instrumentations: { openai: true } })` must complete

@@ -70,9 +70,16 @@ with helios.agent("my-agent"):
         messages=[{"role": "user", "content": "..."}],
     )
 
-helios.force_flush()   # before a short-lived process exits
+flush_completed = helios.force_flush()
 helios.shutdown()
+if not flush_completed:
+    raise SystemExit("Export did not complete locally. Review exporter errors before retrying.")
+print("Export completed locally. Check Helios to confirm trace arrival. Exporter errors are authoritative.")
 ```
+
+The flush result confirms local processor completion, not backend acceptance.
+The runnable example performs a separate trace read when its key permits that
+scope and prints a positive confirmation only after the trace is returned.
 
 ## Privacy
 

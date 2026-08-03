@@ -42,19 +42,22 @@ with helios.agent("my-agent"):
 @helios.trace("answer-question")           # sync or async functions
 def answer_question(q): ...
 
-helios.force_flush()   # before a short-lived process exits
-helios.shutdown()      # idempotent; also runs at process exit
+flush_completed = helios.force_flush()
+helios.shutdown()
+if not flush_completed:
+    raise SystemExit("Export did not complete locally. Review exporter errors before retrying.")
+print("Export completed locally. Check Helios to confirm trace arrival. Exporter errors are authoritative.")
 ```
 
 ### Environment variables (precedence: explicit arg > Helios env > OTel env > default)
 
-| Variable | Purpose | Default |
-| --- | --- | --- |
-| `HELIOS_API_KEY` | project API key (bearer) | required |
-| `HELIOS_ENDPOINT` | backend base URL | `http://localhost:8000` |
-| `HELIOS_SERVICE_NAME` | `service.name` | required unless `OTEL_SERVICE_NAME` set |
-| `HELIOS_ENVIRONMENT` | deployment environment | unset |
-| `HELIOS_CAPTURE_CONTENT` | capture prompt/response content | `false` |
+| Variable                 | Purpose                         | Default                                 |
+| ------------------------ | ------------------------------- | --------------------------------------- |
+| `HELIOS_API_KEY`         | project API key (bearer)        | required                                |
+| `HELIOS_ENDPOINT`        | backend base URL                | `http://localhost:8000`                 |
+| `HELIOS_SERVICE_NAME`    | `service.name`                  | required unless `OTEL_SERVICE_NAME` set |
+| `HELIOS_ENVIRONMENT`     | deployment environment          | unset                                   |
+| `HELIOS_CAPTURE_CONTENT` | capture prompt/response content | `false`                                 |
 
 ### Privacy
 
@@ -66,9 +69,12 @@ never commit them or ship them to browser code.
 
 ### Lifecycle
 
-- `force_flush()` — force-export buffered spans (call before a short-lived or
-  serverless process returns).
-- `shutdown()` — flush and stop telemetry; idempotent; also registered at exit.
+- `force_flush()`: drains the local batch queue before a short-lived or
+  serverless process returns. Its boolean reports processor completion, not
+  remote acceptance, because OpenTelemetry does not propagate the exporter result.
+- `shutdown()`: flushes and stops telemetry; idempotent and registered at exit.
+- Exporter errors are authoritative. Verify trace arrival in Helios before
+  reporting remote export success.
 
 ### Compatibility
 

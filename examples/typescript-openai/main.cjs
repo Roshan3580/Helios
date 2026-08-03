@@ -35,6 +35,7 @@ async function main() {
     endpoint: process.env.HELIOS_ENDPOINT ?? "http://localhost:8000",
     serviceName: process.env.HELIOS_SERVICE_NAME ?? "ts-openai-example",
     environment: "development",
+    diagnostics: "warn",
     instrumentations: { openai: true },
   });
 
@@ -55,7 +56,9 @@ async function main() {
 
   await Helios.forceFlush();
   await Helios.shutdown();
-  console.log("trace exported — the chat span carries tokens/model, not content");
+  console.log(
+    "Export completed locally. Check Helios to confirm trace arrival; exporter errors are authoritative.",
+  );
 }
 
 main().catch((error) => {

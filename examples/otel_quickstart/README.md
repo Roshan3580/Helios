@@ -43,8 +43,10 @@ export HELIOS_API_KEY=hel_proj_xxxxxxxxxxxxxxxx_...
 python examples/otel_quickstart/main.py --api-url http://localhost:8000
 ```
 
-The script prints the emitted 32-hex `trace_id` (never the key). Verify via the
-v2 read APIs using the same key:
+The script reports local flush completion and prints the emitted 32-hex
+`trace_id` (never the key). OpenTelemetry does not expose remote acceptance
+through this lifecycle call. Treat exporter errors as authoritative, then
+verify via the v2 read APIs using the same key:
 
 ```bash
 curl -H "Authorization: Bearer $HELIOS_API_KEY" "http://localhost:8000/v2/traces"

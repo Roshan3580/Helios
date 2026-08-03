@@ -30,6 +30,10 @@ Then open **Traces** in the Helios console: you should see a
 `support.workflow` trace with `retrieval.search`, `tool.lookup_policy`, and
 `chat gpt-4o-mini` children (model + token attributes, no content).
 
+The example enables redacted warning diagnostics and reports only that local
+export work completed. OpenTelemetry does not expose remote acceptance through
+`forceFlush()`, so check Helios before treating the trace as delivered.
+
 Notes
 
 - Requires Node `^18.19.0 || >=20.6.0`.

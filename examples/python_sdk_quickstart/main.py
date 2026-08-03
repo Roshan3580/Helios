@@ -37,6 +37,47 @@ DETERMINISTIC_CHAT = {
     "usage": {"prompt_tokens": 42, "completion_tokens": 12, "total_tokens": 54},
 }
 
+EXPORT_ATTEMPT_MESSAGE = (
+    "Export completed locally. Check Helios to confirm trace arrival. "
+    "Exporter errors are authoritative."
+)
+
+
+def report_export_attempt(flush_completed: bool) -> int:
+    """Report only what the OpenTelemetry batch processor can prove."""
+    if flush_completed:
+        print(EXPORT_ATTEMPT_MESSAGE)
+        return 0
+    print(
+        "Export did not complete locally. Review exporter errors before retrying.",
+        file=sys.stderr,
+    )
+    return 1
+
+
+def report_trace_verification(status_code: int) -> int:
+    """Classify read-back without printing credentials or response bodies."""
+    if status_code == 200:
+        print("Trace confirmed in Helios.")
+        return 0
+    if status_code == 403:
+        print(
+            "Trace arrival could not be confirmed because this key does not allow trace reads."
+        )
+        return 0
+    if status_code == 401:
+        print(
+            "Trace arrival was not confirmed. Helios rejected the key with status 401.",
+            file=sys.stderr,
+        )
+        return 1
+    print(
+        "Trace arrival was not confirmed. "
+        f"The verification request returned status {status_code}.",
+        file=sys.stderr,
+    )
+    return 1
+
 
 def _mock_openai_client():
     """A real openai.OpenAI client wired to a deterministic mock transport."""
@@ -93,11 +134,12 @@ def main() -> int:
             messages=[{"role": "user", "content": args.query}],
         )
 
-    helios.force_flush()
+    flush_completed = helios.force_flush()
     helios.shutdown()
+    if report_export_attempt(flush_completed) != 0:
+        return 1
 
     # The API key is never printed.
-    print("Helios SDK quickstart trace submitted")
     print(f"  trace_id:  {trace_id}")
     print(f"  service:   {args.service_name}")
     print("  read it (needs traces:read scope):")
@@ -107,17 +149,24 @@ def main() -> int:
     )
 
     # If the key also has traces:read, show the persisted trace summary.
-    resp = httpx.get(
-        f"{args.api_url.rstrip('/')}/v2/traces/{trace_id}",
-        headers={"Authorization": f"Bearer {api_key}"},
-    )
+    try:
+        resp = httpx.get(
+            f"{args.api_url.rstrip('/')}/v2/traces/{trace_id}",
+            headers={"Authorization": f"Bearer {api_key}"},
+        )
+    except httpx.RequestError:
+        print(
+            "Trace arrival could not be confirmed because the verification request failed.",
+            file=sys.stderr,
+        )
+        return 1
+
+    verification_status = report_trace_verification(resp.status_code)
     if resp.status_code == 200:
         detail = resp.json()
         span_names = [s["name"] for s in detail["spans"]]
         print(f"  persisted service: {detail['service_name']} · spans: {span_names}")
-    elif resp.status_code == 403:
-        print("  (this key is ingest-only; use a traces:read key to query)")
-    return 0
+    return verification_status
 
 
 if __name__ == "__main__":

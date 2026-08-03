@@ -239,8 +239,11 @@ with helios.agent("my-agent"):
     with helios.tool("lookup") as span:
         span.set_attribute("tool.name", "demo")
 
-helios.force_flush()
+flush_completed = helios.force_flush()
 helios.shutdown()
+if not flush_completed:
+    raise SystemExit("Export did not complete locally. Review exporter errors before retrying.")
+print("Export completed locally. Check Helios to confirm trace arrival. Exporter errors are authoritative.")
 PY`}</pre>
         </div>
       </section>
@@ -272,6 +275,7 @@ await Helios.configure({
   apiKey: process.env.HELIOS_API_KEY,
   endpoint: process.env.HELIOS_ENDPOINT,
   serviceName: process.env.HELIOS_SERVICE_NAME,
+  diagnostics: "warn",
 });
 
 await Helios.trace("my-agent", async () => {
@@ -284,6 +288,9 @@ await Helios.trace("my-agent", async () => {
 
 await Helios.forceFlush();
 await Helios.shutdown();
+console.log(
+  "Export completed locally. Check Helios to confirm trace arrival; exporter errors are authoritative.",
+);
 JS`}</pre>
           <p className="text-muted-foreground">
             Optional OpenAI auto-instrumentation:{" "}

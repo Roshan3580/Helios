@@ -154,6 +154,13 @@ class Helios:
     # ---- lifecycle --------------------------------------------------------
 
     def force_flush(self, timeout_millis: int | None = None) -> bool:
+        """Drain the local batch queue before returning.
+
+        ``True`` means the processor completed its flush call. OpenTelemetry's
+        batch processor does not propagate ``SpanExportResult``, so this value
+        is not confirmation that the backend accepted the batch. Exporter
+        errors remain authoritative.
+        """
         with self._lock:
             if self._is_shutdown:
                 return False
@@ -162,7 +169,7 @@ class Helios:
             return self._processor.force_flush(timeout_millis)
 
     def shutdown(self) -> None:
-        """Flush and stop telemetry. Idempotent."""
+        """Flush and stop telemetry. Idempotent; does not confirm delivery."""
         global _active
         with self._lock:
             if self._is_shutdown:
