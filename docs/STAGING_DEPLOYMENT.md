@@ -88,6 +88,12 @@ this flag.
 
 ## Smoke test
 
+For the confirmed production-capable hosted beta, use the complete
+[hosted beta smoke-test runbook](./HOSTED_BETA_SMOKE_TEST.md). It covers the
+authenticated product journey, key revocation, 401 rejection, and confirmation
+that rejected ingestion creates no trace. The script below remains a bounded
+public endpoint contract check for a generic staging deployment.
+
 ```bash
 export HELIOS_STAGING_FRONTEND_URL=https://helios-staging.example.vercel.app
 export HELIOS_STAGING_API_URL=https://helios-api-staging.example.onrender.com
@@ -115,6 +121,7 @@ bash scripts/smoke-staging.sh
 
 ## Related docs
 
+- [HOSTED_BETA_SMOKE_TEST.md](./HOSTED_BETA_SMOKE_TEST.md)
 - [DEPLOYMENT_ENVIRONMENT_MATRIX.md](./DEPLOYMENT_ENVIRONMENT_MATRIX.md)
 - [RELEASE_READINESS.md](./RELEASE_READINESS.md)
 - [BROWSER_E2E_RELEASE_GATE.md](./BROWSER_E2E_RELEASE_GATE.md)

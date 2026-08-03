@@ -4,7 +4,7 @@ AI observability platform for tracing, evaluating, and debugging LLM application
 
 **Live Demo:** [https://helios-alpha-nine.vercel.app/](https://helios-alpha-nine.vercel.app/)
 
-Helios ships as a deployed full-stack system: a TanStack Start console on Vercel, a FastAPI backend on Render, and PostgreSQL persistence. The canonical ingestion path is OpenTelemetry OTLP/HTTP protobuf on `POST /v1/otlp/traces`, with a Python SDK (`sdk/python`) and a Node.js/TypeScript SDK (`sdk/typescript`, repository artifact — not yet published to npm) exporting standard OTel spans through it. The hosted backend currently showcases demo/sample data; real multi-tenant onboarding and staging WorkOS login are not yet validated (see [docs/RELEASE_READINESS.md](docs/RELEASE_READINESS.md)).
+Helios ships as a deployed full-stack system: a TanStack Start console on Vercel, a FastAPI backend on Render, and PostgreSQL persistence. The canonical ingestion path is OpenTelemetry OTLP/HTTP protobuf on `POST /v1/otlp/traces`, with a Python SDK (`sdk/python`) and a Node.js/TypeScript SDK (`sdk/typescript`, repository artifact, not yet published to npm) exporting standard OTel spans through it. The production-capable hosted beta has completed the authenticated onboarding, telemetry, analysis, and API-key revocation journey. See [docs/RELEASE_READINESS.md](docs/RELEASE_READINESS.md) and the [hosted beta smoke-test runbook](docs/HOSTED_BETA_SMOKE_TEST.md).
 
 ## Demo
 
@@ -25,16 +25,17 @@ Helios ships as a deployed full-stack system: a TanStack Start console on Vercel
 
 Helios runs in clearly separated environments:
 
-- **Public synthetic demo** — `helios-alpha-nine.vercel.app` (branch `demo-v1`).
+- **Public synthetic demo:** `helios-alpha-nine.vercel.app` (branch `demo-v1`).
   Seeded/sample data only; no sign-in.
-- **Invited free beta** — the **real product** (WorkOS sign-in, project API
+- **Invited free beta:** the **real product** (WorkOS sign-in, project API
   keys, OTLP ingestion, Dashboard/Traces/Analysis/Insights) on zero-cost
   infrastructure for invited testers. Onboarding is **self-serve**: signing in
   with a WorkOS organization maps it to a Helios workspace automatically and
-  tenant-safely — no administrator database step. Authenticated pages never use
+  tenant-safely, with no administrator database step. Authenticated pages never use
   synthetic fallback data, and OpenAI narrative stays disabled. It is **not** an
   SLA-backed production service. See
-  [docs/FREE_BETA_DEPLOYMENT.md](docs/FREE_BETA_DEPLOYMENT.md).
+  [docs/FREE_BETA_DEPLOYMENT.md](docs/FREE_BETA_DEPLOYMENT.md) and
+  [docs/HOSTED_BETA_SMOKE_TEST.md](docs/HOSTED_BETA_SMOKE_TEST.md).
 
 Paid dedicated staging (`render.yaml`) and production are separate and not part
 of the beta.
@@ -241,9 +242,11 @@ See [examples/rag_support_bot/README.md](examples/rag_support_bot/README.md) and
 [docs/DEPLOYMENT_ENVIRONMENT_MATRIX.md](docs/DEPLOYMENT_ENVIRONMENT_MATRIX.md),
 `render.yaml`, `.env.staging.example`, `bun run check:deployment-contract`.
 
-Legacy portfolio notes remain in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). Do not
-treat hosted staging as complete until the manual checklist in
-[docs/RELEASE_READINESS.md](docs/RELEASE_READINESS.md) is finished.
+Legacy portfolio notes remain in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). The
+confirmed deployment is a production-capable hosted beta, not a production
+release. Use [docs/HOSTED_BETA_SMOKE_TEST.md](docs/HOSTED_BETA_SMOKE_TEST.md)
+for release-candidate verification and track remaining work in
+[docs/RELEASE_READINESS.md](docs/RELEASE_READINESS.md).
 
 Frontend build settings for staging-shaped builds:
 

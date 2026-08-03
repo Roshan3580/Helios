@@ -19,7 +19,7 @@ invited tester never needs an administrator to run SQL or the org CLI.
 |-----------|--------------------------------------------|------|-------|
 | Frontend  | Existing Vercel project `helios-staging`   | Free | `https://helios-staging-tau.vercel.app` |
 | Auth      | WorkOS **Staging** environment             | Free | Invited testers only |
-| Backend   | **New** Render **Free** web service `helios-api-beta` | Free | Built from branch `main` |
+| Backend   | Render **Free** web service `helios-api-beta` | Free | `https://helios-0cqu.onrender.com`, built from branch `main` |
 | Database  | **One** external free PostgreSQL (e.g. Neon free tier) | Free | Beta-only; not shared with demo/prod |
 
 Separation from other environments:
@@ -80,7 +80,7 @@ Browser-public (`VITE_*`, non-secret):
 
 | Variable                   | Value |
 |----------------------------|-------|
-| `VITE_API_BASE_URL`        | `https://helios-api-beta.onrender.com` |
+| `VITE_API_BASE_URL`        | `https://helios-0cqu.onrender.com` |
 | `VITE_HELIOS_ENVIRONMENT`  | `staging` |
 | `VITE_HELIOS_DEMO_MODE`    | `false` |
 | `VITE_HELIOS_E2E_TEST_MODE`| `false` |
@@ -282,8 +282,18 @@ always use `WORKOS_CLIENT_ID`; only multi-app issuer derivation uses
 - **No real OpenAI narrative** (deterministic analysis only).
 - Invited beta, not a production release.
 
-## Not in this checkpoint
+The confirmed deployment is a production-capable hosted beta. Run the complete
+[hosted beta smoke test](./HOSTED_BETA_SMOKE_TEST.md) for each release candidate.
 
-Billing, automatic trace retention, SDK publication, and per-project RBAC are
-out of scope. This checkpoint is source-only: it does not deploy, publish, or
-touch the public demo.
+## Deferred release work
+
+- Public Python SDK publication
+- Public TypeScript SDK publication
+- Self-serve workspace onboarding
+- Usage limits and retention
+- Operational recovery hardening
+- Separate demo database restoration
+- Full em-dash removal across production and demo user-facing copy
+
+These tasks are outside this checkpoint. This source change does not deploy,
+publish packages, modify hosted configuration, or touch the public demo.
