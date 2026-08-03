@@ -53,7 +53,7 @@ in its own environment classification; this is unaffected by the fix.
 | D2 | MEDIUM → fixed | Documentation | `ARCHITECTURE.md` "Design tradeoffs" / "Future architecture" claimed auth, OpenTelemetry, and the TypeScript SDK were unbuilt, and listed a "browser" TS SDK (contradicting the rest of the doc and `TYPESCRIPT_SDK.md` which marks browser unsupported). | **Fixed.** Sections rewritten to reflect shipped auth (WorkOS + project keys), shipped OTLP path, shipped Python + Node SDKs (Node-only, browser unsupported). |
 | D3 | MEDIUM → fixed | Documentation | `sdk/python/README.md` stated the TypeScript SDK is "future work and not yet supported". | **Fixed.** Now points to the shipped `@helios-ai/sdk` and `docs/TYPESCRIPT_SDK.md`. |
 | D4 | LOW → fixed | Documentation | README "Future improvements" listed the shipped TypeScript SDK and shipped human auth as future. | **Fixed.** List updated to genuine remaining work (rate limiting, gate `/v1`, migrate legacy pages, RBAC, publish TS SDK). |
-| SDK1 | HIGH → fixed | Python SDK | `pyproject.toml` declared no license, authors, urls, keywords, or classifiers — an accidental `twine upload` would have no publication guard. | **Fixed (metadata only, no license selected).** Added authors/keywords/urls and classifiers including `Private :: Do Not Upload` (PyPI rejects upload) + `License :: Other/Proprietary License`, mirroring the TS SDK's intentional unpublished posture. |
+| SDK1 | HIGH → fixed | Python SDK | `pyproject.toml` declared no license, authors, urls, keywords, or classifiers. | **Superseded by Checkpoint 32.** Public package metadata now identifies `helios-observatory-sdk`, Roshan Raj, and Apache-2.0. The former private-upload and proprietary classifiers were removed as part of the approved public-release foundation. |
 | CI1 | MEDIUM → fixed | CI | No `permissions:` block; `GITHUB_TOKEN` inherited the repo default (potentially read/write-all). | **Fixed.** Added top-level `permissions: contents: read`. No job publishes/deploys/writes, so artifact upload is unaffected. |
 | CI2 | MEDIUM → fixed | CI | `frontend`, `backend-tests`, `sdk-tests` had no `timeout-minutes` (6h default). | **Fixed.** Added 15/20/15-minute timeouts; all six jobs are now bounded. |
 | ISO1 | MEDIUM | Data isolation (v2, latent) | v2 read/analysis services re-resolve the project by globally-unique `slug` (`otel_trace_service.get_project_by_slug`) instead of the already-authorized `project_id`. Safe today because `projects.slug` is globally unique; becomes a cross-org risk only if per-org slug uniqueness is ever introduced. | **Documented.** Not exploitable now; fixing touches multiple service signatures. Thread `project_id` through when per-org slugs are introduced. |
@@ -86,10 +86,9 @@ Code / config:
 - `.github/workflows/ci.yml` — added `permissions: contents: read`; added
   `timeout-minutes` to `frontend`, `backend-tests`, `sdk-tests` (all six jobs
   now bounded).
-- `sdk/python/pyproject.toml` — added authors, keywords, urls, and classifiers
-  (`Private :: Do Not Upload`, `License :: Other/Proprietary License`, …) to
-  guard against accidental publication and complete package metadata, without
-  selecting a real license.
+- `sdk/python/pyproject.toml`: at this earlier checkpoint, added authors,
+  keywords, URLs, and private-release classifiers. Checkpoint 32 superseded
+  those guards with the approved Apache-2.0 public package metadata.
 
 Documentation:
 
@@ -164,9 +163,9 @@ None that block opening a release-candidate PR of the v2 platform.
 - **Organization-wide access** is the model; no per-project RBAC.
 - **Global project-slug uniqueness** (documented; v2 relies on it today).
 - **Narrative disabled by default**; requires dual opt-in; no real OpenAI call.
-- **TypeScript SDK not published** to npm and **`UNLICENSED`** (publication
-  blocker); Python SDK likewise repository-artifact only, marked
-  `Private :: Do Not Upload`.
+- **TypeScript SDK not published** to npm. The earlier `UNLICENSED` and Python
+  private-upload guards were superseded by the repository-wide Apache-2.0
+  license and Checkpoint 32 Python release foundation.
 - **Browser telemetry unsupported** (server SDKs only).
 - **Legacy/demo pages retained** but labeled `Demo`, moved out of the
   telemetry-focused nav group, and now served only when the backend

@@ -29,15 +29,30 @@ compatibility until callers migrate to the v2 runtime; no removal date is set.
 
 ### One distribution, additive API, optional extras
 
-A single `helios-sdk` distribution keeps both APIs. `import helios_sdk` never
-imports OpenTelemetry — `Helios` is exposed via a lazy module `__getattr__`, so
+A single `helios-observatory-sdk` distribution keeps both APIs.
+`import helios_sdk` never imports OpenTelemetry. `Helios` is exposed via a lazy
+module `__getattr__`, so
 legacy users are not forced to install OTel or OpenAI. Dependency groups:
 
-- `[otel]` — `opentelemetry-api/sdk`, `opentelemetry-exporter-otlp-proto-http`
+- `[otel]`: `opentelemetry-api/sdk`, `opentelemetry-exporter-otlp-proto-http`
   (`>=1.30,<2`). Required by the v2 runtime.
-- `[openai]` — `opentelemetry-instrumentation-openai-v2` (`>=2.0b0,<3`) and
-  `openai` (`>=1.26,<3`). Required only for OpenAI auto-instrumentation.
-- `[dev]` — the above plus `pytest`.
+- `[openai]`: the `[otel]` runtime plus
+  `opentelemetry-instrumentation-openai-v2` (`>=2.0b0,<3`) and `openai`
+  (`>=1.26,<3`). Required for OpenAI auto-instrumentation.
+- `[dev]`: the runtime, instrumentation, test, build, and metadata tools used
+  by repository development.
+
+### Public distribution contract
+
+The public distribution is `helios-observatory-sdk` version `0.2.0`, while the
+import remains `helios_sdk`. `sdk/python/pyproject.toml` is the authoritative
+version source, and `helios_sdk.__version__` reads the installed distribution
+metadata. The package supports Python 3.10 through 3.13; ordinary CI runs the
+canonical SDK tests and clean artifact installation for each version.
+
+The SDK is licensed under Apache-2.0 and includes a package-local copy of the
+repository license. It does not ship `py.typed` or claim the typed-package
+classifier because the current public API is only partially annotated.
 
 ### Public initialization API
 

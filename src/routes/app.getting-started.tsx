@@ -215,8 +215,8 @@ function GettingStartedPage() {
         </div>
         <div className="space-y-3 px-4 py-4 text-[13px]">
           <p className="text-muted-foreground">
-            Verified against the repository SDK (`helios-sdk`). Replace the placeholder with your
-            one-time key (never commit it).
+            Verified against the repository Python SDK. Replace the placeholder with your one-time
+            key (never commit it).
           </p>
           <pre className="overflow-x-auto border border-rule bg-paper-2 px-3 py-3 font-mono text-[11.5px] whitespace-pre-wrap">{`pip install -e "sdk/python[otel,openai]"
 
