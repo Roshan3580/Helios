@@ -178,9 +178,8 @@ def workos_verifier():
     from app.config import WORKOS_STANDARD_ISSUERS
     from workos_helpers import JWKS_DOCUMENT, TEST_CLIENT_ID
 
-    # Mirrors production *derived* mode (WORKOS_ISSUER unset): the closed set of
-    # the two documented WorkOS API-root spellings. This is what a hosted beta
-    # deployment runs, so route-level tests exercise the real acceptance set.
+    # Mirrors standard derived mode. Multi-application route regressions install
+    # their own one-issuer verifier with a separate issuer application id.
     verifier = WorkOSTokenVerifier(
         issuers=WORKOS_STANDARD_ISSUERS,
         client_id=TEST_CLIENT_ID,

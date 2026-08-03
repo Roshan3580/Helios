@@ -5,28 +5,21 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.deployment_validation import validate_settings
 
-# Official WorkOS AuthKit access-token issuers (Checkpoint 29).
-#
-# WorkOS documents the AuthKit access-token issuer as the API root, and its
-# current documentation presents BOTH standard spellings of that root — with and
-# without a trailing slash. A hosted token carrying the trailing-slash form was
-# rejected by a verifier that accepted only the no-slash form, producing
-# `reason=auth_invalid_issuer` on every authenticated request despite a fully
-# valid session, signature, and client_id.
-#
-# This is therefore a CLOSED, two-entry allowlist of exact full strings — not a
+# Official WorkOS AuthKit access-token issuers (Checkpoints 29–30). Each
+# configuration mode produces a CLOSED allowlist of exact full strings — not a
 # normalization rule. Helios never strips, appends, lowercases, or otherwise
 # transforms an issuer, and never derives one from token or request data. Each
-# entry is compared by exact full-string equality (PyJWT membership over this
-# tuple), so no prefix, suffix, subdomain, path, or wildcard match is possible:
-# `https://api.workos.com/foo`, `https://api.workos.com//`,
-# `https://api.workos.com/user_management/<client_id>`,
-# `https://evil.api.workos.com`, and `https://api.workos.com.evil.example` all
-# remain rejected.
+# entry is compared by exact full-string equality (PyJWT membership over the
+# derived tuple), so no prefix, suffix, subdomain, path, or wildcard match is
+# possible: ``https://api.workos.com/foo``, ``https://api.workos.com//``,
+# ``https://api.workos.com/user_management/<other_client_id>``,
+# ``https://evil.api.workos.com``, and ``https://api.workos.com.evil.example``
+# all remain rejected.
 #
-# Application isolation does NOT rest on the issuer — the issuer is shared by
-# every WorkOS application. It rests on the separately validated `client_id`
-# claim plus the application-specific JWKS at /sso/jwks/<client_id>.
+# Application isolation rests on the separately validated ``client_id`` claim
+# plus the current application's JWKS at /sso/jwks/<client_id>. In
+# multi-application mode the issuer embeds a separately configured default-app
+# client id; it is never inferred from a token.
 WORKOS_STANDARD_ISSUERS: tuple[str, ...] = (
     "https://api.workos.com",
     "https://api.workos.com/",
@@ -39,7 +32,13 @@ WORKOS_DEFAULT_ISSUER = WORKOS_STANDARD_ISSUERS[0]
 # Startup-diagnostic mode labels. Non-secret: they name the mode only and never
 # carry an issuer value, accepted-issuer list, client id, or AuthKit domain.
 ISSUER_MODE_DERIVED = "derived_standard_set"
+ISSUER_MODE_MULTI_APPLICATION = "multi_application"
 ISSUER_MODE_EXPLICIT = "explicit"
+
+
+def workos_multi_application_issuer(issuer_client_id: str) -> str:
+    """Derive the one exact multi-application issuer from server configuration."""
+    return f"https://api.workos.com/user_management/{issuer_client_id}"
 
 
 class Settings(BaseSettings):
@@ -61,6 +60,10 @@ class Settings(BaseSettings):
     # WorkOS human authentication (access-token verification only; the WorkOS
     # server API key is NOT required or used to validate access tokens).
     workos_client_id: str = ""
+    # Optional backend-only identity of the WorkOS default application embedded
+    # in a multi-application token's ``iss``. It never validates ``client_id``
+    # and never derives JWKS. Leave unset for standard API-root issuer mode.
+    workos_issuer_client_id: str | None = None
     # Derived from the client ID when left empty (official WorkOS defaults).
     workos_issuer: str = ""
     workos_jwks_url: str = ""
@@ -104,33 +107,52 @@ class Settings(BaseSettings):
         # Explicit issuer (e.g. a custom WorkOS auth domain) is used verbatim.
         if self.workos_issuer:
             return self.workos_issuer
-        # Default WorkOS-hosted AuthKit: the access-token issuer is the API root.
+        if self.workos_issuer_client_id is not None:
+            if not self.workos_issuer_client_id:
+                return ""
+            return workos_multi_application_issuer(self.workos_issuer_client_id)
         if self.workos_client_id:
             return WORKOS_DEFAULT_ISSUER
         return ""
 
     @property
     def workos_issuer_mode(self) -> str:
-        """``explicit`` when WORKOS_ISSUER is set, else ``derived_standard_set``."""
-        return ISSUER_MODE_EXPLICIT if self.workos_issuer else ISSUER_MODE_DERIVED
+        """Deterministic issuer mode selected only from server configuration."""
+        if self.workos_issuer and self.workos_issuer_client_id is not None:
+            return "invalid_ambiguous"
+        if self.workos_issuer:
+            return ISSUER_MODE_EXPLICIT
+        if self.workos_issuer_client_id is not None:
+            if not self.workos_issuer_client_id:
+                return "invalid_configuration"
+            return ISSUER_MODE_MULTI_APPLICATION
+        return ISSUER_MODE_DERIVED
 
     @property
     def workos_accepted_issuers(self) -> tuple[str, ...]:
         """The exact issuer value(s) this deployment accepts.
 
-        Two modes, and only two:
+        Three strict modes:
 
         * **Explicit** — ``WORKOS_ISSUER`` is set: accept exactly that one value,
           verbatim. A trailing slash is neither added nor removed, and the
-          standard WorkOS roots are NOT additionally accepted (unless the
+          derived WorkOS set is NOT additionally accepted (unless the
           configured value happens to be one of them).
-        * **Derived standard** — ``WORKOS_ISSUER`` is unset: accept exactly the
-          two documented WorkOS API-root spellings and nothing else.
+        * **Multi-application** — only ``WORKOS_ISSUER_CLIENT_ID`` is set:
+          accept exactly the derived no-trailing-slash user-management issuer.
+        * **Derived standard** — both issuer settings are unset: retain exactly
+          the two WorkOS API-root spellings from Checkpoint 29.
 
         Never inferred from request data or from an unverified token claim.
         """
+        if self.workos_issuer and self.workos_issuer_client_id is not None:
+            return ()
         if self.workos_issuer:
             return (self.workos_issuer,)
+        if self.workos_issuer_client_id is not None:
+            if not self.workos_issuer_client_id:
+                return ()
+            return (workos_multi_application_issuer(self.workos_issuer_client_id),)
         if self.workos_client_id:
             return WORKOS_STANDARD_ISSUERS
         return ()
@@ -153,7 +175,8 @@ class Settings(BaseSettings):
             database_url=self.database_url,
             cors_origins=self.cors_origin_list,
             workos_client_id=self.workos_client_id,
-            workos_issuer=self.workos_issuer_resolved,
+            workos_issuer_client_id=self.workos_issuer_client_id,
+            workos_issuer=self.workos_issuer,
             workos_jwks_url=self.workos_jwks_url_resolved,
             helios_e2e_test_mode=self.helios_e2e_test_mode,
             helios_demo_mode=self.helios_demo_mode,

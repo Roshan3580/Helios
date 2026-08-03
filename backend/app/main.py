@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.config import ISSUER_MODE_DERIVED, ISSUER_MODE_EXPLICIT, get_settings
+from app.config import get_settings
 from app.cors_policy import build_cors_kwargs
 from app.deployment_validation import sanitize_message
 from app.logging_config import AUTH_LOGGER_NAME, configure_auth_logging
@@ -50,9 +50,8 @@ def log_auth_contract(settings) -> None:
     know whether the verifier is configured and whether the issuer/JWKS were
     derived or overridden, not what they are.
 
-    ``issuer_mode=derived_standard_set`` means the closed two-entry set of
-    documented WorkOS API-root spellings is in effect; ``explicit`` means exactly
-    one configured ``WORKOS_ISSUER`` is accepted.
+    The mode is one of ``derived_standard_set``, ``multi_application``, or
+    ``explicit``. No issuer or client-id value is emitted.
 
     Readiness never depends on this: it is a log line only, and any failure to
     emit it is swallowed.
@@ -61,9 +60,10 @@ def log_auth_contract(settings) -> None:
     try:
         logger.info(
             "human auth verifier configured: client_id_present=%s "
-            "issuer_mode=%s jwks_mode=%s environment=%s",
+            "issuer_client_id_present=%s issuer_mode=%s jwks_mode=%s environment=%s",
             "true" if settings.workos_client_id else "false",
-            ISSUER_MODE_EXPLICIT if settings.workos_issuer else ISSUER_MODE_DERIVED,
+            "true" if settings.workos_issuer_client_id else "false",
+            settings.workos_issuer_mode,
             "explicit" if settings.workos_jwks_url else "derived",
             (settings.helios_environment or "local").strip().lower(),
         )

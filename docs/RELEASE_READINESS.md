@@ -40,6 +40,11 @@ and **production** work.
       Covered by `src/lib/auth/token-readiness.test.ts` and the
       `e2e/04-token-readiness.spec.ts` browser gate (delayed token
       initialization must not render an expiry panel)
+- [x] WorkOS multi-application issuer contract (Checkpoint 30): standard,
+      multi-application, and explicit modes are mutually exclusive; the
+      multi-application issuer comes only from backend-only
+      `WORKOS_ISSUER_CLIENT_ID`, while JWT `client_id` and JWKS remain tied to
+      `WORKOS_CLIENT_ID`
 
 ## Invited free beta (Checkpoint 24)
 

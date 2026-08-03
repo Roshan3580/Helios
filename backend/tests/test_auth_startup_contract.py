@@ -15,7 +15,12 @@ import logging
 import pytest
 from fastapi.testclient import TestClient
 
-from app.config import get_settings
+from app.config import (
+    ISSUER_MODE_DERIVED,
+    ISSUER_MODE_EXPLICIT,
+    ISSUER_MODE_MULTI_APPLICATION,
+    get_settings,
+)
 from app.logging_config import AUTH_LOGGER_NAME, SafeAuthFormatter
 from app.main import create_app, log_auth_contract
 
@@ -73,11 +78,28 @@ def field(line: str, name: str) -> str:
 class _Settings:
     """Minimal settings stand-in; only the four attributes the log line reads."""
 
-    def __init__(self, *, client_id="", issuer="", jwks_url="", environment="staging"):
+    def __init__(
+        self,
+        *,
+        client_id="",
+        issuer_client_id="",
+        issuer="",
+        jwks_url="",
+        environment="staging",
+    ):
         self.workos_client_id = client_id
+        self.workos_issuer_client_id = issuer_client_id
         self.workos_issuer = issuer
         self.workos_jwks_url = jwks_url
         self.helios_environment = environment
+
+    @property
+    def workos_issuer_mode(self):
+        if self.workos_issuer:
+            return ISSUER_MODE_EXPLICIT
+        if self.workos_issuer_client_id:
+            return ISSUER_MODE_MULTI_APPLICATION
+        return ISSUER_MODE_DERIVED
 
 
 class TestStartupContractContent:
@@ -85,6 +107,7 @@ class TestStartupContractContent:
         log_auth_contract(_Settings(client_id=FAKE_CLIENT_ID))
         line = contract_lines(auth_logs)[0]
         assert field(line, "client_id_present") == "true"
+        assert field(line, "issuer_client_id_present") == "false"
         assert field(line, "issuer_mode") == "derived_standard_set"
         assert field(line, "jwks_mode") == "derived"
         assert field(line, "environment") == "staging"
@@ -97,6 +120,16 @@ class TestStartupContractContent:
         assert field(line, "issuer_mode") == "explicit"
         assert field(line, "jwks_mode") == "explicit"
 
+    def test_reports_multi_application_mode_without_identifiers(self, auth_logs):
+        log_auth_contract(
+            _Settings(client_id=FAKE_CLIENT_ID, issuer_client_id=FAKE_CLIENT_ID)
+        )
+        line = contract_lines(auth_logs)[0]
+        assert field(line, "client_id_present") == "true"
+        assert field(line, "issuer_client_id_present") == "true"
+        assert field(line, "issuer_mode") == "multi_application"
+        assert FAKE_CLIENT_ID not in rendered(auth_logs)
+
     def test_reports_absent_client_id(self, auth_logs):
         log_auth_contract(_Settings(client_id=""))
         assert field(contract_lines(auth_logs)[0], "client_id_present") == "false"
@@ -108,15 +141,10 @@ class TestStartupContractContent:
         assert field(line, "jwks_mode") == "derived"
 
     def test_derived_mode_label_names_the_mode_without_the_issuer_set(self, auth_logs):
-        """Checkpoint 29: `derived_standard_set` must not enumerate the set."""
-        from app.config import WORKOS_STANDARD_ISSUERS
-
         log_auth_contract(_Settings(client_id=FAKE_CLIENT_ID))
         text = rendered(auth_logs)
         assert "issuer_mode=derived_standard_set" in text
-        for accepted in WORKOS_STANDARD_ISSUERS:
-            assert accepted not in text
-        for fragment in ("api.workos.com", "https://", "workos.com"):
+        for fragment in ("api.workos.com", "https://", "workos.com", "user_management"):
             assert fragment not in text
 
     def test_never_reveals_values_hostnames_or_urls(self, auth_logs):
@@ -139,7 +167,8 @@ class TestStartupContractContent:
         log_auth_contract(_Settings(client_id=FAKE_CLIENT_ID))
         assert contract_lines(auth_logs)[0] == (
             "human auth verifier configured: client_id_present=true "
-            "issuer_mode=derived_standard_set jwks_mode=derived environment=staging"
+            "issuer_client_id_present=false issuer_mode=derived_standard_set "
+            "jwks_mode=derived environment=staging"
         )
 
     def test_never_raises_on_broken_settings(self, auth_logs):
@@ -155,9 +184,14 @@ class TestStartupContractContent:
 
 
 class TestStartupContractLifecycle:
-    def _app_with(self, monkeypatch, environment):
+    def _app_with(self, monkeypatch, environment, *, issuer_client_id=None):
         monkeypatch.setenv("HELIOS_ENVIRONMENT", environment)
         monkeypatch.setenv("WORKOS_CLIENT_ID", FAKE_CLIENT_ID)
+        monkeypatch.delenv("WORKOS_ISSUER_CLIENT_ID", raising=False)
+        monkeypatch.delenv("WORKOS_ISSUER", raising=False)
+        monkeypatch.delenv("WORKOS_JWKS_URL", raising=False)
+        if issuer_client_id is not None:
+            monkeypatch.setenv("WORKOS_ISSUER_CLIENT_ID", issuer_client_id)
         monkeypatch.setenv("HELIOS_DEMO_MODE", "false")
         monkeypatch.setenv("HELIOS_E2E_TEST_MODE", "false")
         monkeypatch.setenv(
@@ -194,6 +228,24 @@ class TestStartupContractLifecycle:
         finally:
             get_settings.cache_clear()
 
+    def test_multi_application_mode_emitted_once_without_values(
+        self, monkeypatch, auth_logs
+    ):
+        try:
+            app = self._app_with(
+                monkeypatch,
+                "staging",
+                issuer_client_id="client_synthetic_default_0001",
+            )
+            with TestClient(app):
+                pass
+            line = contract_lines(auth_logs)[0]
+            assert "issuer_client_id_present=true" in line
+            assert "issuer_mode=multi_application" in line
+            assert "client_synthetic_default_0001" not in rendered(auth_logs)
+        finally:
+            get_settings.cache_clear()
+
     def test_no_loop_across_many_requests(self, monkeypatch, auth_logs):
         """The line belongs to startup, not the request path."""
         try:
@@ -213,6 +265,9 @@ class TestStartupContractLifecycle:
         """
         monkeypatch.setenv("HELIOS_ENVIRONMENT", "staging")
         monkeypatch.setenv("WORKOS_CLIENT_ID", FAKE_CLIENT_ID)
+        monkeypatch.delenv("WORKOS_ISSUER_CLIENT_ID", raising=False)
+        monkeypatch.delenv("WORKOS_ISSUER", raising=False)
+        monkeypatch.delenv("WORKOS_JWKS_URL", raising=False)
         monkeypatch.setenv("HELIOS_DEMO_MODE", "true")  # forbidden in staging
         monkeypatch.setenv("CORS_ORIGINS", "https://helios-startup-contract-test.invalid")
         monkeypatch.setenv(

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from app.deployment_validation import sanitize_message, validate_settings
 
 # Official WorkOS AuthKit contract used across staging/production tests:
@@ -19,6 +21,7 @@ def _staging(**overrides):
         database_url="postgresql://u:p@db.example/helios_staging",
         cors_origins=["https://helios-staging.example.vercel.app"],
         workos_client_id=_CLIENT_ID,
+        workos_issuer_client_id=None,
         workos_issuer=_ISSUER,
         workos_jwks_url=_JWKS,
         helios_e2e_test_mode=False,
@@ -38,6 +41,7 @@ def _local(**overrides):
         database_url="postgresql://helios:helios@localhost:5433/helios",
         cors_origins=["http://localhost:5173"],
         workos_client_id="",
+        workos_issuer_client_id=None,
         workos_issuer="http://127.0.0.1:9/",
         workos_jwks_url="http://127.0.0.1:9/jwks",
         helios_e2e_test_mode=False,
@@ -161,21 +165,39 @@ def test_staging_accepts_official_workos_contract():
     assert _staging() == []
 
 
-def test_staging_rejects_user_management_issuer():
-    # The old /user_management/<client_id> issuer is NOT the access-token
-    # issuer and must be rejected as a misconfiguration.
-    codes = {
-        i.code
-        for i in _staging(
-            workos_issuer=f"https://api.workos.com/user_management/{_CLIENT_ID}"
+def test_staging_accepts_user_management_issuer():
+    # Checkpoint 30: multi-application AuthKit tokens carry
+    # /user_management/<default_client_id>. Explicitly configuring that form is
+    # a valid WorkOS issuer contract (the embedded id need not match
+    # WORKOS_CLIENT_ID — Helios may be a secondary application).
+    assert (
+        _staging(workos_issuer=f"https://api.workos.com/user_management/{_CLIENT_ID}")
+        == []
+    )
+
+
+def test_staging_accepts_user_management_issuer_with_trailing_slash():
+    assert (
+        _staging(workos_issuer=f"https://api.workos.com/user_management/{_CLIENT_ID}/")
+        == []
+    )
+
+
+def test_staging_accepts_user_management_issuer_for_a_different_default_app():
+    assert (
+        _staging(
+            workos_issuer="https://api.workos.com/user_management/client_default_app_0001"
         )
-    }
-    assert "issuer_contract" in codes
+        == []
+    )
 
 
-def test_staging_rejects_arbitrary_workos_issuer_path():
-    codes = {i.code for i in _staging(workos_issuer="https://api.workos.com/anything")}
-    assert "issuer_contract" in codes
+def test_staging_accepts_exact_explicit_user_management_path():
+    assert _staging(workos_issuer="https://api.workos.com/user_management/") == []
+
+
+def test_staging_accepts_exact_explicit_https_path():
+    assert _staging(workos_issuer="https://api.workos.com/anything") == []
 
 
 def test_staging_rejects_issuer_with_query_or_fragment():
@@ -224,9 +246,69 @@ def test_staging_requires_client_id():
     assert "client_id_missing" in codes
 
 
-def test_staging_rejects_malformed_client_id():
-    codes = {i.code for i in _staging(workos_client_id="not-a-client-id")}
+@pytest.mark.parametrize(
+    "value",
+    [
+        "not-a-client-id",
+        " client_staging_example",
+        "client_staging_example ",
+        "client_staging example",
+        "https://example.com/client_staging_example",
+        "client_staging/example",
+        "client_staging?x=1",
+        "client_staging#fragment",
+        "client_staging\nexample",
+        "client_staging\x00example",
+    ],
+)
+def test_staging_rejects_malformed_client_id(value):
+    codes = {i.code for i in _staging(workos_client_id=value)}
     assert "client_id_malformed" in codes
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "",
+        " ",
+        " client_default_app",
+        "client_default_app ",
+        "client_default app",
+        "not_client_default",
+        "https://example.com/client_default_app",
+        "client_default/app",
+        "client_default?x=1",
+        "client_default#fragment",
+        "user:pass@client_default_app",
+        "client_default\napp",
+        "client_default\x00app",
+    ],
+)
+def test_staging_rejects_malformed_issuer_client_id(value):
+    codes = {i.code for i in _staging(workos_issuer="", workos_issuer_client_id=value)}
+    assert "issuer_client_id_malformed" in codes
+
+
+def test_staging_accepts_distinct_valid_issuer_client_id():
+    assert _staging(
+        workos_issuer="",
+        workos_issuer_client_id="client_default_app_0001",
+    ) == []
+
+
+def test_staging_accepts_equal_valid_current_and_issuer_client_ids():
+    assert _staging(workos_issuer="", workos_issuer_client_id=_CLIENT_ID) == []
+
+
+def test_staging_rejects_ambiguous_issuer_configuration():
+    codes = {
+        i.code
+        for i in _staging(
+            workos_issuer="https://auth.synthetic.example",
+            workos_issuer_client_id="client_default_app_0001",
+        )
+    }
+    assert "issuer_configuration_ambiguous" in codes
 
 
 def test_local_does_not_enforce_workos_host_contract():
@@ -237,6 +319,7 @@ def test_local_does_not_enforce_workos_host_contract():
         database_url="postgresql://helios:helios@localhost:5433/helios",
         cors_origins=["http://localhost:5173"],
         workos_client_id="",
+        workos_issuer_client_id=None,
         workos_issuer="http://127.0.0.1:9/",
         workos_jwks_url="http://127.0.0.1:9/jwks",
         helios_e2e_test_mode=True,
@@ -280,15 +363,12 @@ def test_staging_accepts_explicit_workos_root_with_slash():
     assert _staging(workos_issuer="https://api.workos.com/") == []
 
 
-def test_staging_rejects_double_slash_workos_issuer():
-    """`//` is an arbitrary path, not a documented root spelling."""
-    codes = {i.code for i in _staging(workos_issuer="https://api.workos.com//")}
-    assert "issuer_contract" in codes
+def test_staging_accepts_double_slash_only_when_explicitly_configured():
+    assert _staging(workos_issuer="https://api.workos.com//") == []
 
 
-def test_staging_rejects_triple_slash_workos_issuer():
-    codes = {i.code for i in _staging(workos_issuer="https://api.workos.com///")}
-    assert "issuer_contract" in codes
+def test_staging_accepts_triple_slash_only_when_explicitly_configured():
+    assert _staging(workos_issuer="https://api.workos.com///") == []
 
 
 def test_staging_rejects_issuer_with_fragment():

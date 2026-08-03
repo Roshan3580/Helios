@@ -18,7 +18,13 @@ class ValidationIssue:
 
 def _is_https(url: str) -> bool:
     try:
-        return urlparse(url).scheme == "https"
+        parsed = urlparse(url)
+        return (
+            url == url.strip()
+            and not any(char.isspace() or ord(char) < 32 for char in url)
+            and parsed.scheme == "https"
+            and bool(parsed.netloc and parsed.hostname)
+        )
     except ValueError:
         return False
 
@@ -32,20 +38,14 @@ def _is_loopback_url(url: str) -> bool:
 
 
 # Official WorkOS AuthKit access-token verification contract (see config.py
-# derivation). AuthKit access tokens are issued by the WorkOS API root, which
-# WorkOS documents in BOTH standard spellings — with and without a trailing
-# slash — and are verified against an application-specific JWKS at
-# ``/sso/jwks/<client_id>`` on the same host. The prior
-# ``/user_management/<client_id>`` issuer was incorrect: no WorkOS access token
-# carries it, so a verifier expecting it rejects every valid token. A custom
-# WorkOS auth domain may set an explicit non-workos issuer, but the JWKS is
-# always served from api.workos.com.
+# derivation). Standard mode accepts the two API-root spellings. Separately
+# configured multi-application mode accepts one no-trailing-slash
+# ``/user_management/<default_client_id>`` issuer.
+# Tokens are verified against an application-specific JWKS at
+# ``/sso/jwks/<client_id>`` on the same host. A custom WorkOS auth domain may
+# set an explicit non-workos issuer, but the JWKS is always served from
+# api.workos.com.
 _WORKOS_HOST = "api.workos.com"
-# The only paths permitted on the WorkOS host for an issuer: none, or a single
-# bare slash. Anything else (``//``, ``/foo``, ``/user_management/<id>``) is an
-# arbitrary path and is refused. Kept as an exact closed set rather than a
-# normalization rule.
-_WORKOS_ISSUER_ALLOWED_PATHS = frozenset({"", "/"})
 _WORKOS_JWKS_PATH_PREFIX = "/sso/jwks/"
 # WorkOS client ids look like ``client_<alphanumeric/underscore>``. Kept
 # permissive enough for documented placeholders (e.g. client_staging_example)
@@ -93,6 +93,7 @@ def validate_settings(
     database_url: str,
     cors_origins: list[str],
     workos_client_id: str,
+    workos_issuer_client_id: str | None,
     workos_issuer: str,
     workos_jwks_url: str,
     helios_e2e_test_mode: bool,
@@ -176,21 +177,6 @@ def validate_settings(
                     )
                 )
 
-        if not workos_issuer or not _is_https(workos_issuer):
-            issues.append(
-                ValidationIssue(
-                    "issuer_https",
-                    "WORKOS_ISSUER (or derived issuer) must be HTTPS in staging/production",
-                )
-            )
-        elif _is_loopback_url(workos_issuer):
-            issues.append(
-                ValidationIssue(
-                    "issuer_loopback",
-                    "Loopback WORKOS_ISSUER is forbidden in staging/production",
-                )
-            )
-
         if not workos_jwks_url or not _is_https(workos_jwks_url):
             issues.append(
                 ValidationIssue(
@@ -208,7 +194,7 @@ def validate_settings(
 
         # WorkOS client id: required and well-formed in staging/production, so
         # the verifier can enforce application isolation (the client_id claim).
-        client_id = (workos_client_id or "").strip()
+        client_id = workos_client_id or ""
         if not client_id:
             issues.append(
                 ValidationIssue(
@@ -216,7 +202,7 @@ def validate_settings(
                     "WORKOS_CLIENT_ID is required in staging/production",
                 )
             )
-        elif not _CLIENT_ID_RE.match(client_id):
+        elif _CLIENT_ID_RE.fullmatch(client_id) is None:
             issues.append(
                 ValidationIssue(
                     "client_id_malformed",
@@ -224,16 +210,40 @@ def validate_settings(
                 )
             )
 
-        # WorkOS issuer contract. The official AuthKit access-token issuer is the
-        # API root, which WorkOS documents both as https://api.workos.com and as
-        # https://api.workos.com/ — those two exact spellings are permitted. An
-        # explicit custom WorkOS auth domain (a different host) is permitted, but
-        # must be a clean HTTPS origin. The api.workos.com host must NOT carry an
-        # arbitrary path — in particular /user_management/<client_id> is NOT the
-        # token issuer and is the exact misconfiguration behind a hosted "signed
-        # in but every API call is 401" loop.
-        if workos_issuer and _is_https(workos_issuer) and not _is_loopback_url(workos_issuer):
-            host, path = _url_parts(workos_issuer)
+        issuer_client_id = workos_issuer_client_id
+        if issuer_client_id is not None and _CLIENT_ID_RE.fullmatch(issuer_client_id) is None:
+            issues.append(
+                ValidationIssue(
+                    "issuer_client_id_malformed",
+                    "WORKOS_ISSUER_CLIENT_ID must look like client_<id>",
+                )
+            )
+
+        if workos_issuer and issuer_client_id is not None:
+            issues.append(
+                ValidationIssue(
+                    "issuer_configuration_ambiguous",
+                    "WORKOS_ISSUER and WORKOS_ISSUER_CLIENT_ID are mutually exclusive",
+                )
+            )
+
+        # Explicit issuer mode accepts the configured HTTPS value verbatim. It
+        # is validated but never normalized or expanded into other issuers.
+        if workos_issuer:
+            if not _is_https(workos_issuer):
+                issues.append(
+                    ValidationIssue(
+                        "issuer_https",
+                        "WORKOS_ISSUER must be an absolute HTTPS URL in staging/production",
+                    )
+                )
+            elif _is_loopback_url(workos_issuer):
+                issues.append(
+                    ValidationIssue(
+                        "issuer_loopback",
+                        "Loopback WORKOS_ISSUER is forbidden in staging/production",
+                    )
+                )
             if _url_has_credentials_or_extras(workos_issuer):
                 issues.append(
                     ValidationIssue(
@@ -241,17 +251,6 @@ def validate_settings(
                         "WORKOS_ISSUER must not contain credentials, a query string, or a fragment",
                     )
                 )
-            elif host == _WORKOS_HOST and path not in _WORKOS_ISSUER_ALLOWED_PATHS:
-                issues.append(
-                    ValidationIssue(
-                        "issuer_contract",
-                        f"WORKOS_ISSUER for {_WORKOS_HOST} must be exactly "
-                        f"https://{_WORKOS_HOST} or https://{_WORKOS_HOST}/ "
-                        "(no other path); the access-token issuer is "
-                        "not /user_management/<client_id>",
-                    )
-                )
-            # A non-workos host is treated as a legitimate custom auth domain.
 
         # WorkOS JWKS contract: always served from api.workos.com at
         # /sso/jwks/<client_id>, even for custom auth domains. The embedded
@@ -275,8 +274,8 @@ def validate_settings(
                     )
                 )
             else:
-                jwks_client_id = path[len(_WORKOS_JWKS_PATH_PREFIX):].strip("/")
-                if client_id and jwks_client_id and jwks_client_id != client_id:
+                expected_path = f"{_WORKOS_JWKS_PATH_PREFIX}{client_id}"
+                if client_id and path != expected_path:
                     issues.append(
                         ValidationIssue(
                             "jwks_client_mismatch",

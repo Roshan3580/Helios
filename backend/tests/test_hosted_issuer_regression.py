@@ -1,4 +1,4 @@
-"""Checkpoint 29: the exact hosted failure, reproduced end-to-end through routes.
+"""Hosted issuer regressions reproduced end-to-end through authenticated routes.
 
 Observed hosted shape (Checkpoint 28 diagnostics made it visible):
 
@@ -24,11 +24,17 @@ import logging
 
 import pytest
 
+from app.config import workos_multi_application_issuer
 from app.logging_config import AUTH_LOGGER_NAME, SafeAuthFormatter
+from app.security.workos_auth import JWKSClient, WorkOSTokenVerifier, set_verifier_for_tests
 from workos_helpers import DEFAULT_ORG, DEFAULT_SID, DEFAULT_SUB, TEST_CLIENT_ID, bearer, make_token
+from workos_helpers import JWKS_DOCUMENT
 
 SLASHED = "https://api.workos.com/"
 SLASHLESS = "https://api.workos.com"
+ISSUER_CLIENT_ID = "client_default_issuer_app_0001"
+OTHER_CLIENT_ID = "client_untrusted_app_0001"
+MULTI_ISSUER = workos_multi_application_issuer(ISSUER_CLIENT_ID)
 
 
 class _Capture(logging.Handler):
@@ -57,6 +63,21 @@ def auth_logs():
         logger.setLevel(saved_level)
         logger.disabled = saved_disabled
         logging.disable(saved_global)
+
+
+@pytest.fixture()
+def multi_app_verifier():
+    """Production multi-app shape: current app A, configured issuer app B."""
+    verifier = WorkOSTokenVerifier(
+        issuers=(MULTI_ISSUER,),
+        client_id=TEST_CLIENT_ID,
+        jwks_client=JWKSClient("https://jwks.test/keys", fetcher=lambda: JWKS_DOCUMENT),
+    )
+    set_verifier_for_tests(verifier)
+    try:
+        yield verifier
+    finally:
+        set_verifier_for_tests(None)
 
 
 def rejections(capture: _Capture) -> list[str]:
@@ -138,14 +159,111 @@ class TestHostedTrailingSlashIssuerNowSucceeds:
             assert secret not in text, f"leaked {secret!r}"
 
 
+class TestConfirmedMultiApplicationHostedShape:
+    def test_user_me_and_projects_return_200_and_bootstrap(
+        self, client, multi_app_verifier, db_session, auth_logs
+    ):
+        from app.models_identity import Organization, User
+
+        assert db_session.query(User).count() == 0
+        assert db_session.query(Organization).count() == 0
+        token = make_token(
+            issuer=MULTI_ISSUER,
+            client_id=TEST_CLIENT_ID,
+            org_id=DEFAULT_ORG,
+        )
+        me = client.get("/v2/user/me", headers=bearer(token))
+        projects = client.get("/v2/user/projects", headers=bearer(token))
+        assert me.status_code == 200
+        assert projects.status_code == 200
+        assert me.json().get("organization") is not None
+        assert rejections(auth_logs) == []
+        db_session.expire_all()
+        assert db_session.query(User).count() == 1
+        assert db_session.query(Organization).count() == 1
+
+    @pytest.mark.parametrize(
+        ("issuer", "client_id", "reason"),
+        [
+            (
+                workos_multi_application_issuer(OTHER_CLIENT_ID),
+                TEST_CLIENT_ID,
+                "auth_invalid_issuer",
+            ),
+            (MULTI_ISSUER, ISSUER_CLIENT_ID, "auth_invalid_client_id"),
+            (SLASHLESS, TEST_CLIENT_ID, "auth_invalid_issuer"),
+            (MULTI_ISSUER + "/", TEST_CLIENT_ID, "auth_invalid_issuer"),
+        ],
+    )
+    def test_negative_shapes_fail_without_bootstrap(
+        self,
+        client,
+        multi_app_verifier,
+        db_session,
+        auth_logs,
+        issuer,
+        client_id,
+        reason,
+    ):
+        from app.models_identity import Organization, User
+
+        before_users = db_session.query(User).count()
+        before_orgs = db_session.query(Organization).count()
+        token = make_token(
+            issuer=issuer,
+            client_id=client_id,
+            sub="user_01MULTIAPPNEVERBOOTSTRAP01",
+            org_id="org_01MULTIAPPNEVERBOOTSTRAP001",
+        )
+        response = client.get("/v2/user/projects", headers=bearer(token))
+        assert response.status_code == 401
+        assert response.json() == {"detail": "invalid authentication credentials"}
+        assert rejections(auth_logs) == [
+            f"human auth rejected: reason={reason} status=401 path=/v2/user/projects"
+        ]
+        db_session.expire_all()
+        assert db_session.query(User).count() == before_users
+        assert db_session.query(Organization).count() == before_orgs
+
+    def test_missing_org_remains_safe_403(self, client, multi_app_verifier, auth_logs):
+        response = client.get(
+            "/v2/user/projects",
+            headers=bearer(make_token(issuer=MULTI_ISSUER, org_id=None)),
+        )
+        assert response.status_code == 403
+        assert rejections(auth_logs) == [
+            "human auth rejected: reason=auth_missing_org status=403 path=/v2/user/projects"
+        ]
+
+    def test_no_multi_app_identifier_or_token_is_logged(
+        self, client, multi_app_verifier, auth_logs
+    ):
+        token = make_token(issuer=MULTI_ISSUER)
+        assert client.get("/v2/user/me", headers=bearer(token)).status_code == 200
+        text = rendered(auth_logs)
+        for value in (
+            token,
+            MULTI_ISSUER,
+            TEST_CLIENT_ID,
+            ISSUER_CLIENT_ID,
+            DEFAULT_SUB,
+            DEFAULT_SID,
+            DEFAULT_ORG,
+            "Bearer ",
+            "eyJ",
+        ):
+            assert value not in text
+
+
 class TestArbitraryPathIssuerStillFailsClosed:
-    """The adjacent value that must keep failing, with a safe diagnostic."""
+    """Adjacent values that must keep failing, with a safe diagnostic."""
 
     @pytest.mark.parametrize(
         "issuer",
         [
             "https://api.workos.com/arbitrary",
-            f"https://api.workos.com/user_management/{TEST_CLIENT_ID}",
+            "https://api.workos.com/user_management/client_some_other_app",
+            "https://api.workos.com/user_management/",
             "https://api.workos.com//",
             "http://api.workos.com/",
             "https://evil.api.workos.com/",

@@ -20,14 +20,15 @@ staging, and production. Placeholders only — never commit real secrets.
 | `VITE_HELIOS_DEMO_MODE` | Frontend build | Public | Yes | `false` | Boolean string |
 | `VITE_HELIOS_ENVIRONMENT` | Frontend build | Public | Recommended | `staging` | Drives URL HTTPS checks |
 | `VITE_HELIOS_E2E_TEST_MODE` | Frontend build | Public boolean | Must be false | `false` | Forbidden `true` in staging |
-| `WORKOS_CLIENT_ID` | Frontend server + backend | Secret-ish ID | Yes (staging) | staging client | Match issuer/JWKS |
+| `WORKOS_CLIENT_ID` | Frontend server + backend | Secret-ish ID | Yes (staging) | current Helios application | Same value in Vercel and Render; validates JWT `client_id` and derives JWKS |
 | `WORKOS_API_KEY` | Frontend server only | Secret | Yes (AuthKit) | `sk_test_…` | Never `VITE_*` |
 | `WORKOS_REDIRECT_URI` | Frontend server | Public URL | Yes | `https://…/api/auth/callback` | HTTPS; fixed origin |
 | `WORKOS_COOKIE_PASSWORD` | Frontend server | Secret | Yes | ≥32 chars | Never `VITE_*` |
 | Session cookie SameSite | Frontend server | Config | Not env-set | `lax` (SDK default) | AuthKit sets SameSite=Lax, Secure, HttpOnly, Path=/. No `WORKOS_COOKIE_SAMESITE` var is consumed; the correct name if ever exposed is `WORKOS_COOKIE_SAME_SITE` |
 | `WORKOS_COOKIE_NAME` | Frontend server | Config | Optional | `wos-session` | AuthKit default |
 | `WORKOS_COOKIE_MAX_AGE` | Frontend server | Config | Optional | seconds | AuthKit default |
-| `WORKOS_ISSUER` | Backend | Public URL | Derive (unset) | *(leave unset)* | Unset accepts both documented API-root spellings (`https://api.workos.com` and `https://api.workos.com/`); NOT `/user_management/<client_id>`. Setting it accepts only that one exact value — use explicitly only for a custom auth domain |
+| `WORKOS_ISSUER` | Backend | Public URL | Optional | *(leave unset)* | Explicit mode accepts only this exact HTTPS value. Mutually exclusive with `WORKOS_ISSUER_CLIENT_ID` |
+| `WORKOS_ISSUER_CLIENT_ID` | Render backend only | Public id | Optional | *(leave unset)* | Selects multi-application mode and derives exactly one no-trailing-slash `/user_management/<issuer_client_id>` issuer. Never `VITE_*`; Vercel does not need it |
 | `WORKOS_JWKS_URL` | Backend | Public URL | Derive (unset) | `https://api.workos.com/sso/jwks/<client_id>` | Client id must match `WORKOS_CLIENT_ID` |
 | `DATABASE_URL` | Backend | Secret | Yes | Render internal URL | Not `helios_test` |
 | `CORS_ORIGINS` | Backend | Public list | Yes | Exact HTTPS origin | No `*`, no localhost |

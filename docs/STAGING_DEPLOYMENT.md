@@ -109,7 +109,8 @@ bash scripts/smoke-staging.sh
 - [ ] Sign-in endpoint = `https://<fixed-frontend>/api/auth/sign-in`  
 - [ ] Sign-out redirect = frontend origin `/`  
 - [ ] Cookie password ≥ 32 characters  
-- [ ] Backend `WORKOS_CLIENT_ID` / issuer / JWKS match staging client  
+- [ ] Vercel and Render `WORKOS_CLIENT_ID` identify the current Helios staging application; backend JWKS derives from it
+- [ ] If multi-application mode is required, Render alone has `WORKOS_ISSUER_CLIENT_ID` set to the default application and `WORKOS_ISSUER` remains unset
 - [ ] Organization linked via admin CLI before self-serve  
 
 ## Related docs

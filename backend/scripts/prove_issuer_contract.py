@@ -1,21 +1,19 @@
 #!/usr/bin/env python3
-"""Checkpoint 29 runtime proof: derived-mode issuer acceptance under real Uvicorn.
+"""Checkpoint 30 runtime proof: multi-application mode under real Uvicorn.
 
-The hosted failure occurred in **derived** mode — Render leaves ``WORKOS_ISSUER``
-and ``WORKOS_JWKS_URL`` unset, so the app derives both. A token whose ``iss``
-carried the trailing-slash spelling of the WorkOS API root was rejected with
-``reason=auth_invalid_issuer`` even though its session, signature, ``client_id``,
-and ``org_id`` were all valid.
+With ``WORKOS_ISSUER`` unset and ``WORKOS_ISSUER_CLIENT_ID`` set, the verifier
+must accept exactly one no-trailing-slash multi-application issuer. Standard
+roots, a trailing slash, another application, and arbitrary paths must fail.
+
+Adjacent values — including another application's ``user_management`` path —
+must still fail closed with a safe diagnostic and never leak issuer values into
+the log stream.
 
 This runs the backend exactly as Render does —
 ``uvicorn app.main:app --host 127.0.0.1 --port <p> --workers 1``, with
 ``WORKOS_ISSUER`` and ``WORKOS_JWKS_URL`` DELIBERATELY UNSET so derivation is
 exercised — against a loopback synthetic JWKS and synthetic RSA-signed tokens.
 Nothing contacts WorkOS.
-
-It proves that both documented API-root spellings are accepted, that adjacent
-values are refused with the safe diagnostic, and that no issuer value or token
-reaches the log stream.
 
 Usage (from backend/):
     .venv/bin/python scripts/prove_issuer_contract.py
@@ -41,7 +39,8 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 
 BACKEND = Path(__file__).resolve().parent.parent
 
-CLIENT_ID = "client_SYNTHETICISSUER0001"
+CLIENT_ID = "client_SYNTHETICCURRENT0001"
+ISSUER_CLIENT_ID = "client_SYNTHETICDEFAULT0001"
 KID = "sso_oidc_key_SYNTHETICISSUER"
 SUB = "user_01SYNTHETICISSUERUSER001"
 SID = "session_01SYNTHETICISSUERSES01"
@@ -49,6 +48,10 @@ ORG = "org_01SYNTHETICISSUERORG001"
 
 SLASHLESS = "https://api.workos.com"
 SLASHED = "https://api.workos.com/"
+MULTI_APP = f"https://api.workos.com/user_management/{ISSUER_CLIENT_ID}"
+MULTI_APP_SLASHED = f"{MULTI_APP}/"
+CURRENT_APP_ISSUER = f"https://api.workos.com/user_management/{CLIENT_ID}"
+OTHER_APP = "https://api.workos.com/user_management/client_SOMEOTHERAPP00001"
 
 _KEY = rsa.generate_private_key(public_exponent=65537, key_size=2048)
 _JWK = json.loads(pyjwt.algorithms.RSAAlgorithm.to_jwk(_KEY.public_key()))
@@ -111,7 +114,8 @@ def main() -> int:
             "HELIOS_E2E_TEST_MODE": "false",
             "HELIOS_ANALYST_NARRATIVE_ENABLED": "false",
             "WORKOS_CLIENT_ID": CLIENT_ID,
-            # DERIVED MODE: both deliberately unset, exactly as Render runs.
+            "WORKOS_ISSUER_CLIENT_ID": ISSUER_CLIENT_ID,
+            # MULTI-APPLICATION MODE: explicit issuer deliberately unset.
             # A JWKS override is unavoidable for a loopback key server, so the
             # issuer — the subject of this proof — is the one left derived.
             "WORKOS_JWKS_URL": f"http://127.0.0.1:{jwks_port}/jwks",
@@ -148,10 +152,15 @@ def main() -> int:
     ).start()
 
     base = f"http://127.0.0.1:{api_port}"
-    accepted_cases = [SLASHLESS, SLASHED]
+    accepted_cases = [MULTI_APP]
     rejected_cases = [
+        SLASHLESS,
+        SLASHED,
+        MULTI_APP_SLASHED,
+        CURRENT_APP_ISSUER,
         "https://api.workos.com/arbitrary",
-        f"https://api.workos.com/user_management/{CLIENT_ID}",
+        OTHER_APP,
+        "https://api.workos.com/user_management/",
         "https://api.workos.com//",
         "http://api.workos.com",
         "https://evil.api.workos.com",
@@ -201,7 +210,7 @@ def main() -> int:
     startup = [ln for ln in captured if "human auth verifier configured:" in ln]
 
     print("=" * 72)
-    print("DERIVED-MODE RESULTS (WORKOS_ISSUER unset, real uvicorn CLI)")
+    print("MULTI-APPLICATION RESULTS (WORKOS_ISSUER unset, real uvicorn CLI)")
     print("=" * 72)
     for kind, issuer, status in results:
         # The issuer values here are synthetic constants defined in this file,
@@ -243,6 +252,7 @@ def main() -> int:
         "eyJ",
         "Bearer ",
         CLIENT_ID,
+        ISSUER_CLIENT_ID,
         SUB,
         SID,
         ORG,
@@ -258,7 +268,7 @@ def main() -> int:
             print(f"  - {failure}")
         return 1
     print("RESULT: PASS")
-    print(f"  {len(accepted_cases)} documented API-root spellings accepted (HTTP 200)")
+    print(f"  {len(accepted_cases)} exact multi-application issuer accepted (HTTP 200)")
     print(f"  {len(rejected_cases)} adjacent issuer values rejected (HTTP 401)")
     print("  every rejection emitted one safe reason/status/path line")
     print("  no issuer value, token, claim, or identifier in the captured stream")

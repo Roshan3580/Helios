@@ -1,19 +1,6 @@
-"""Checkpoint 29: the exact WorkOS issuer acceptance boundary.
+"""Checkpoint 30: strict WorkOS multi-application issuer modes.
 
-WorkOS documents the AuthKit access-token issuer as the API root in BOTH standard
-spellings — with and without a trailing slash. A hosted token carrying the
-trailing-slash form was rejected by a verifier that accepted only the no-slash
-form, producing `reason=auth_invalid_issuer status=401` on every authenticated
-request despite a valid session, signature, and client_id.
-
-The correction is a CLOSED two-entry allowlist of exact full strings, not a
-normalization rule. These tests pin the boundary from both sides: the two
-documented forms are accepted, and everything adjacent to them — extra paths,
-doubled slashes, http, sub/superdomain lookalikes, the legacy
-/user_management/<client_id> form — stays rejected.
-
-Only synthetic RSA keys, synthetic JWKS documents, and synthetic identifiers are
-used. Nothing contacts WorkOS.
+Only synthetic keys, tokens, and identifiers are used. Nothing contacts WorkOS.
 """
 
 from __future__ import annotations
@@ -23,53 +10,23 @@ import pytest
 from app.config import (
     ISSUER_MODE_DERIVED,
     ISSUER_MODE_EXPLICIT,
-    WORKOS_DEFAULT_ISSUER,
+    ISSUER_MODE_MULTI_APPLICATION,
     WORKOS_STANDARD_ISSUERS,
     Settings,
+    workos_multi_application_issuer,
 )
 from app.security.api_keys import AuthError
 from app.security.workos_auth import JWKSClient, WorkOSTokenVerifier
-from workos_helpers import (
-    JWKS_DOCUMENT,
-    TEST_CLIENT_ID,
-    make_token,
-    make_token_with_wrong_key,
-)
+from workos_helpers import JWKS_DOCUMENT, TEST_CLIENT_ID, make_token, make_token_with_wrong_key
 
-SLASHLESS = "https://api.workos.com"
-SLASHED = "https://api.workos.com/"
-
-# Values that must NEVER be accepted, in any mode, unless explicitly configured.
-# Each is adjacent to a documented form, so a normalization/prefix/suffix bug
-# would surface here rather than in production.
-REJECTED_ISSUERS = [
-    f"https://api.workos.com/user_management/{TEST_CLIENT_ID}",
-    "https://api.workos.com/user_management/",
-    "https://api.workos.com/foo",
-    "https://api.workos.com/foo/",
-    "https://api.workos.com//",
-    "https://api.workos.com///",
-    "https://api.workos.com/.",
-    "https://api.workos.com/?x=1",
-    "https://api.workos.com/#frag",
-    "http://api.workos.com",
-    "http://api.workos.com/",
-    "https://evil.api.workos.com",
-    "https://evil.api.workos.com/",
-    "https://api.workos.com.evil.example",
-    "https://api.workos.com.evil.example/",
-    "https://apiworkos.com",
-    "https://api.workos.co",
-    "https://API.WORKOS.COM",
-    "https://api.workos.com:443",
-    " https://api.workos.com",
-    "https://api.workos.com ",
-    "api.workos.com",
-    "",
-]
+STANDARD_NO_SLASH = "https://api.workos.com"
+STANDARD_SLASH = "https://api.workos.com/"
+ISSUER_CLIENT_ID = "client_default_app_0001"
+OTHER_CLIENT_ID = "client_other_app_0001"
+MULTI_ISSUER = f"https://api.workos.com/user_management/{ISSUER_CLIENT_ID}"
 
 
-def verifier(issuers) -> WorkOSTokenVerifier:
+def verifier(issuers: tuple[str, ...]) -> WorkOSTokenVerifier:
     return WorkOSTokenVerifier(
         issuers=issuers,
         client_id=TEST_CLIENT_ID,
@@ -77,190 +34,251 @@ def verifier(issuers) -> WorkOSTokenVerifier:
     )
 
 
-def derived() -> WorkOSTokenVerifier:
-    """Production derived mode: the closed two-entry standard set."""
+def standard_verifier() -> WorkOSTokenVerifier:
     return verifier(WORKOS_STANDARD_ISSUERS)
 
 
-# ---------------------------------------------------------------------------
-# The closed set itself
-# ---------------------------------------------------------------------------
+def multi_verifier() -> WorkOSTokenVerifier:
+    return verifier((workos_multi_application_issuer(ISSUER_CLIENT_ID),))
 
 
-class TestStandardIssuerSet:
-    def test_set_has_exactly_two_entries(self):
-        assert len(WORKOS_STANDARD_ISSUERS) == 2
-        assert len(set(WORKOS_STANDARD_ISSUERS)) == 2
+class TestIssuerModes:
+    def test_standard_mode_retains_exactly_two_roots(self):
+        settings = Settings(workos_client_id=TEST_CLIENT_ID)
+        assert settings.workos_issuer_mode == ISSUER_MODE_DERIVED
+        assert settings.workos_accepted_issuers == (
+            STANDARD_NO_SLASH,
+            STANDARD_SLASH,
+        )
 
-    def test_entries_are_exactly_the_two_documented_forms(self):
-        assert WORKOS_STANDARD_ISSUERS == (SLASHLESS, SLASHED)
+    def test_multi_application_mode_derives_exactly_one_no_slash_issuer(self):
+        settings = Settings(
+            workos_client_id=TEST_CLIENT_ID,
+            workos_issuer_client_id=ISSUER_CLIENT_ID,
+        )
+        assert settings.workos_issuer_mode == ISSUER_MODE_MULTI_APPLICATION
+        assert settings.workos_accepted_issuers == (MULTI_ISSUER,)
+        assert not settings.workos_accepted_issuers[0].endswith("/")
 
-    def test_both_entries_are_https_origins_of_the_workos_api_root(self):
-        for value in WORKOS_STANDARD_ISSUERS:
-            assert value.startswith("https://")
-            assert value.rstrip("/") == SLASHLESS
+    def test_explicit_mode_accepts_exactly_the_configured_value(self):
+        explicit = "https://auth.synthetic.example/exact/"
+        settings = Settings(workos_client_id=TEST_CLIENT_ID, workos_issuer=explicit)
+        assert settings.workos_issuer_mode == ISSUER_MODE_EXPLICIT
+        assert settings.workos_accepted_issuers == (explicit,)
 
-    def test_set_is_an_immutable_tuple(self):
-        assert isinstance(WORKOS_STANDARD_ISSUERS, tuple)
-        with pytest.raises((TypeError, AttributeError)):
-            WORKOS_STANDARD_ISSUERS[0] = "https://evil.example"  # type: ignore[index]
+    def test_ambiguous_mode_accepts_nothing_and_reports_safe_issue(self):
+        settings = Settings(
+            helios_environment="staging",
+            database_url="postgresql://synthetic@db.example/helios_staging",
+            cors_origins="https://helios.example",
+            workos_client_id=TEST_CLIENT_ID,
+            workos_issuer_client_id=ISSUER_CLIENT_ID,
+            workos_issuer="https://auth.synthetic.example",
+        )
+        assert settings.workos_accepted_issuers == ()
+        assert {issue.code for issue in settings.deployment_issues()} >= {
+            "issuer_configuration_ambiguous"
+        }
 
-    def test_representative_default_is_the_slashless_form(self):
-        assert WORKOS_DEFAULT_ISSUER == SLASHLESS
-        assert WORKOS_DEFAULT_ISSUER in WORKOS_STANDARD_ISSUERS
+    def test_current_and_issuer_application_identities_remain_separate(self):
+        settings = Settings(
+            workos_client_id=TEST_CLIENT_ID,
+            workos_issuer_client_id=ISSUER_CLIENT_ID,
+        )
+        assert TEST_CLIENT_ID not in settings.workos_accepted_issuers[0]
+        assert ISSUER_CLIENT_ID in settings.workos_accepted_issuers[0]
+        assert settings.workos_jwks_url_resolved.endswith(f"/{TEST_CLIENT_ID}")
+        assert ISSUER_CLIENT_ID not in settings.workos_jwks_url_resolved
 
-    def test_no_entry_is_a_bare_string_container(self):
-        """A str passed to PyJWT as `issuer` would be an equality check, but a
-        str used as a *container* would substring-match. Guard the type."""
-        assert not isinstance(WORKOS_STANDARD_ISSUERS, str)
+    def test_current_and_issuer_client_ids_may_be_equal(self):
+        settings = Settings(
+            workos_client_id=TEST_CLIENT_ID,
+            workos_issuer_client_id=TEST_CLIENT_ID,
+        )
+        assert settings.workos_accepted_issuers == (
+            f"https://api.workos.com/user_management/{TEST_CLIENT_ID}",
+        )
+
+    def test_mode_is_not_selected_from_token_data(self):
+        settings = Settings(workos_client_id=TEST_CLIENT_ID)
+        token = make_token(issuer=MULTI_ISSUER)
+        with pytest.raises(AuthError):
+            verifier(settings.workos_accepted_issuers).verify(token)
+        assert settings.workos_issuer_mode == ISSUER_MODE_DERIVED
+        assert settings.workos_accepted_issuers == WORKOS_STANDARD_ISSUERS
 
 
-# ---------------------------------------------------------------------------
-# Derived mode acceptance
-# ---------------------------------------------------------------------------
+class TestStandardMode:
+    @pytest.mark.parametrize("issuer", WORKOS_STANDARD_ISSUERS)
+    def test_accepts_each_standard_root(self, issuer):
+        assert standard_verifier().verify(make_token(issuer=issuer))["iss"] == issuer
 
-
-class TestDerivedModeAcceptance:
-    @pytest.mark.parametrize("issuer", [SLASHLESS, SLASHED])
-    def test_both_documented_forms_are_accepted(self, issuer):
-        claims = derived().verify(make_token(issuer=issuer))
-        assert claims["iss"] == issuer
-
-    @pytest.mark.parametrize("issuer", [SLASHLESS, SLASHED])
-    def test_both_forms_still_require_a_valid_signature(self, issuer):
-        token = make_token_with_wrong_key(issuer=issuer)
+    @pytest.mark.parametrize(
+        "issuer",
+        [MULTI_ISSUER, MULTI_ISSUER + "/", "https://api.workos.com/path"],
+    )
+    def test_rejects_non_standard_issuers(self, issuer):
         with pytest.raises(AuthError) as exc:
-            derived().verify(token)
+            standard_verifier().verify(make_token(issuer=issuer))
+        assert exc.value.reason == "wrong_issuer"
+
+    def test_still_requires_valid_signature(self):
+        with pytest.raises(AuthError) as exc:
+            standard_verifier().verify(make_token_with_wrong_key())
         assert exc.value.reason == "invalid_signature"
 
-    @pytest.mark.parametrize("issuer", [SLASHLESS, SLASHED])
-    def test_both_forms_still_require_a_matching_client_id(self, issuer):
-        token = make_token(issuer=issuer, client_id="client_some_other_app")
+    def test_still_requires_current_client_id(self):
         with pytest.raises(AuthError) as exc:
-            derived().verify(token)
+            standard_verifier().verify(make_token(client_id=OTHER_CLIENT_ID))
         assert exc.value.reason == "wrong_client_id"
 
-    @pytest.mark.parametrize("issuer", [SLASHLESS, SLASHED])
-    def test_both_forms_still_require_a_present_client_id(self, issuer):
-        token = make_token(issuer=issuer, client_id=None)
+    def test_still_requires_present_client_id(self):
         with pytest.raises(AuthError) as exc:
-            derived().verify(token)
+            standard_verifier().verify(make_token(client_id=None))
         assert exc.value.reason == "missing_client_id"
 
-    @pytest.mark.parametrize("issuer", [SLASHLESS, SLASHED])
-    def test_both_forms_still_reject_an_expired_token(self, issuer):
-        token = make_token(issuer=issuer, expires_in=-30)
+    def test_still_rejects_expired_token(self):
         with pytest.raises(AuthError) as exc:
-            derived().verify(token)
+            standard_verifier().verify(make_token(expires_in=-30))
         assert exc.value.reason == "expired_jwt"
 
-    @pytest.mark.parametrize("issuer", [SLASHLESS, SLASHED])
-    def test_both_forms_still_require_sub_and_sid(self, issuer):
-        for kwargs, reason in (({"sub": None}, "missing_claims"), ({"sid": None}, "missing_claims")):
-            with pytest.raises(AuthError) as exc:
-                derived().verify(make_token(issuer=issuer, **kwargs))
-            assert exc.value.reason == reason
-
-
-# ---------------------------------------------------------------------------
-# Derived mode rejection — the boundary
-# ---------------------------------------------------------------------------
-
-
-class TestDerivedModeRejection:
-    @pytest.mark.parametrize("issuer", REJECTED_ISSUERS)
-    def test_adjacent_issuers_are_rejected(self, issuer):
-        token = make_token(issuer=issuer)
+    @pytest.mark.parametrize("claim", ["sub", "sid"])
+    def test_still_requires_identity_claims(self, claim):
         with pytest.raises(AuthError) as exc:
-            derived().verify(token)
-        # An absent/empty iss is a missing required claim; anything else present
-        # but unlisted is a wrong issuer. Both are 401 and both map to a safe code.
-        assert exc.value.reason in {"wrong_issuer", "missing_claims"}
-        assert exc.value.status_code == 401
-
-    def test_missing_iss_claim_is_rejected(self):
-        """`iss` is in the required-claims list, so its absence fails closed."""
-        token = make_token(issuer=None)
-        with pytest.raises(AuthError) as exc:
-            derived().verify(token)
+            standard_verifier().verify(make_token(**{claim: None}))
         assert exc.value.reason == "missing_claims"
+
+
+class TestMultiApplicationMode:
+    def test_accepts_confirmed_shape(self):
+        claims = multi_verifier().verify(
+            make_token(issuer=MULTI_ISSUER, client_id=TEST_CLIENT_ID)
+        )
+        assert claims["iss"] == MULTI_ISSUER
+        assert claims["client_id"] == TEST_CLIENT_ID
+
+    @pytest.mark.parametrize(
+        "issuer",
+        [
+            f"https://api.workos.com/user_management/{TEST_CLIENT_ID}",
+            f"https://api.workos.com/user_management/{OTHER_CLIENT_ID}",
+            MULTI_ISSUER + "/",
+            STANDARD_NO_SLASH,
+            STANDARD_SLASH,
+            "https://api.workos.com/user_management/arbitrary",
+            MULTI_ISSUER + "/extra",
+        ],
+    )
+    def test_rejects_every_adjacent_issuer(self, issuer):
+        with pytest.raises(AuthError) as exc:
+            multi_verifier().verify(make_token(issuer=issuer))
+        assert exc.value.reason == "wrong_issuer"
         assert exc.value.status_code == 401
 
-    def test_no_rejected_issuer_is_accepted_by_substring_or_prefix(self):
-        """Explicitly proves membership is exact, not prefix/suffix/substring."""
-        accepted = 0
-        for issuer in REJECTED_ISSUERS:
-            try:
-                derived().verify(make_token(issuer=issuer))
-                accepted += 1
-            except AuthError:
-                pass
-        assert accepted == 0
+    @pytest.mark.parametrize("client_id", [ISSUER_CLIENT_ID, OTHER_CLIENT_ID])
+    def test_rejects_client_id_that_is_not_current_application(self, client_id):
+        with pytest.raises(AuthError) as exc:
+            multi_verifier().verify(make_token(issuer=MULTI_ISSUER, client_id=client_id))
+        assert exc.value.reason == "wrong_client_id"
 
-    def test_a_superstring_of_an_accepted_value_is_rejected(self):
-        # https://api.workos.com/ is accepted; a strict superstring is not.
-        with pytest.raises(AuthError):
-            derived().verify(make_token(issuer=SLASHED + "extra"))
+    def test_rejects_missing_client_id(self):
+        with pytest.raises(AuthError) as exc:
+            multi_verifier().verify(make_token(issuer=MULTI_ISSUER, client_id=None))
+        assert exc.value.reason == "missing_client_id"
 
+    def test_rejects_missing_issuer(self):
+        with pytest.raises(AuthError) as exc:
+            multi_verifier().verify(make_token(issuer=None))
+        assert exc.value.reason == "missing_claims"
 
-# ---------------------------------------------------------------------------
-# Explicit mode
-# ---------------------------------------------------------------------------
+    def test_rejects_wrong_signing_key(self):
+        with pytest.raises(AuthError) as exc:
+            multi_verifier().verify(make_token_with_wrong_key(issuer=MULTI_ISSUER))
+        assert exc.value.reason == "invalid_signature"
+
+    def test_rejects_expired_token(self):
+        with pytest.raises(AuthError) as exc:
+            multi_verifier().verify(make_token(issuer=MULTI_ISSUER, expires_in=-30))
+        assert exc.value.reason == "expired_jwt"
+
+    @pytest.mark.parametrize("claim", ["sub", "sid"])
+    def test_rejects_missing_required_identity_claims(self, claim):
+        with pytest.raises(AuthError) as exc:
+            multi_verifier().verify(make_token(issuer=MULTI_ISSUER, **{claim: None}))
+        assert exc.value.reason == "missing_claims"
+
+    def test_accepted_collection_is_exactly_one_immutable_tuple(self):
+        accepted = multi_verifier().accepted_issuers
+        assert isinstance(accepted, tuple)
+        assert accepted == (MULTI_ISSUER,)
+
+    def test_rejected_issuer_is_not_matched_by_prefix_suffix_or_substring(self):
+        for issuer in (
+            "prefix" + MULTI_ISSUER,
+            MULTI_ISSUER + "suffix",
+            MULTI_ISSUER + "/nested",
+            MULTI_ISSUER.upper(),
+        ):
+            with pytest.raises(AuthError) as exc:
+                multi_verifier().verify(make_token(issuer=issuer))
+            assert exc.value.reason == "wrong_issuer"
 
 
 class TestExplicitMode:
-    def test_explicit_slashless_root_accepts_only_slashless(self):
-        v = verifier((SLASHLESS,))
-        assert v.verify(make_token(issuer=SLASHLESS))["iss"] == SLASHLESS
-        with pytest.raises(AuthError) as exc:
-            v.verify(make_token(issuer=SLASHED))
-        assert exc.value.reason == "wrong_issuer"
-
-    def test_explicit_slashed_root_accepts_only_slashed(self):
-        v = verifier((SLASHED,))
-        assert v.verify(make_token(issuer=SLASHED))["iss"] == SLASHED
-        with pytest.raises(AuthError) as exc:
-            v.verify(make_token(issuer=SLASHLESS))
-        assert exc.value.reason == "wrong_issuer"
-
-    def test_explicit_custom_https_issuer_accepts_only_that_exact_value(self):
-        custom = "https://auth.custom-domain.example"
-        v = verifier((custom,))
-        assert v.verify(make_token(issuer=custom))["iss"] == custom
-        for other in (custom + "/", SLASHLESS, SLASHED, "https://auth.custom-domain.example:443"):
+    def test_explicit_issuer_is_byte_exact(self):
+        explicit = "https://auth.synthetic.example/exact"
+        exact = verifier((explicit,))
+        assert exact.verify(make_token(issuer=explicit))["iss"] == explicit
+        for other in (explicit + "/", STANDARD_NO_SLASH, MULTI_ISSUER):
             with pytest.raises(AuthError) as exc:
-                v.verify(make_token(issuer=other))
+                exact.verify(make_token(issuer=other))
             assert exc.value.reason == "wrong_issuer"
 
-    def test_explicit_custom_issuer_does_not_also_accept_the_standard_roots(self):
-        v = verifier(("https://auth.custom-domain.example",))
-        for standard in WORKOS_STANDARD_ISSUERS:
+    def test_explicit_slashless_root_does_not_accept_slashed_root(self):
+        exact = verifier((STANDARD_NO_SLASH,))
+        assert exact.verify(make_token(issuer=STANDARD_NO_SLASH))["iss"] == STANDARD_NO_SLASH
+        with pytest.raises(AuthError):
+            exact.verify(make_token(issuer=STANDARD_SLASH))
+
+    def test_explicit_slashed_root_does_not_accept_slashless_root(self):
+        exact = verifier((STANDARD_SLASH,))
+        assert exact.verify(make_token(issuer=STANDARD_SLASH))["iss"] == STANDARD_SLASH
+        with pytest.raises(AuthError):
+            exact.verify(make_token(issuer=STANDARD_NO_SLASH))
+
+    def test_explicit_multi_app_does_not_add_a_slash_variant(self):
+        exact = verifier((MULTI_ISSUER,))
+        assert exact.verify(make_token(issuer=MULTI_ISSUER))["iss"] == MULTI_ISSUER
+        with pytest.raises(AuthError):
+            exact.verify(make_token(issuer=MULTI_ISSUER + "/"))
+
+    def test_explicit_custom_slash_is_not_normalized(self):
+        with_slash = verifier(("https://auth.synthetic.example/",))
+        without_slash = verifier(("https://auth.synthetic.example",))
+        with pytest.raises(AuthError):
+            with_slash.verify(make_token(issuer="https://auth.synthetic.example"))
+        with pytest.raises(AuthError):
+            without_slash.verify(make_token(issuer="https://auth.synthetic.example/"))
+
+    def test_explicit_custom_does_not_add_standard_roots(self):
+        exact = verifier(("https://auth.synthetic.example",))
+        for issuer in WORKOS_STANDARD_ISSUERS:
             with pytest.raises(AuthError):
-                v.verify(make_token(issuer=standard))
+                exact.verify(make_token(issuer=issuer))
 
-    def test_explicit_trailing_slash_is_not_silently_normalized(self):
-        """Configuring one spelling must not implicitly admit the other."""
-        with_slash = verifier(("https://auth.custom-domain.example/",))
-        without = verifier(("https://auth.custom-domain.example",))
-        with pytest.raises(AuthError):
-            with_slash.verify(make_token(issuer="https://auth.custom-domain.example"))
-        with pytest.raises(AuthError):
-            without.verify(make_token(issuer="https://auth.custom-domain.example/"))
-
-    def test_explicit_mode_still_enforces_signature_and_client_id(self):
-        custom = "https://auth.custom-domain.example"
-        v = verifier((custom,))
+    def test_explicit_mode_still_enforces_signature(self):
+        explicit = "https://auth.synthetic.example"
         with pytest.raises(AuthError) as exc:
-            v.verify(make_token_with_wrong_key(issuer=custom))
+            verifier((explicit,)).verify(make_token_with_wrong_key(issuer=explicit))
         assert exc.value.reason == "invalid_signature"
+
+    def test_explicit_mode_still_enforces_current_client_id(self):
+        explicit = "https://auth.synthetic.example"
         with pytest.raises(AuthError) as exc:
-            v.verify(make_token(issuer=custom, client_id="client_other"))
+            verifier((explicit,)).verify(
+                make_token(issuer=explicit, client_id=OTHER_CLIENT_ID)
+            )
         assert exc.value.reason == "wrong_client_id"
-
-
-# ---------------------------------------------------------------------------
-# Verifier construction guards
-# ---------------------------------------------------------------------------
 
 
 class TestVerifierConstruction:
@@ -268,67 +286,55 @@ class TestVerifierConstruction:
         with pytest.raises(ValueError):
             WorkOSTokenVerifier(
                 client_id=TEST_CLIENT_ID,
-                jwks_client=JWKSClient("https://jwks.test/keys", fetcher=lambda: JWKS_DOCUMENT),
+                jwks_client=JWKSClient(
+                    "https://jwks.test/keys", fetcher=lambda: JWKS_DOCUMENT
+                ),
             )
 
-    def test_rejects_empty_issuer_collection(self):
+    def test_requires_a_nonempty_issuer_collection(self):
         with pytest.raises(ValueError):
             verifier(())
-
-    def test_rejects_empty_string_entries(self):
         with pytest.raises(ValueError):
-            verifier(("https://api.workos.com", ""))
+            verifier((STANDARD_NO_SLASH, ""))
 
-    def test_single_issuer_kwarg_becomes_an_exact_one_entry_set(self):
-        v = WorkOSTokenVerifier(
-            issuer=SLASHLESS,
+    def test_stores_issuers_as_an_immutable_tuple(self):
+        accepted = standard_verifier().accepted_issuers
+        assert isinstance(accepted, tuple)
+        assert accepted == WORKOS_STANDARD_ISSUERS
+
+    def test_single_issuer_keyword_becomes_one_entry_tuple(self):
+        exact = WorkOSTokenVerifier(
+            issuer=MULTI_ISSUER,
             client_id=TEST_CLIENT_ID,
-            jwks_client=JWKSClient("https://jwks.test/keys", fetcher=lambda: JWKS_DOCUMENT),
+            jwks_client=JWKSClient(
+                "https://jwks.test/keys", fetcher=lambda: JWKS_DOCUMENT
+            ),
         )
-        assert v.accepted_issuers == (SLASHLESS,)
-
-    def test_accepted_issuers_is_stored_as_a_tuple_not_a_string(self):
-        """A str would make PyJWT's `in` a substring test if it ever took the
-        container branch. Stored type must be a tuple."""
-        assert isinstance(derived().accepted_issuers, tuple)
-        assert derived().accepted_issuers == WORKOS_STANDARD_ISSUERS
+        assert exact.accepted_issuers == (MULTI_ISSUER,)
 
 
-# ---------------------------------------------------------------------------
-# Settings-level mode resolution
-# ---------------------------------------------------------------------------
+class TestAdditionalSettingsGuards:
+    def test_unconfigured_settings_accept_nothing(self):
+        assert Settings(workos_client_id="").workos_accepted_issuers == ()
 
-
-class TestSettingsModes:
-    def test_unset_issuer_derives_the_standard_set(self):
-        s = Settings(workos_client_id="client_synthetic_1", workos_issuer="")
-        assert s.workos_issuer_mode == ISSUER_MODE_DERIVED
-        assert s.workos_accepted_issuers == WORKOS_STANDARD_ISSUERS
-
-    @pytest.mark.parametrize(
-        "explicit",
-        [SLASHLESS, SLASHED, "https://auth.custom-domain.example"],
-    )
-    def test_explicit_issuer_yields_exactly_one_value_verbatim(self, explicit):
-        s = Settings(workos_client_id="client_synthetic_1", workos_issuer=explicit)
-        assert s.workos_issuer_mode == ISSUER_MODE_EXPLICIT
-        assert s.workos_accepted_issuers == (explicit,)
-
-    def test_unconfigured_deployment_accepts_nothing(self):
-        s = Settings(workos_client_id="", workos_issuer="")
-        assert s.workos_accepted_issuers == ()
-
-    def test_jwks_derivation_is_unchanged_and_client_specific(self):
-        s = Settings(workos_client_id="client_synthetic_1", workos_issuer="")
-        assert s.workos_jwks_url_resolved == (
-            "https://api.workos.com/sso/jwks/client_synthetic_1"
+    def test_multi_application_resolved_issuer_matches_accepted_value(self):
+        settings = Settings(
+            workos_client_id=TEST_CLIENT_ID,
+            workos_issuer_client_id=ISSUER_CLIENT_ID,
         )
+        assert settings.workos_issuer_resolved == MULTI_ISSUER
+        assert settings.workos_accepted_issuers == (settings.workos_issuer_resolved,)
 
     def test_explicit_issuer_does_not_change_jwks_derivation(self):
-        s = Settings(
-            workos_client_id="client_synthetic_1",
-            workos_issuer="https://auth.custom-domain.example",
+        settings = Settings(
+            workos_client_id=TEST_CLIENT_ID,
+            workos_issuer="https://auth.synthetic.example",
         )
-        assert s.workos_jwks_url_resolved == (
-            "https://api.workos.com/sso/jwks/client_synthetic_1"
+        assert settings.workos_jwks_url_resolved == (
+            f"https://api.workos.com/sso/jwks/{TEST_CLIENT_ID}"
         )
+
+    def test_explicit_jwks_override_is_used_verbatim(self):
+        override = f"https://api.workos.com/sso/jwks/{TEST_CLIENT_ID}"
+        settings = Settings(workos_client_id=TEST_CLIENT_ID, workos_jwks_url=override)
+        assert settings.workos_jwks_url_resolved == override
