@@ -32,16 +32,22 @@ test.describe("canonical release gate", () => {
     void consoleGate;
     await page.goto("/app/dashboard");
     await expect(page.getByRole("main").getByText("No project selected")).toBeVisible();
-    await expect(page.getByRole("main").getByRole("link", { name: "Getting started" })).toBeVisible();
+    await expect(
+      page.getByRole("main").getByRole("link", { name: "Getting started" }),
+    ).toBeVisible();
     await expect(page.getByText(/acme/i)).toHaveCount(0);
 
     await page.goto("/app/traces");
     await expect(page.getByRole("main").getByText("No project selected")).toBeVisible();
-    await expect(page.getByRole("main").getByRole("link", { name: "Getting started" })).toBeVisible();
+    await expect(
+      page.getByRole("main").getByRole("link", { name: "Getting started" }),
+    ).toBeVisible();
 
     await page.goto("/app/insights");
     await expect(page.getByRole("main").getByText("No project selected")).toBeVisible();
-    await expect(page.getByRole("main").getByRole("link", { name: "Getting started" })).toBeVisible();
+    await expect(
+      page.getByRole("main").getByRole("link", { name: "Getting started" }),
+    ).toBeVisible();
 
     await createProjectViaUi(page, projectName, slug);
     await expect(page.getByLabel("Project")).toContainText(projectName);
@@ -126,7 +132,6 @@ test.describe("canonical release gate", () => {
     void consoleGate;
     expect(keyFile).toBeTruthy();
     traceId = randomBytes(16).toString("hex");
-    ingestTrace({ apiUrl: apiBase, keyFile, traceId });
 
     await page.goto("/app/getting-started");
 
@@ -139,12 +144,36 @@ test.describe("canonical release gate", () => {
     await expect(page.getByText("Helios.configure({")).toBeVisible();
     await expect(page.getByText("helios-ai-sdk-0.1.0.tgz")).toBeVisible();
 
+    const firstTraceRow = page.getByRole("listitem").filter({ hasText: "First trace received" });
+    const openTracesRow = page.getByRole("listitem").filter({ hasText: "Open traces" });
+    await expect(firstTraceRow).toContainText("todo");
+    await expect(firstTraceRow).toContainText("No telemetry received yet.");
+    await expect(openTracesRow).toContainText("todo");
+
+    // A trace can arrive after the route's initial backend-derived check.
+    ingestTrace({ apiUrl: apiBase, keyFile, traceId });
     await page.getByRole("button", { name: "Check for traces" }).click();
     await expect(page.getByText(/Telemetry received/i)).toBeVisible({ timeout: 30_000 });
+    await expect(firstTraceRow).toContainText("done");
+    // Trace existence alone must not mark the separate view-completion step.
+    await expect(openTracesRow).toContainText("todo");
+
     await page.getByRole("link", { name: "Open trace", exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`/app/traces/${traceId}`));
     await expect(page.getByRole("listbox", { name: "Trace timeline" })).toBeVisible();
     await expect(page.getByText("tool.lookup")).toBeVisible();
+
+    // Both backend-derived and browser-persisted completion survive navigation
+    // and a normal browser refresh for this project.
+    await page.goto("/app/getting-started");
+    await expect(firstTraceRow).toContainText("done", { timeout: 30_000 });
+    await expect(openTracesRow).toContainText("done");
+    await page.reload();
+    await expect(firstTraceRow).toContainText("done", { timeout: 30_000 });
+    await expect(openTracesRow).toContainText("done");
+
+    await page.goto(`/app/traces/${traceId}`);
+    await expect(page.getByRole("listbox", { name: "Trace timeline" })).toBeVisible();
 
     await page.getByRole("button", { name: "Analyze trace" }).click();
     await expect(page.getByText("single-trace-v1")).toBeVisible({ timeout: 30_000 });
@@ -157,7 +186,9 @@ test.describe("canonical release gate", () => {
     if (await findingButton.count()) {
       await findingButton.click();
       await expect(
-        page.getByRole("listbox", { name: "Trace timeline" }).getByRole("option", { selected: true }),
+        page
+          .getByRole("listbox", { name: "Trace timeline" })
+          .getByRole("option", { selected: true }),
       ).toBeVisible();
     }
 

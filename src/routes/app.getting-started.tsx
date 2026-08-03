@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 
 import { PageHeader } from "@/components/helios/app-shell";
@@ -9,19 +9,21 @@ import { Eyebrow, StatusBadge } from "@/components/helios/primitives";
 import { useProjectSelection } from "@/contexts/project-selection";
 import { useProjectApiKeys } from "@/hooks/use-project-api-keys";
 import { useAuthorizedRequest } from "@/lib/api/authorized-request";
-import { fetchUserProjectTraces, UserApiError, type OtelTraceSummary } from "@/lib/api/user";
+import { fetchUserProjectTraces, UserApiError } from "@/lib/api/user";
 import { API_BASE_URL } from "@/lib/api/client";
+import {
+  beginTelemetryCheck,
+  completeTelemetryCheck,
+  failTelemetryCheck,
+  hasOpenedTraces,
+  initialTelemetryProgress,
+  mayCheckTelemetry,
+  pauseTelemetryCheck,
+} from "@/lib/onboarding/trace-progress";
 
 export const Route = createFileRoute("/app/getting-started")({
   component: GettingStartedPage,
 });
-
-type TelemetryState =
-  | { status: "idle" }
-  | { status: "checking" }
-  | { status: "none" }
-  | { status: "received"; trace: OtelTraceSummary }
-  | { status: "error"; message: string };
 
 function GettingStartedPage() {
   const {
@@ -33,39 +35,53 @@ function GettingStartedPage() {
     refreshProjects,
     selectProject,
   } = useProjectSelection();
-  const { run } = useAuthorizedRequest();
+  const { run, ready } = useAuthorizedRequest();
   const keys = useProjectApiKeys(selectedProject?.id ?? null);
-  const [telemetry, setTelemetry] = useState<TelemetryState>({ status: "idle" });
+  const selectedProjectId = selectedProject?.id ?? null;
+  const [telemetry, setTelemetry] = useState(() => initialTelemetryProgress(null));
+  const [tracesOpened, setTracesOpened] = useState(false);
   const [createdStep, setCreatedStep] = useState(false);
+  const telemetryRequest = useRef(0);
 
   useEffect(() => {
-    setTelemetry({ status: "idle" });
-  }, [selectedProject?.id]);
+    telemetryRequest.current += 1;
+    setTelemetry(initialTelemetryProgress(selectedProjectId));
+    setTracesOpened(hasOpenedTraces(selectedProjectId));
+  }, [selectedProjectId]);
 
   const checkTraces = useCallback(async () => {
-    if (!selectedProject) return;
-    setTelemetry({ status: "checking" });
+    if (!mayCheckTelemetry(ready, selectedProjectId)) return;
+    const projectId = selectedProjectId!;
+    const requestId = ++telemetryRequest.current;
+    setTelemetry((current) => beginTelemetryCheck(current, projectId));
     try {
-      const rows = await run((token) =>
-        fetchUserProjectTraces(token, selectedProject.id, { limit: 1 }),
-      );
-      if (rows.length === 0) {
-        setTelemetry({ status: "none" });
-        return;
-      }
-      setTelemetry({ status: "received", trace: rows[0] });
+      const rows = await run((token) => fetchUserProjectTraces(token, projectId, { limit: 1 }));
+      if (requestId !== telemetryRequest.current) return;
+      setTelemetry((current) => completeTelemetryCheck(current, projectId, rows));
     } catch (err) {
+      if (requestId !== telemetryRequest.current) return;
       if (err instanceof UserApiError && err.status === 401) {
         // Bounded expiry already reported to central recovery; no redirect.
-        setTelemetry({ status: "idle" });
+        setTelemetry((current) => pauseTelemetryCheck(current, projectId));
         return;
       }
-      setTelemetry({
-        status: "error",
-        message: err instanceof UserApiError ? err.message : "Unable to check telemetry",
-      });
+      const message =
+        err instanceof UserApiError
+          ? err.status === 403
+            ? "You do not have access to this project's telemetry."
+            : err.message
+          : "Unable to check telemetry. The backend may be waking up; retry shortly.";
+      setTelemetry((current) => failTelemetryCheck(current, projectId, message));
     }
-  }, [selectedProject, run]);
+  }, [ready, selectedProjectId, run]);
+
+  useEffect(() => {
+    if (!mayCheckTelemetry(ready, selectedProjectId)) return;
+    void checkTraces();
+    return () => {
+      telemetryRequest.current += 1;
+    };
+  }, [ready, selectedProjectId, checkTraces]);
 
   const hasActiveKey = keys.keys.some((key) => key.status === "active");
   const endpointBase = API_BASE_URL || "<HELIOS_ENDPOINT>";
@@ -162,20 +178,22 @@ function GettingStartedPage() {
           body="Install and configure the Helios SDK or a raw OTLP exporter on your machine. Helios cannot detect local installation."
         />
         <ChecklistRow
-          done={telemetry.status === "received"}
+          done={telemetry.projectId === selectedProjectId && telemetry.trace !== null}
           title="First trace received"
           body={
-            telemetry.status === "received"
+            telemetry.projectId === selectedProjectId && telemetry.trace
               ? `Latest trace ${telemetry.trace.trace_id}`
-              : telemetry.status === "none"
+              : telemetry.phase === "none"
                 ? "No telemetry received yet."
-                : telemetry.status === "error"
-                  ? telemetry.message
-                  : "Click Check for traces after you export."
+                : telemetry.phase === "error"
+                  ? (telemetry.error ?? "Unable to check telemetry.")
+                  : telemetry.phase === "checking"
+                    ? "Checking for stored telemetry."
+                    : "Waiting until authentication is ready."
           }
         />
         <ChecklistRow
-          done={telemetry.status === "received"}
+          done={tracesOpened}
           title="Open traces"
           body="Inspect ingested traces in the Traces view."
         />
@@ -302,19 +320,26 @@ JS`}</pre>
           <button
             type="button"
             onClick={() => void checkTraces()}
-            disabled={!selectedProject || telemetry.status === "checking"}
-            aria-busy={telemetry.status === "checking"}
+            disabled={
+              !mayCheckTelemetry(ready, selectedProjectId) || telemetry.phase === "checking"
+            }
+            aria-busy={telemetry.phase === "checking"}
             className="border border-rule px-3 py-2 text-[12.5px] hover:bg-paper-2 disabled:opacity-50"
           >
-            {telemetry.status === "checking" ? "Checking…" : "Check for traces"}
+            {telemetry.phase === "checking" ? "Checking…" : "Check for traces"}
           </button>
           <div role="status" className="text-[13px]">
-            {telemetry.status === "idle" ? (
-              <span className="text-muted-foreground">Not checked yet.</span>
+            {telemetry.phase === "idle" ? (
+              <span className="text-muted-foreground">Waiting for an authorized check.</span>
             ) : null}
-            {telemetry.status === "none" ? <span>No telemetry received yet.</span> : null}
-            {telemetry.status === "error" ? <span role="alert">{telemetry.message}</span> : null}
-            {telemetry.status === "received" ? (
+            {telemetry.phase === "checking" ? (
+              <span className="text-muted-foreground">Checking stored telemetry.</span>
+            ) : null}
+            {telemetry.phase === "none" ? <span>No telemetry received yet.</span> : null}
+            {telemetry.phase === "error" ? (
+              <span role="alert">{telemetry.error ?? "Unable to check telemetry."}</span>
+            ) : null}
+            {telemetry.trace ? (
               <div className="space-y-1">
                 <div>
                   Telemetry received ·{" "}
