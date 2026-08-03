@@ -119,3 +119,28 @@ def test_release_helpers_cannot_publish():
         assert "twine upload" not in helper
         assert "pypa/gh-action-pypi-publish" not in helper
         assert "PYPI_API_TOKEN" not in helper
+
+
+def test_publishing_workflow_is_release_only_and_uses_oidc():
+    workflow = (REPOSITORY_ROOT / ".github" / "workflows" / "publish-python-sdk.yml").read_text()
+    trigger = workflow.split("permissions:", 1)[0]
+    assert "release:" in trigger
+    assert "types: [published]" in trigger
+    assert "pull_request:" not in trigger
+    assert "push:" not in trigger
+    assert "workflow_dispatch:" not in trigger
+    assert workflow.count("id-token: write") == 1
+    assert "name: pypi" in workflow
+    assert "PYPI_API_TOKEN" not in workflow
+    assert "skip-existing: false" in workflow
+    assert "attestations: true" in workflow
+    assert re.search(r"pypa/gh-action-pypi-publish@[0-9a-f]{40}", workflow)
+
+
+def test_ordinary_ci_validates_every_supported_python_without_oidc():
+    workflow = (REPOSITORY_ROOT / ".github" / "workflows" / "ci.yml").read_text()
+    sdk_job = workflow.split("  sdk-tests:", 1)[1].split("\n  typescript-sdk:", 1)[0]
+    assert 'python-version: ["3.10", "3.11", "3.12", "3.13"]' in sdk_job
+    assert "bash scripts/build-python-sdk-release.sh" in sdk_job
+    assert "id-token: write" not in sdk_job
+    assert "pypa/gh-action-pypi-publish" not in sdk_job

@@ -264,7 +264,10 @@ def main() -> None:
     validate_sdist(sdist, package_dir, args.version, repository_license)
     print(f"Validated wheel: {wheel.name}")
     print(f"Validated sdist: {sdist.name}")
-    print("Metadata: helios-observatory-sdk 0.2.0, Python >=3.10, Apache-2.0")
+    print(
+        f"Metadata: helios-observatory-sdk {args.version}, "
+        "Python >=3.10, Apache-2.0"
+    )
     print("Contents and secret scan: passed")
 
 

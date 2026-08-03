@@ -5,7 +5,6 @@ readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 readonly REPOSITORY_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd -P)"
 readonly PACKAGE_DIR="${REPOSITORY_ROOT}/sdk/python"
 readonly DIST_DIR="${PACKAGE_DIR}/dist"
-readonly EXPECTED_VERSION="${EXPECTED_VERSION:-0.2.0}"
 readonly PYTHON_REQUEST="${PYTHON_BIN:-python3}"
 TEMP_BASE="${TMPDIR:-/tmp}"
 readonly TEMP_BASE="${TEMP_BASE%/}"
@@ -85,6 +84,16 @@ if [[ "${PYTHON_BIN}" != /* ]]; then
   PYTHON_BIN="$(cd "$(dirname "${PYTHON_BIN}")" && pwd -P)/$(basename "${PYTHON_BIN}")"
 fi
 readonly PYTHON_BIN
+PACKAGE_VERSION="$("${PYTHON_BIN}" -c 'import pathlib, re, sys; text = pathlib.Path(sys.argv[1]).read_text(); match = re.search(r"(?m)^version\s*=\s*\"([^\"]+)\"\s*$", text); print(match.group(1) if match else "")' "${PACKAGE_DIR}/pyproject.toml")"
+if [[ -z "${PACKAGE_VERSION}" ]]; then
+  echo "Could not read the package version from sdk/python/pyproject.toml." >&2
+  exit 1
+fi
+readonly EXPECTED_VERSION="${EXPECTED_VERSION:-${PACKAGE_VERSION}}"
+if [[ "${PACKAGE_VERSION}" != "${EXPECTED_VERSION}" ]]; then
+  echo "Package version ${PACKAGE_VERSION} does not match expected version ${EXPECTED_VERSION}." >&2
+  exit 1
+fi
 
 safe_remove_generated_directory "${PACKAGE_DIR}/build" "${PACKAGE_DIR}"
 safe_remove_generated_directory "${PACKAGE_DIR}/dist" "${PACKAGE_DIR}"
